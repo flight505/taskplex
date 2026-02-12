@@ -429,5 +429,5 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 **Maintained by:** Jesper Vang (@flight505)
-**Repository:** https://github.com/flight505/flight505-marketplace
+**Repository:** https://github.com/flight505/taskplex
 **License:** MIT
