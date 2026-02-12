@@ -1,0 +1,11 @@
+{
+  "hooks": [
+    {
+      "event": "PostToolUse",
+      "matcher": "Bash",
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh \"$TOOL_INPUT\"",
+      "description": "Block destructive git commands during implementation"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+.DS_Store
+*.pyc
+__pycache__/
+.pytest_cache/
+*.log
+.env
+.vscode/
+*.swp
+*.swo
+*~
+
+# Diagram generation artifacts (keep only final versions)
+hero-original.png
+hero.png
+assets/*_v*.png
+assets/*_review_log.json
+taskplex-wizard-flow_v*.png
+taskplex-wizard-flow_review_log.json
+
+# Git worktrees
+.worktrees/
+
+# TaskPlex runtime artifacts (test contamination prevention)
+prd.json
+progress.txt
+tasks/
+.last-branch
+archive/
+
+# Test databases
+*.db
+*.sqlite
+
+# Python virtual environments
+.venv/
+__pycache__/
+
+# Generated code from autonomous runs
+flight_marketplace/
+run_dev_server.py
+.worktrees/

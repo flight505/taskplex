@@ -1,0 +1,36 @@
+{
+  "name": "taskplex",
+  "version": "1.0.0",
+  "description": "Resilient autonomous development with dependency-aware task execution, custom subagents, error categorization, and full branch lifecycle management. Next-generation successor to SDK Bridge.",
+  "author": {
+    "name": "Jesper Vang",
+    "url": "https://github.com/flight505"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/flight505/flight505-marketplace",
+  "homepage": "https://github.com/flight505/flight505-marketplace/tree/main/taskplex",
+  "keywords": [
+    "claude-cli",
+    "autonomous",
+    "prd",
+    "agent-loop",
+    "resilient",
+    "subagents",
+    "dependency-aware",
+    "long-running"
+  ],
+  "commands": [
+    "./commands/start.md"
+  ],
+  "skills": [
+    "./skills/prd-generator",
+    "./skills/prd-converter",
+    "./skills/failure-analyzer"
+  ],
+  "agents": [
+    "./agents/implementer.md",
+    "./agents/validator.md",
+    "./agents/reviewer.md",
+    "./agents/merger.md"
+  ]
+}
