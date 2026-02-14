@@ -86,12 +86,274 @@ trim_progress() {
   if [ "$current_size" -gt "$max_size" ]; then
     log "INIT" "Progress file exceeds ${max_size} bytes, trimming old entries..."
 
-    # Preserve Codebase Patterns section (first 50 lines) and truncate rest
+    # Keep last 200 lines (operational log is compact now)
     local temp_file=$(mktemp)
-    head -50 "$PROGRESS_FILE" > "$temp_file" && mv "$temp_file" "$PROGRESS_FILE"
+    tail -200 "$PROGRESS_FILE" > "$temp_file" && mv "$temp_file" "$PROGRESS_FILE"
 
     log "INIT" "Progress file trimmed: $(wc -c < "$PROGRESS_FILE") bytes remaining"
   fi
+}
+
+# ============================================================================
+# Knowledge Architecture (v1.1)
+# ============================================================================
+
+KNOWLEDGE_FILE="$PROJECT_DIR/knowledge.md"
+
+# Write operational log entry (Layer 1: orchestrator-only)
+log_progress() {
+  local story_id="$1"
+  local event="$2"
+  local details="$3"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%S)] [$story_id] $event - $details" >> "$PROGRESS_FILE"
+}
+
+# Trim knowledge.md to max 100 lines (Layer 2: orchestrator-curated)
+trim_knowledge() {
+  if [ ! -f "$KNOWLEDGE_FILE" ]; then
+    return 0
+  fi
+
+  local line_count=$(wc -l < "$KNOWLEDGE_FILE" 2>/dev/null || echo "0")
+
+  if [ "$line_count" -gt 100 ]; then
+    log "KNOWLEDGE" "knowledge.md exceeds 100 lines ($line_count), trimming oldest entries..."
+
+    # Keep "## Codebase Patterns" and "## Environment Notes" sections (top),
+    # trim oldest entries from "## Recent Learnings" (bottom)
+    local temp_file=$(mktemp)
+
+    # Find where "## Recent Learnings" starts
+    local learnings_line=$(grep -n "^## Recent Learnings" "$KNOWLEDGE_FILE" | head -1 | cut -d: -f1)
+
+    if [ -n "$learnings_line" ]; then
+      # Keep everything before Recent Learnings + last entries to fit 100 lines
+      local header_lines=$((learnings_line - 1))
+      local available_lines=$((100 - header_lines - 1))  # -1 for the section header itself
+
+      # Header sections
+      head -"$header_lines" "$KNOWLEDGE_FILE" > "$temp_file"
+      echo "## Recent Learnings" >> "$temp_file"
+
+      # Keep newest learnings (from bottom)
+      local learnings_start=$((learnings_line + 1))
+      tail -n +"$learnings_start" "$KNOWLEDGE_FILE" | tail -"$available_lines" >> "$temp_file"
+    else
+      # No sections found, just keep last 100 lines
+      tail -100 "$KNOWLEDGE_FILE" > "$temp_file"
+    fi
+
+    mv "$temp_file" "$KNOWLEDGE_FILE"
+    log "KNOWLEDGE" "knowledge.md trimmed to $(wc -l < "$KNOWLEDGE_FILE") lines"
+  fi
+}
+
+# Extract learnings from structured agent output and append to knowledge.md (Layer 2)
+extract_learnings() {
+  local story_id="$1"
+  local agent_output="$2"
+
+  # Parse learnings array from structured JSON output
+  local learnings
+  learnings=$(echo "$agent_output" | jq -r '
+    # Try multiple paths to find the structured output
+    (if .result then (.result | if type == "string" then (try fromjson catch {}) else . end) else . end) |
+    .learnings // [] | .[]
+  ' 2>/dev/null)
+
+  if [ -z "$learnings" ]; then
+    # Try extracting from embedded JSON in text output
+    learnings=$(echo "$agent_output" | grep -o '"learnings"[[:space:]]*:[[:space:]]*\[.*\]' | head -1 | jq -r '.[]' 2>/dev/null)
+  fi
+
+  if [ -z "$learnings" ]; then
+    log "KNOWLEDGE" "No learnings found in agent output for $story_id"
+    return 0
+  fi
+
+  # Initialize knowledge.md if it doesn't exist
+  if [ ! -f "$KNOWLEDGE_FILE" ]; then
+    cat > "$KNOWLEDGE_FILE" <<'KNOWLEDGE_INIT'
+## Codebase Patterns
+
+## Environment Notes
+
+## Recent Learnings
+KNOWLEDGE_INIT
+  fi
+
+  # Append learnings with dedup check
+  local added=0
+  while IFS= read -r learning; do
+    if [ -z "$learning" ]; then
+      continue
+    fi
+
+    # Check if this learning already exists (simple substring match)
+    if ! grep -qF "$learning" "$KNOWLEDGE_FILE" 2>/dev/null; then
+      echo "- [$story_id] $learning" >> "$KNOWLEDGE_FILE"
+      added=$((added + 1))
+    fi
+  done <<< "$learnings"
+
+  if [ "$added" -gt 0 ]; then
+    log "KNOWLEDGE" "Added $added learnings from $story_id to knowledge.md"
+  fi
+
+  # Trim if needed
+  trim_knowledge
+}
+
+# Add environment/dependency warning to knowledge.md
+add_knowledge_warning() {
+  local story_id="$1"
+  local category="$2"
+  local error_msg="$3"
+
+  if [ ! -f "$KNOWLEDGE_FILE" ]; then
+    cat > "$KNOWLEDGE_FILE" <<'KNOWLEDGE_INIT'
+## Codebase Patterns
+
+## Environment Notes
+
+## Recent Learnings
+KNOWLEDGE_INIT
+  fi
+
+  # Add warning to Environment Notes section
+  local warning="- [$story_id] ($category) $error_msg"
+
+  # Check for duplicate
+  if ! grep -qF "$error_msg" "$KNOWLEDGE_FILE" 2>/dev/null; then
+    # Insert after "## Environment Notes" line
+    local env_line=$(grep -n "^## Environment Notes" "$KNOWLEDGE_FILE" | head -1 | cut -d: -f1)
+    if [ -n "$env_line" ]; then
+      local temp_file=$(mktemp)
+      head -"$env_line" "$KNOWLEDGE_FILE" > "$temp_file"
+      echo "$warning" >> "$temp_file"
+      tail -n +"$((env_line + 1))" "$KNOWLEDGE_FILE" >> "$temp_file"
+      mv "$temp_file" "$KNOWLEDGE_FILE"
+    else
+      echo "$warning" >> "$KNOWLEDGE_FILE"
+    fi
+    log "KNOWLEDGE" "Added $category warning for $story_id"
+  fi
+}
+
+# Generate per-story context brief (Layer 3: ephemeral)
+generate_context_brief() {
+  local story_id="$1"
+  local retry_context="${2:-}"
+  local brief_file="/tmp/taskplex-context-$$-${story_id}.md"
+
+  log "CONTEXT" "Generating context brief for $story_id"
+
+  cat > "$brief_file" <<BRIEF_HEADER
+# Context Brief for $story_id
+Generated by TaskPlex orchestrator at $(date -u +%Y-%m-%dT%H:%M:%S)
+
+BRIEF_HEADER
+
+  # 1. Story details from prd.json
+  echo "## Story Details" >> "$brief_file"
+  echo '```json' >> "$brief_file"
+  jq --arg id "$story_id" '.userStories[] | select(.id == $id)' "$PRD_FILE" >> "$brief_file" 2>/dev/null
+  echo '```' >> "$brief_file"
+  echo "" >> "$brief_file"
+
+  # 2. Run check_before_implementing commands, capture results
+  local check_cmds
+  check_cmds=$(jq -r --arg id "$story_id" '
+    .userStories[] | select(.id == $id) | .check_before_implementing // [] | .[]
+  ' "$PRD_FILE" 2>/dev/null)
+
+  if [ -n "$check_cmds" ]; then
+    echo "## Pre-Implementation Check Results" >> "$brief_file"
+    while IFS= read -r cmd; do
+      if [ -n "$cmd" ]; then
+        echo "### \`$cmd\`" >> "$brief_file"
+        echo '```' >> "$brief_file"
+        eval "$cmd" >> "$brief_file" 2>&1 || echo "(command returned non-zero)" >> "$brief_file"
+        echo '```' >> "$brief_file"
+        echo "" >> "$brief_file"
+      fi
+    done <<< "$check_cmds"
+  fi
+
+  # 3. Git diffs from completed dependency stories
+  local dep_ids
+  dep_ids=$(jq -r --arg id "$story_id" '
+    .userStories[] | select(.id == $id) | .depends_on // [] | .[]
+  ' "$PRD_FILE" 2>/dev/null)
+
+  if [ -n "$dep_ids" ]; then
+    echo "## Dependency Story Changes" >> "$brief_file"
+    while IFS= read -r dep_id; do
+      if [ -n "$dep_id" ]; then
+        # Find the commit for this dependency
+        local dep_commit
+        dep_commit=$(git log --oneline --grep="feat($dep_id)" -1 --format="%H" 2>/dev/null)
+        if [ -n "$dep_commit" ]; then
+          echo "### $dep_id (commit: ${dep_commit:0:8})" >> "$brief_file"
+          echo '```' >> "$brief_file"
+          git diff "${dep_commit}^".."${dep_commit}" --stat >> "$brief_file" 2>/dev/null || echo "(diff not available)" >> "$brief_file"
+          echo '```' >> "$brief_file"
+          echo "" >> "$brief_file"
+        else
+          echo "### $dep_id — no commit found" >> "$brief_file"
+          echo "" >> "$brief_file"
+        fi
+      fi
+    done <<< "$dep_ids"
+  fi
+
+  # 4. Relevant knowledge from knowledge.md
+  if [ -f "$KNOWLEDGE_FILE" ]; then
+    echo "## Project Knowledge" >> "$brief_file"
+    cat "$KNOWLEDGE_FILE" >> "$brief_file"
+    echo "" >> "$brief_file"
+  fi
+
+  # 5. Previous failure context (if retry)
+  if [ -n "$retry_context" ]; then
+    echo "## Previous Failure Context" >> "$brief_file"
+    echo "$retry_context" >> "$brief_file"
+    echo "" >> "$brief_file"
+  fi
+
+  echo "$brief_file"
+}
+
+# Parse structured agent output and extract fields
+parse_agent_output() {
+  local output="$1"
+
+  # Try to extract the structured JSON from the output
+  # The agent outputs it as the last JSON block in its response
+  local structured
+  structured=$(echo "$output" | jq -r '
+    if .result then
+      .result | if type == "string" then . else (. | tostring) end
+    else
+      . | tostring
+    end
+  ' 2>/dev/null)
+
+  # Try to extract JSON block from text output
+  if [ -n "$structured" ]; then
+    # Look for the last JSON object containing "story_id"
+    echo "$structured" | grep -o '{[^}]*"story_id"[^}]*}' | tail -1 2>/dev/null || echo "{}"
+  else
+    echo "{}"
+  fi
+}
+
+# Extract retry_hint from structured output
+get_retry_hint() {
+  local output="$1"
+  local structured
+  structured=$(parse_agent_output "$output")
+  echo "$structured" | jq -r '.retry_hint // empty' 2>/dev/null
 }
 
 # ============================================================================
@@ -621,12 +883,12 @@ if [ -f "$PRD_FILE" ] && [ -f "$LAST_BRANCH_FILE" ]; then
     mkdir -p "$ARCHIVE_FOLDER"
     [ -f "$PRD_FILE" ] && cp "$PRD_FILE" "$ARCHIVE_FOLDER/"
     [ -f "$PROGRESS_FILE" ] && cp "$PROGRESS_FILE" "$ARCHIVE_FOLDER/"
+    [ -f "$KNOWLEDGE_FILE" ] && cp "$KNOWLEDGE_FILE" "$ARCHIVE_FOLDER/"
     echo "   Archived to: $ARCHIVE_FOLDER"
 
     # Reset progress file for new run
-    echo "# TaskPlex Progress Log" > "$PROGRESS_FILE"
-    echo "Started: $(date)" >> "$PROGRESS_FILE"
-    echo "---" >> "$PROGRESS_FILE"
+    echo "# TaskPlex Operational Log" > "$PROGRESS_FILE"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%S)] [INIT] New run started" >> "$PROGRESS_FILE"
   fi
 fi
 
@@ -640,9 +902,8 @@ fi
 
 # Initialize progress file if it doesn't exist
 if [ ! -f "$PROGRESS_FILE" ]; then
-  echo "# TaskPlex Progress Log" > "$PROGRESS_FILE"
-  echo "Started: $(date)" >> "$PROGRESS_FILE"
-  echo "---" >> "$PROGRESS_FILE"
+  echo "# TaskPlex Operational Log" > "$PROGRESS_FILE"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%S)] [INIT] New run started" >> "$PROGRESS_FILE"
 fi
 
 # ============================================================================
@@ -778,13 +1039,14 @@ handle_error() {
   # Get max retries for this category
   local max_retries=$(get_max_retries "$category")
 
-  # Log to progress file
-  echo "" >> "$PROGRESS_FILE"
-  echo "## Iteration $iteration - ERROR ($category)" >> "$PROGRESS_FILE"
-  echo "Story: $story_id" >> "$PROGRESS_FILE"
-  echo "Attempts: $attempts" >> "$PROGRESS_FILE"
-  echo "Max retries for $category: $max_retries" >> "$PROGRESS_FILE"
-  echo "---" >> "$PROGRESS_FILE"
+  # Log to operational log (Layer 1)
+  log_progress "$story_id" "FAILED" "$category (attempt $attempts/$max_retries)"
+
+  # Add warning to knowledge.md for env/dependency failures (Layer 2)
+  if [ "$category" = "env_missing" ] || [ "$category" = "dependency_missing" ]; then
+    local error_excerpt=$(echo "$output" | head -c 150 | tr '\n' ' ')
+    add_knowledge_warning "$story_id" "$category" "$error_excerpt"
+  fi
 
   # Update story with error details
   if [ -n "$story_id" ] && [ -f "$PRD_FILE" ]; then
@@ -991,12 +1253,8 @@ Output your result as JSON in this format:
 
   log "VALIDATE-$story_id" "Validation result: $validation_result"
 
-  # Log validation output
-  echo "" >> "$PROGRESS_FILE"
-  echo "## Validation - $story_id" >> "$PROGRESS_FILE"
-  echo "Result: $validation_result" >> "$PROGRESS_FILE"
-  echo "$VALIDATOR_OUTPUT" >> "$PROGRESS_FILE"
-  echo "---" >> "$PROGRESS_FILE"
+  # Log validation result (Layer 1: operational log)
+  log_progress "$story_id" "VALIDATED" "$validation_result"
 
   if [ "$validation_result" = "pass" ]; then
     log "VALIDATE-$story_id" "Validation passed ✓"
@@ -1061,6 +1319,23 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   # Mark story as in progress
   update_story_status "$CURRENT_STORY" "in_progress"
 
+  # Log story start (Layer 1: operational log)
+  STORY_START_TIME=$(date +%s)
+  STORY_TITLE_LOG=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .title' "$PRD_FILE" 2>/dev/null)
+  log_progress "$CURRENT_STORY" "STARTED" "$STORY_TITLE_LOG"
+
+  # Generate context brief (Layer 3: ephemeral)
+  CONTEXT_BRIEF_FILE=$(generate_context_brief "$CURRENT_STORY")
+  log "IMPL-$CURRENT_STORY" "Context brief generated: $CONTEXT_BRIEF_FILE"
+
+  # Build the full prompt: context brief + agent instructions
+  FULL_PROMPT_FILE=$(mktemp)
+  cat "$CONTEXT_BRIEF_FILE" > "$FULL_PROMPT_FILE"
+  echo "" >> "$FULL_PROMPT_FILE"
+  echo "---" >> "$FULL_PROMPT_FILE"
+  echo "" >> "$FULL_PROMPT_FILE"
+  cat "$SCRIPT_DIR/prompt.md" >> "$FULL_PROMPT_FILE"
+
   # Run fresh Claude agent with the taskplex prompt
   # Each iteration has clean context (no -c flag) to prevent context rot
 
@@ -1070,7 +1345,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   log "IMPL-$CURRENT_STORY" "Timeout: ${ITERATION_TIMEOUT}s"
 
   # Run with timeout
-  $TIMEOUT_CMD $ITERATION_TIMEOUT claude -p "$(cat "$SCRIPT_DIR/prompt.md")" \
+  $TIMEOUT_CMD $ITERATION_TIMEOUT claude -p "$(cat "$FULL_PROMPT_FILE")" \
     --output-format json \
     --no-session-persistence \
     --model "$EXECUTION_MODEL" \
@@ -1099,9 +1374,9 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     fi
   fi
 
-  # Read output and cleanup temp file
+  # Read output and cleanup temp files
   OUTPUT=$(cat "$TEMP_OUTPUT" 2>/dev/null || echo '{"error": "Failed to read output"}')
-  rm -f "$TEMP_OUTPUT"
+  rm -f "$TEMP_OUTPUT" "$CONTEXT_BRIEF_FILE" "$FULL_PROMPT_FILE"
   CURRENT_CLAUDE_PID=""
   log "ITER-$i" "Claude process cleanup complete"
 
@@ -1117,21 +1392,29 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     elif [ $RETRY -eq 2 ]; then
       # Retry with context (and extended timeout for timeout category)
       RETRY_CATEGORY=$(categorize_error "$EXIT_CODE" "$OUTPUT")
+      log_progress "$CURRENT_STORY" "RETRY" "$RETRY_CATEGORY, injecting error context"
 
-      # Build retry context and write to temp file (avoid piping to claude -p)
-      RETRY_PROMPT_FILE=$(mktemp)
-      cat > "$RETRY_PROMPT_FILE" <<RETRY_EOF
-Previous attempt failed with error category: $RETRY_CATEGORY
+      # Build retry context from error output + retry_hint from structured output
+      local retry_hint
+      retry_hint=$(get_retry_hint "$OUTPUT")
+      local retry_context="Previous attempt failed with error category: $RETRY_CATEGORY
 
 Error excerpt:
 $(echo "$OUTPUT" | head -c 500)
+$(if [ -n "$retry_hint" ]; then echo ""; echo "Agent retry hint: $retry_hint"; fi)
 
-Please address the issue and try again.
+Please address the issue and try again."
 
----
+      # Generate context brief with retry context (Layer 3)
+      RETRY_BRIEF_FILE=$(generate_context_brief "$CURRENT_STORY" "$retry_context")
 
-$(cat "$SCRIPT_DIR/prompt.md")
-RETRY_EOF
+      # Build the full retry prompt
+      RETRY_PROMPT_FILE=$(mktemp)
+      cat "$RETRY_BRIEF_FILE" > "$RETRY_PROMPT_FILE"
+      echo "" >> "$RETRY_PROMPT_FILE"
+      echo "---" >> "$RETRY_PROMPT_FILE"
+      echo "" >> "$RETRY_PROMPT_FILE"
+      cat "$SCRIPT_DIR/prompt.md" >> "$RETRY_PROMPT_FILE"
 
       # For timeout category, use extended timeout (1.5x)
       if [ "$RETRY_CATEGORY" = "timeout" ]; then
@@ -1155,12 +1438,12 @@ RETRY_EOF
       CURRENT_CLAUDE_PID=$!
       if wait $CURRENT_CLAUDE_PID; then
         OUTPUT=$(cat "$TEMP_OUTPUT" 2>/dev/null)
-        rm -f "$TEMP_OUTPUT" "$RETRY_PROMPT_FILE"
+        rm -f "$TEMP_OUTPUT" "$RETRY_PROMPT_FILE" "$RETRY_BRIEF_FILE"
         CURRENT_CLAUDE_PID=""
         log "ITER-$i" "Retry completed successfully"
       else
         echo "⚠️  Retry also failed. Skipping story."
-        rm -f "$TEMP_OUTPUT" "$RETRY_PROMPT_FILE"
+        rm -f "$TEMP_OUTPUT" "$RETRY_PROMPT_FILE" "$RETRY_BRIEF_FILE"
         CURRENT_CLAUDE_PID=""
         continue
       fi
@@ -1178,10 +1461,8 @@ RETRY_EOF
   # Display result
   echo "$RESULT"
 
-  # Append to progress file
-  echo "" >> "$PROGRESS_FILE"
-  echo "=== Iteration $i $(date) ===" >> "$PROGRESS_FILE"
-  echo "$RESULT" >> "$PROGRESS_FILE"
+  # Extract learnings from structured agent output (Layer 2: knowledge.md)
+  extract_learnings "$CURRENT_STORY" "$OUTPUT"
 
   # Run validator agent to verify acceptance criteria (US-007)
   VALIDATION_PASSED=0
@@ -1233,6 +1514,11 @@ RETRY_EOF
     # Mark current story as completed if validation passed
     if [ "$CURRENT_STORY" != "unknown" ] && [ "$VALIDATION_PASSED" -eq 1 ]; then
       update_story_status "$CURRENT_STORY" "completed"
+
+      # Log completion with duration (Layer 1: operational log)
+      local story_elapsed=$(($(date +%s) - STORY_START_TIME))
+      local story_attempts=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .attempts // 1' "$PRD_FILE" 2>/dev/null)
+      log_progress "$CURRENT_STORY" "COMPLETED" "${story_attempts} attempt(s), ${story_elapsed}s"
     fi
 
     # Check if ALL stories are complete

@@ -7,6 +7,7 @@ tools:
   - Glob
   - Grep
 model: haiku
+memory: project
 ---
 
 # Validator Agent

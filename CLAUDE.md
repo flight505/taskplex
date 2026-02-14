@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 1.0.0** | Last Updated: 2026-02-11
+**Version 1.1.0** | Last Updated: 2026-02-14
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -22,6 +22,9 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - Branch lifecycle management (create, merge, cleanup)
 - Quality gate hooks (block destructive commands during implementation)
 - Failure analyzer skill for structured error diagnosis
+- **v1.1:** Three-layer knowledge architecture (operational log, knowledge base, context briefs)
+- **v1.1:** Structured agent output with learnings extraction
+- **v1.1:** Per-story context briefs with dependency diffs
 
 ---
 
@@ -32,7 +35,7 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 ```
 taskplex/
 ├── .claude-plugin/
-│   └── plugin.json              # Plugin manifest (v1.0.0)
+│   └── plugin.json              # Plugin manifest (v1.1.0)
 ├── agents/
 │   ├── implementer.md           # Codes a single story, outputs structured result
 │   ├── validator.md             # Verifies acceptance criteria (read-only)
@@ -71,10 +74,10 @@ taskplex/
 - Launches bash scripts via Bash tool for execution
 
 **Agents:**
-- `implementer`: Implements a single user story. Tools: Bash, Read, Edit, Write, Glob, Grep. Disallowed: Task (no subagent spawning). Model: inherit from parent. Outputs structured JSON with error categorization.
-- `validator`: Verifies completed stories work. Tools: Bash, Read, Glob, Grep. Model: haiku (fast, cheap). Read-only — does NOT fix issues.
-- `reviewer`: Reviews PRDs from specific angles (security, performance, testability, sizing). Tools: Read, Glob, Grep. Model: sonnet.
-- `merger`: Git branch lifecycle (create, merge, cleanup). Tools: Bash, Read, Grep. Model: haiku.
+- `implementer`: Implements a single user story. Tools: Bash, Read, Edit, Write, Glob, Grep. Disallowed: Task (no subagent spawning). Model: inherit from parent. Memory: project. Outputs structured JSON with learnings, per-AC results, and retry hints.
+- `validator`: Verifies completed stories work. Tools: Bash, Read, Glob, Grep. Model: haiku (fast, cheap). Memory: project. Read-only — does NOT fix issues.
+- `reviewer`: Reviews PRDs from specific angles (security, performance, testability, sizing). Tools: Read, Glob, Grep. Model: sonnet. No memory (runs infrequently).
+- `merger`: Git branch lifecycle (create, merge, cleanup). Tools: Bash, Read, Grep. Model: haiku. No memory (git ops only).
 
 **Skills:**
 - `prd-generator`: Creates detailed PRDs with verifiable acceptance criteria and dependency tracking. Uses 5-criteria threshold for story decomposition.
@@ -102,8 +105,19 @@ tasks/
 └── prd-{feature}.md             # Human-readable PRD
 
 prd.json                         # Execution format (source of truth)
-progress.txt                     # Learnings log (append-only)
+progress.txt                     # Layer 1: Operational log (orchestrator-only)
+knowledge.md                     # Layer 2: Project knowledge base (orchestrator-curated)
 ```
+
+### Three-Layer Knowledge Architecture (v1.1)
+
+TaskPlex uses a three-layer system for knowledge management:
+
+**Layer 1: Operational Log (`progress.txt`)** — Orchestrator-only. Compact timestamped entries tracking story start/complete/fail/retry events. Agents never read or write this file.
+
+**Layer 2: Project Knowledge Base (`knowledge.md`)** — Orchestrator-curated. After each story, the orchestrator extracts `learnings` from the agent's structured output and appends them here. Contains "Codebase Patterns", "Environment Notes", and "Recent Learnings" sections. 100-line max with oldest-entry trimming.
+
+**Layer 3: Per-Story Context Brief (ephemeral)** — Generated before each agent spawn. Contains story details, `check_before_implementing` results, git diffs from dependency stories, relevant knowledge from `knowledge.md`, and retry context. Passed to the agent via the prompt. Deleted after use.
 
 ---
 
@@ -274,8 +288,13 @@ git add --chmod=+x scripts/*.sh
   "execution_mode": "foreground",
   "execution_model": "opus",
   "effort_level": "high",
-  "editor_command": "code",
-  "branch_prefix": "taskplex"
+  "branch_prefix": "taskplex",
+  "max_retries_per_story": 2,
+  "max_turns": 200,
+  "merge_on_complete": false,
+  "test_command": "",
+  "build_command": "",
+  "typecheck_command": ""
 }
 ```
 
@@ -286,8 +305,13 @@ git add --chmod=+x scripts/*.sh
 | `execution_mode` | string | "foreground" | "foreground" (interactive) or "background" |
 | `execution_model` | string | "opus" | "sonnet" or "opus" for story implementation |
 | `effort_level` | string | "high" | "low", "medium", or "high" (Opus 4.6 only) |
-| `editor_command` | string | "code" | Command to open files |
 | `branch_prefix` | string | "taskplex" | Git branch prefix |
+| `max_retries_per_story` | int | 2 | Max retry attempts per story before skipping |
+| `max_turns` | int | 200 | Max agentic turns per Claude invocation |
+| `merge_on_complete` | bool | false | Auto-merge to main when all stories complete |
+| `test_command` | string | "" | Project test command (e.g., "npm test") |
+| `build_command` | string | "" | Project build command (e.g., "npm run build") |
+| `typecheck_command` | string | "" | Project typecheck command (e.g., "tsc --noEmit") |
 
 **Iteration Guidelines:**
 - Each story typically consumes 1-3 iterations
@@ -386,6 +410,31 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v1.1.0 (2026-02-14)
+
+**Three-Layer Knowledge Architecture:**
+
+**Added:**
+- Three-layer knowledge system: operational log (Layer 1), project knowledge base (Layer 2), per-story context briefs (Layer 3)
+- `knowledge.md` — orchestrator-curated knowledge base with 100-line max and oldest-entry trimming
+- `generate_context_brief()` — generates targeted context for each agent spawn (dependency diffs, existing code checks, knowledge)
+- Structured agent output schema with `learnings`, `acceptance_criteria_results`, `retry_hint` fields
+- `memory: project` on implementer and validator agents for cross-run learning
+- Knowledge extraction from structured agent output after each story
+- Environment/dependency warnings automatically added to knowledge.md on failures
+
+**Changed:**
+- `progress.txt` simplified to orchestrator-only operational log (agents no longer write to it)
+- `prompt.md` simplified: removed progress.txt/AGENTS.md writing duties from agents
+- `implementer.md` updated with comprehensive structured output schema and context brief reference
+- Retry logic now uses `retry_hint` from agent output and generates context briefs with failure context
+- Archiving now includes `knowledge.md`
+
+**Removed:**
+- Agent responsibility for writing to progress.txt
+- "Consolidate Patterns" section from agent prompt
+- "Update AGENTS.md Files" section from agent prompt
 
 ### v1.0.0 (2026-02-11)
 

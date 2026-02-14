@@ -1,8 +1,8 @@
 # TaskPlex — Next-Generation Autonomous Development Plugin
 
-**Architecture Plan v1.0** | February 10, 2026
+**Architecture Plan v1.1** | February 14, 2026
 **Author:** Claude Opus 4.6 + Jesper Vang
-**Status:** Draft — Awaiting Review
+**Status:** Active — v1.0 shipped, v1.1 knowledge architecture in progress
 
 ---
 
@@ -552,10 +552,10 @@ Generated as `.claude/taskplex-report.md`:
 **Date:** 2026-02-10
 
 ## Summary
-- Stories completed: 5/7
-- Stories skipped: 2/7
-- Total iterations: 14
-- Total time: 47 minutes
+- Stories completed: 5/5
+- Stories skipped: 0/5
+- Total iterations: 8
+- Total time: 32 minutes
 
 ## Completed Stories
 - ✅ US-001: Add priority field to database (1 attempt)
@@ -563,16 +563,6 @@ Generated as `.claude/taskplex-report.md`:
 - ✅ US-003: Priority selector in edit modal (1 attempt)
 - ✅ US-004: Filter by priority (1 attempt)
 - ✅ US-005: Sort by priority (1 attempt)
-
-## Skipped Stories
-- ⏭️ US-006: Priority-based email notifications
-  - Category: env_missing
-  - Error: SMTP_HOST not configured
-  - Action needed: Set SMTP environment variables
-- ⏭️ US-007: Priority analytics dashboard
-  - Category: dependency_missing
-  - Error: chart.js not installed
-  - Action needed: npm install chart.js
 
 ## Branch Status
 - Branch `taskplex/task-priority` is ready for review
@@ -655,35 +645,35 @@ Even tasks that appear independent (no `depends_on`) might touch shared files or
 
 ## 9. Implementation Plan
 
-### Phase 1: Core Loop (Week 1)
-- [ ] Plugin manifest and structure
-- [ ] `taskplex.sh` with dependency-aware task selection
-- [ ] JSON config parser (replacing grep-based YAML)
-- [ ] Error categorization and structured retry logic
-- [ ] Implementer prompt (enhanced from SDK Bridge's `prompt.md`)
+### Phase 1: Core Loop ✅
+- [x] Plugin manifest and structure
+- [x] `taskplex.sh` with dependency-aware task selection
+- [x] JSON config parser (replacing grep-based YAML)
+- [x] Error categorization and structured retry logic
+- [x] Implementer prompt (enhanced from SDK Bridge's `prompt.md`)
 
-### Phase 2: Subagents & Memory (Week 2)
-- [ ] `agents/implementer.md` — custom subagent definition
-- [ ] `agents/validator.md` — post-task verification
-- [ ] `agents/merger.md` — git branch lifecycle
-- [ ] Agent Memory integration (replace progress.txt)
-- [ ] Validator prompt and verification flow
+### Phase 2: Subagents & Memory (Partial)
+- [x] `agents/implementer.md` — custom subagent definition
+- [x] `agents/validator.md` — post-task verification
+- [x] `agents/merger.md` — git branch lifecycle
+- [ ] Agent Memory integration (replace progress.txt) → REDESIGNED in v1.1 as three-layer knowledge architecture
+- [x] Validator prompt and verification flow
 
-### Phase 3: Wizard & Skills (Week 3)
-- [ ] `commands/start.md` — enhanced wizard with all checkpoints
-- [ ] `skills/prd-generator/SKILL.md` — enhanced from SDK Bridge
-- [ ] `skills/prd-converter/SKILL.md` — enhanced with config block
-- [ ] `skills/failure-analyzer/SKILL.md` — new
-- [ ] Multi-perspective PRD review (optional checkpoint)
+### Phase 3: Wizard & Skills ✅
+- [x] `commands/start.md` — enhanced wizard with all checkpoints
+- [x] `skills/prd-generator/SKILL.md` — enhanced from SDK Bridge
+- [x] `skills/prd-converter/SKILL.md` — enhanced with config block
+- [x] `skills/failure-analyzer/SKILL.md` — new
+- [ ] Multi-perspective PRD review (optional checkpoint) → DEFERRED to v1.2
 
-### Phase 4: Branch Management & Reporting (Week 4)
-- [ ] Branch creation and checkout in the loop
-- [ ] Post-completion merge logic
-- [ ] Completion report generation
-- [ ] Partial completion handling
-- [ ] Hooks configuration for quality gates
+### Phase 4: Branch Management & Reporting ✅
+- [x] Branch creation and checkout in the loop
+- [x] Post-completion merge logic
+- [x] Completion report generation
+- [x] Partial completion handling
+- [x] Hooks configuration for quality gates
 
-### Phase 5: Testing & Polish (Week 5)
+### Phase 5: Testing & Polish (Partial)
 - [ ] End-to-end testing with simple PRD
 - [ ] End-to-end testing with complex PRD (7+ stories, dependencies)
 - [ ] Failure scenario testing (env missing, test failures, timeouts)
@@ -692,14 +682,118 @@ Even tasks that appear independent (no `depends_on`) might touch shared files or
 
 ---
 
-## 10. Open Questions
+## 10. Open Questions — All Resolved
 
-1. **Config format:** JSON (proposed) vs. TOML vs. keep YAML? JSON is native to `jq` but less human-friendly.
-2. **Merge strategy:** Always `--no-ff`? Or configurable (squash, rebase, fast-forward)?
-3. **Base branch:** Always `main`? Or detect default branch? Or configurable?
-4. **Retry context window:** When retrying, should the error context be prepended to the prompt or passed as a separate file?
-5. **Agent Memory scope:** `project` (shared via git) or `local` (per-machine)? Project scope means learnings propagate to all developers, which could be valuable or noisy.
-6. **Plugin name:** TaskPlex? Conductor? Forge? Something else?
+1. **Config format:** ✅ Resolved: JSON (parsed with `jq`). Simpler than YAML, no extra dependency.
+2. **Merge strategy:** ✅ Resolved: `--no-ff` by default, configurable via `merge_on_complete` config flag.
+3. **Base branch:** ✅ Resolved: Assumes `main`. Users on `develop` can extend later.
+4. **Retry context window:** ✅ Resolved: Error context prepended to prompt via temp file.
+5. **Agent Memory scope:** ✅ Resolved in v1.1: Three-layer knowledge architecture replaces the original Agent Memory proposal. Layer 1 (operational log) is orchestrator-only. Layer 2 (knowledge.md) is orchestrator-curated. Layer 3 (context briefs) is ephemeral per-story. Additionally, `memory: project` on agents provides supplementary cross-run learning.
+6. **Plugin name:** ✅ Resolved: TaskPlex.
+
+---
+
+## 11. v1.1 — Three-Layer Knowledge Architecture
+
+### Problem
+
+v1.0 shipped with `progress.txt` as a combined operational log and knowledge base. This caused:
+- **Unbounded growth** — append-only file exceeding 500KB after long runs
+- **Context waste** — agents read irrelevant iteration logs to find patterns
+- **Inconsistent curation** — agents were responsible for maintaining "Codebase Patterns" at the top of progress.txt, but each fresh instance curated differently
+- **No targeted context** — agents received no information about completed dependency stories
+
+### Research Findings
+
+Analysis of 10+ Ralph Loop implementations and Anthropic's context engineering guidelines revealed:
+- **Separate operational log from knowledge base** (Ralphy pattern)
+- **Orchestrator-owned knowledge curation** (not agent-curated, which is inconsistent)
+- **Per-story context briefs** (targeted git diffs + dependency info)
+- **Structured agent output** with learnings, per-AC results, and retry hints
+
+### Three-Layer Design
+
+**Layer 1: Operational Log (`progress.txt`) — Orchestrator-Only**
+
+Pure operational log. Only the orchestrator writes to it. Agents never read or write it.
+
+```
+[2026-02-13T10:30:00] [US-001] STARTED - Add priority field to database
+[2026-02-13T10:35:22] [US-001] COMPLETED - 1 attempt, 5m22s
+[2026-02-13T10:35:45] [US-002] STARTED - Display priority indicator
+[2026-02-13T10:41:18] [US-002] FAILED - test_failure (attempt 1/2)
+[2026-02-13T10:41:20] [US-002] RETRY - test_failure, injecting error context
+[2026-02-13T10:47:33] [US-002] COMPLETED - 2 attempts, 11m48s
+```
+
+**Layer 2: Project Knowledge Base (`knowledge.md`) — Orchestrator-Curated**
+
+Orchestrator extracts `learnings` from each agent's structured output and appends to `knowledge.md`. Enforces 100-line max with oldest-entry trimming.
+
+```markdown
+## Codebase Patterns
+- Uses barrel exports in src/index.ts
+- Zod for all validation schemas
+- Server actions in src/actions/, not API routes
+
+## Environment Notes
+- SMTP_HOST required for email stories (discovered US-006 failure)
+
+## Recent Learnings
+- [US-005] Priority filter uses URL search params pattern from existing status filter
+- [US-004] Badge component accepts `variant` prop for colors
+- [US-003] Always run `npm run db:push` after schema changes
+```
+
+**Layer 3: Per-Story Context Brief (ephemeral)**
+
+Before spawning each implementer agent, the orchestrator generates a targeted context brief containing:
+1. Story details from prd.json
+2. Results of `check_before_implementing` commands
+3. Git diffs from completed dependency stories
+4. Relevant knowledge from knowledge.md
+5. Previous failure context (if retry)
+
+The brief is passed via `--append-system-prompt` or prepended to the prompt.
+
+### Structured Agent Output Schema
+
+Agents output a strict JSON schema that the orchestrator parses:
+
+```json
+{
+  "story_id": "US-001",
+  "status": "completed|failed|skipped",
+  "error_category": null,
+  "error_details": null,
+  "files_modified": ["src/models/task.ts"],
+  "files_created": ["src/components/PriorityBadge.tsx"],
+  "commits": ["abc1234"],
+  "learnings": [
+    "This project uses barrel exports in src/index.ts",
+    "Badge component accepts variant prop for colors"
+  ],
+  "acceptance_criteria_results": [
+    {"criterion": "Add priority column", "passed": true, "evidence": "Migration ran successfully"},
+    {"criterion": "Typecheck passes", "passed": true, "evidence": "tsc --noEmit: 0 errors"}
+  ],
+  "retry_hint": null
+}
+```
+
+### Agent Simplification
+
+Agents no longer write to progress.txt, knowledge.md, or AGENTS.md. Their responsibilities are:
+1. Check before implementing (detect existing work)
+2. Implement the story
+3. Run quality checks
+4. Output structured JSON result (including learnings)
+
+The orchestrator handles all knowledge curation.
+
+### Supplementary: `memory: project`
+
+Implementer and validator agents get `memory: project` in their frontmatter. This provides auto-curated MEMORY.md that persists across different PRD runs (cross-run learning). The three-layer system handles intra-run knowledge; Agent Memory handles cross-run patterns.
 
 ---
 
