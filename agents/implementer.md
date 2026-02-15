@@ -106,6 +106,13 @@ If ALL stories are complete and passing, reply with:
 
 If there are still stories with `passes: false`, end your response normally (another iteration will pick up the next story).
 
+## Worktree Awareness
+
+When running in parallel mode, you operate inside a git worktree:
+- Stay in your current working directory — it is the project root for your story.
+- Do not navigate to parent directories or other worktrees.
+- Commit changes normally — the orchestrator handles merging back.
+
 ## Important
 
 - Work on ONE story per iteration

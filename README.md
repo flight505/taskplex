@@ -1,10 +1,10 @@
 # TaskPlex
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/flight505/taskplex)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/flight505/taskplex)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://github.com/anthropics/claude-code)
 
-Resilient autonomous development assistant with custom subagents, error categorization, and a three-layer knowledge architecture that learns as it builds.
+Resilient autonomous development assistant with custom subagents, error categorization, wave-based parallel execution via git worktrees, and a three-layer knowledge architecture that learns as it builds.
 
 Successor to [SDK Bridge](https://github.com/flight505/sdk-bridge). Based on [Geoffrey Huntley's Ralph pattern](https://ghuntley.com/ralph/).
 
@@ -35,6 +35,54 @@ The loop continues until all stories pass validation or max iterations are reach
 **Quality Gate Hooks** — PostToolUse hooks block destructive git commands (`push --force`, `reset --hard`, direct push to main) during implementation.
 
 **Already-Implemented Detection** — Agents search for existing implementation before coding. If all acceptance criteria are already met, the story is marked complete in seconds.
+
+**Parallel Execution via Worktrees** (v1.2) — Independent stories run simultaneously in separate git worktrees. The dependency graph is partitioned into waves — all stories within a wave execute in parallel, then merge back before the next wave begins. Opt-in with `parallel_mode: "parallel"`.
+
+---
+
+## Parallel Execution (v1.2)
+
+TaskPlex can run independent stories in parallel using git worktrees. Stories are grouped into **waves** based on the dependency graph:
+
+```
+Wave 0: [US-001, US-005]  <- no dependencies, run in parallel
+         | merge both | extract learnings | update knowledge.md
+Wave 1: [US-002, US-003]  <- deps on wave 0, run in parallel
+         | merge all | extract learnings | update knowledge.md
+Wave 2: [US-004]           <- deps on wave 1
+```
+
+### Enable Parallel Mode
+
+Set in `.claude/taskplex.config.json`:
+
+```json
+{
+  "parallel_mode": "parallel",
+  "max_parallel": 3,
+  "worktree_setup_command": "npm install",
+  "conflict_strategy": "abort"
+}
+```
+
+Or select "Parallel" during the interactive wizard (Checkpoint 6).
+
+### How It Works
+
+1. **Wave computation** — stories are partitioned into topological levels based on `depends_on`
+2. **Conflict splitting** — stories sharing `related_to` targets are separated into different batches
+3. **Worktree creation** — each story gets its own git worktree with a dedicated branch
+4. **Parallel agents** — Claude agents run simultaneously in separate worktrees
+5. **Sequential merge** — completed story branches merge back into the feature branch in priority order
+6. **Knowledge propagation** — learnings from all wave stories update `knowledge.md` before the next wave
+
+### Safety
+
+- Stories that depend on each other are **never** in the same wave
+- Stories sharing `related_to` targets are split into separate batches (prevents merge conflicts)
+- Failed stories are deferred to the next wave (get updated knowledge from successful stories)
+- `Ctrl+C` cleanly removes all worktrees and kills all parallel agents
+- Default `parallel_mode: "sequential"` preserves v1.1 behavior exactly
 
 ---
 
@@ -158,7 +206,12 @@ After first run, edit `.claude/taskplex.config.json`:
   "merge_on_complete": false,
   "test_command": "",
   "build_command": "",
-  "typecheck_command": ""
+  "typecheck_command": "",
+  "parallel_mode": "sequential",
+  "max_parallel": 3,
+  "worktree_dir": "",
+  "worktree_setup_command": "",
+  "conflict_strategy": "abort"
 }
 ```
 
@@ -176,6 +229,11 @@ After first run, edit `.claude/taskplex.config.json`:
 | `test_command` | — | Project test command (e.g., `npm test`) |
 | `build_command` | — | Project build command (e.g., `npm run build`) |
 | `typecheck_command` | — | Project typecheck command (e.g., `tsc --noEmit`) |
+| `parallel_mode` | sequential | `sequential` or `parallel` (worktree-based) |
+| `max_parallel` | 3 | Max concurrent agents per wave batch |
+| `worktree_dir` | — | Custom worktree base directory (default: `../.worktrees`) |
+| `worktree_setup_command` | — | Command run in each new worktree (e.g., `npm install`) |
+| `conflict_strategy` | abort | `abort` (skip on conflict) or `merger` (invoke merger agent) |
 
 **Model selection:**
 - **Opus 4.6 (high effort)**: Best code quality, deepest reasoning
@@ -263,6 +321,7 @@ TaskPlex is a **next-generation rewrite** of SDK Bridge with:
 - **Dependency-aware execution** with enforced ordering and dependency diffs
 - **Quality gate hooks** blocking destructive git commands during implementation
 - **JSON configuration** replacing YAML frontmatter
+- **Wave-based parallel execution** (v1.2) — independent stories run simultaneously in git worktrees with automatic merge and knowledge propagation
 
 ---
 

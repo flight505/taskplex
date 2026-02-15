@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 1.1.0** | Last Updated: 2026-02-14
+**Version 1.2.0** | Last Updated: 2026-02-15
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -25,6 +25,9 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - **v1.1:** Three-layer knowledge architecture (operational log, knowledge base, context briefs)
 - **v1.1:** Structured agent output with learnings extraction
 - **v1.1:** Per-story context briefs with dependency diffs
+- **v1.2:** Wave-based parallel execution via git worktrees (opt-in)
+- **v1.2:** Conflict detection using `related_to` for safe parallelism
+- **v1.2:** Knowledge propagation across parallel waves
 
 ---
 
@@ -54,6 +57,7 @@ taskplex/
 │       └── SKILL.md
 ├── scripts/
 │   ├── taskplex.sh              # Main bash loop (orchestrator)
+│   ├── parallel.sh              # Parallel execution functions (sourced conditionally)
 │   ├── prompt.md                # Instructions for each Claude iteration
 │   ├── check-deps.sh            # Dependency checker (claude, jq, coreutils)
 │   ├── check-destructive.sh     # Hook script: blocks destructive git commands
@@ -89,6 +93,7 @@ taskplex/
 
 **Scripts:**
 - `taskplex.sh`: Main orchestration loop — runs fresh Claude instances until all stories complete
+- `parallel.sh`: Wave-based parallel execution functions — sourced conditionally when `parallel_mode=parallel`
 - `prompt.md`: Instructions given to each Claude agent (includes "check before implementing" guidance)
 - `check-deps.sh`: Validates `claude` CLI, `jq`, and `coreutils` installation
 - `check-destructive.sh`: PostToolUse hook — blocks dangerous git commands
@@ -107,6 +112,8 @@ tasks/
 prd.json                         # Execution format (source of truth)
 progress.txt                     # Layer 1: Operational log (orchestrator-only)
 knowledge.md                     # Layer 2: Project knowledge base (orchestrator-curated)
+
+../.worktrees/<project>/         # Parallel mode: worktree directories (ephemeral)
 ```
 
 ### Three-Layer Knowledge Architecture (v1.1)
@@ -171,7 +178,20 @@ When a task fails, the failure-analyzer skill classifies the error:
 - If partial: implement only missing pieces
 - Never refactor working code
 
-### 5. Quality Gate Hooks
+### 5. Wave-Based Parallel Execution (v1.2)
+
+When `parallel_mode: "parallel"`, stories are partitioned into topological waves based on the dependency graph. All stories in a wave run simultaneously in separate git worktrees:
+
+1. **Wave computation** — stories with no unsatisfied dependencies form wave 0, their dependents form wave 1, etc.
+2. **Conflict splitting** — stories sharing `related_to` targets are separated into different batches within a wave (prevents merge conflicts)
+3. **Worktree creation** — each story gets `git worktree add -b <story-branch> <dir> <feature-branch>`
+4. **Parallel agents** — Claude agents run in separate worktree directories via subshells
+5. **Sequential merge** — completed branches merge back into the feature branch in priority order
+6. **Knowledge propagation** — learnings from all stories in a wave update `knowledge.md` before the next wave
+
+**Key constraint:** bash 3.2 compatible — uses space-separated lists instead of associative arrays for process tracking.
+
+### 6. Quality Gate Hooks
 
 **PostToolUse hook** blocks destructive commands:
 - `git push --force` / `git push -f`
@@ -179,7 +199,7 @@ When a task fails, the failure-analyzer skill classifies the error:
 - `git clean -f`
 - Direct `git push` to main/master
 
-### 6. Enhanced PRD Generation
+### 7. Enhanced PRD Generation
 
 **Story Decomposition** (5-criteria threshold):
 - 3-5 criteria: Ideal story size
@@ -294,7 +314,12 @@ git add --chmod=+x scripts/*.sh
   "merge_on_complete": false,
   "test_command": "",
   "build_command": "",
-  "typecheck_command": ""
+  "typecheck_command": "",
+  "parallel_mode": "sequential",
+  "max_parallel": 3,
+  "worktree_dir": "",
+  "worktree_setup_command": "",
+  "conflict_strategy": "abort"
 }
 ```
 
@@ -312,6 +337,11 @@ git add --chmod=+x scripts/*.sh
 | `test_command` | string | "" | Project test command (e.g., "npm test") |
 | `build_command` | string | "" | Project build command (e.g., "npm run build") |
 | `typecheck_command` | string | "" | Project typecheck command (e.g., "tsc --noEmit") |
+| `parallel_mode` | string | "sequential" | "sequential" (default) or "parallel" (worktree-based) |
+| `max_parallel` | int | 3 | Max concurrent agents per wave batch |
+| `worktree_dir` | string | "" | Custom worktree base dir. Empty = `../.worktrees` relative to project |
+| `worktree_setup_command` | string | "" | Command run in each new worktree (e.g., "npm install") |
+| `conflict_strategy` | string | "abort" | "abort" (skip on merge conflict) or "merger" (invoke merger agent) |
 
 **Iteration Guidelines:**
 - Each story typically consumes 1-3 iterations
@@ -410,6 +440,34 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v1.2.0 (2026-02-15)
+
+**Wave-Based Parallel Execution:**
+
+**Added:**
+- `scripts/parallel.sh` — all parallel execution functions, sourced conditionally by taskplex.sh
+- `compute_waves()` — jq-based topological sort partitioning stories into dependency-free waves
+- `split_wave_by_conflicts()` — splits waves into conflict-free batches using `related_to` overlap detection
+- Worktree lifecycle: `create_worktree()`, `setup_worktree()`, `cleanup_worktree()`, `cleanup_all_worktrees()`
+- Parallel agent management: `spawn_parallel_agent()`, `wait_for_agents()` with PID polling
+- Merge flow: `merge_story_branch()`, `handle_merge_conflict()` with configurable conflict strategy
+- `run_wave_parallel()` — full wave orchestration (create → spawn → wait → validate → merge → learn)
+- `run_parallel_loop()` — entry point replacing sequential for-loop when parallel mode active
+- New config fields: `parallel_mode`, `max_parallel`, `worktree_dir`, `worktree_setup_command`, `conflict_strategy`
+- Worktree awareness instructions in `prompt.md` and `implementer.md`
+- Parallel execution question in wizard Checkpoint 6
+
+**Changed:**
+- `taskplex.sh` conditionally sources `parallel.sh` and branches to wave-based loop
+- `load_config()` reads new parallel config fields
+- Cleanup trap calls `cleanup_all_worktrees()` in parallel mode
+- `generate_report()` includes execution mode in summary
+
+**Backward Compatible:**
+- Default `parallel_mode: "sequential"` preserves v1.1 behavior exactly
+- `parallel.sh` is only sourced when parallel mode is active
+- All existing config options remain valid
 
 ### v1.1.0 (2026-02-14)
 

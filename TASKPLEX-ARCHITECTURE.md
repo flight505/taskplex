@@ -1,8 +1,8 @@
 # TaskPlex — Next-Generation Autonomous Development Plugin
 
-**Architecture Plan v1.1** | February 14, 2026
+**Architecture Plan v1.2** | February 15, 2026
 **Author:** Claude Opus 4.6 + Jesper Vang
-**Status:** Active — v1.0 shipped, v1.1 knowledge architecture in progress
+**Status:** Active — v1.0 shipped, v1.1 knowledge architecture shipped, v1.2 parallel execution
 
 ---
 
@@ -797,6 +797,100 @@ Implementer and validator agents get `memory: project` in their frontmatter. Thi
 
 ---
 
+## 12. v1.2 — Wave-Based Parallel Execution
+
+### Problem
+
+v1.1 executes stories strictly sequentially — one story, one agent, one at a time. For PRDs with many independent stories (no dependency edges between them), this leaves significant wall-clock time on the table. The dependency graph already exists in `prd.json` via `depends_on` and `related_to` fields — we just need to exploit it.
+
+### Design: Wave-Based Parallelism
+
+Stories are partitioned into **waves** (topological levels of the dependency DAG). All stories within a wave are independent and execute simultaneously in separate git worktrees. After a wave completes, results merge, knowledge propagates, and the next wave begins.
+
+```
+Wave 0: [US-001, US-005]  <- no dependencies, run in parallel
+         | merge both | extract learnings | update knowledge.md
+Wave 1: [US-002, US-003, US-006]  <- deps on wave 0, run in parallel
+         | merge all | extract learnings | update knowledge.md
+Wave 2: [US-004, US-007]  <- deps on wave 1
+```
+
+### Branch Strategy
+
+```
+main
+  |-- taskplex/my-feature                 (feature branch, main worktree)
+        |-- taskplex/my-feature-US-001    (story branch, worktree)  -- merge -|
+        |-- taskplex/my-feature-US-005    (story branch, worktree)  -- merge -|
+        |                                                                      v
+        |   <------ wave 0 merges complete ------ feature branch updated
+        |-- taskplex/my-feature-US-002    (wave 1 worktrees...)
+```
+
+### Conflict Safety
+
+Two mechanisms prevent merge conflicts:
+
+1. **Dependency graph**: Stories that depend on each other are in different waves (never parallel)
+2. **`related_to` conflict detection**: Stories sharing `related_to` targets (likely touching same files) are split into separate batches within a wave
+
+### Knowledge Propagation
+
+- All agents in a wave get the **same snapshot** of `knowledge.md`
+- After ALL agents complete, orchestrator collects learnings and updates `knowledge.md`
+- Next wave gets updated knowledge — learnings flow forward across waves
+
+### New Configuration
+
+```json
+{
+  "parallel_mode": "sequential",
+  "max_parallel": 3,
+  "worktree_dir": "",
+  "worktree_setup_command": "",
+  "conflict_strategy": "abort"
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `parallel_mode` | `"sequential"` | `"sequential"` (v1.1 behavior) or `"parallel"` (worktree-based) |
+| `max_parallel` | 3 | Max concurrent agents per batch |
+| `worktree_dir` | `""` | Custom worktree base dir. Empty = `../.worktrees` relative to project |
+| `worktree_setup_command` | `""` | Command run in each new worktree (e.g., `npm install`) |
+| `conflict_strategy` | `"abort"` | `"abort"` (skip story on merge conflict) or `"merger"` (invoke merger agent) |
+
+### Error Handling
+
+- **Story failure**: Independent — one failing doesn't affect others in the wave
+- **Retry**: Failed stories with retries remaining are deferred to the NEXT wave
+- **Merge conflict**: Based on `conflict_strategy` — abort (skip) or invoke merger agent
+- **Timeout**: Individual agents timeout independently; remaining agents continue
+- **Ctrl+C**: Trap handler kills all parallel agents, removes all worktrees, prunes git state
+
+### Backward Compatibility
+
+- Default `parallel_mode: "sequential"` = zero behavior change
+- `parallel.sh` is only sourced when parallel mode is active
+- All existing config options remain valid
+
+### Implementation
+
+New file `scripts/parallel.sh` contains all parallel logic, sourced conditionally by `taskplex.sh`. Key functions:
+
+- `compute_waves()` — jq-based topological sort into wave levels
+- `split_wave_by_conflicts()` — separates stories with shared `related_to` into different batches
+- `create_worktree()` / `cleanup_worktree()` — git worktree lifecycle
+- `spawn_parallel_agent()` — runs Claude in a worktree directory via subshell
+- `wait_for_agents()` — polls PIDs with timeout handling
+- `merge_story_branch()` — `git merge --no-ff` back to feature branch
+- `run_wave_parallel()` — orchestrates a single wave (create → spawn → wait → merge → learn)
+- `run_parallel_loop()` — entry point replacing the sequential for-loop
+
+All process tracking uses space-separated lists for bash 3.2 compatibility (no associative arrays).
+
+---
+
 ## Appendix A: Feature Comparison Matrix
 
 | Feature | SDK Bridge v4.8 | TaskPlex v1.0 |
@@ -818,7 +912,7 @@ Implementer and validator agents get `memory: project` in their frontmatter. Thi
 | Completion report | ❌ | ✅ |
 | JSON config | ❌ (YAML grep) | ✅ |
 | Post-run validation | ❌ | ✅ |
-| Parallel execution | ❌ | ❌ (intentionally) |
+| Parallel execution | ❌ | ✅ (v1.2, opt-in worktrees) |
 
 ## Appendix B: Relevant Claude Code CLI Flags
 

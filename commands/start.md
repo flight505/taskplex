@@ -250,6 +250,28 @@ Question 4: "Which model and effort level for story implementation?"
   - Label: "Opus 4.6 (high effort)" | Description: "Best quality - adaptive reasoning, #1 SWE-bench, 128K output (default effort)"
   - Label: "Opus 4.6 (medium effort)" | Description: "Opus quality at 76% fewer tokens - matches Sonnet speed, better reasoning"
 
+**After collecting Q1-Q4, ask parallel execution question:**
+
+Use AskUserQuestion for parallel mode:
+
+Question: "How should stories execute?"
+- Header: "Execution"
+- multiSelect: false
+- Options:
+  - Label: "Sequential (Recommended)" | Description: "One story at a time — safest, no merge conflicts"
+  - Label: "Parallel (3 concurrent)" | Description: "Independent stories run simultaneously in git worktrees"
+  - Label: "Parallel (5 concurrent)" | Description: "More parallelism — faster but uses more resources"
+
+**If parallel mode selected, ask follow-up:**
+
+Question: "Worktree setup command? (run in each new worktree, e.g., npm install)"
+- Header: "Setup cmd"
+- multiSelect: false
+- Options:
+  - Label: "None needed" | Description: "No setup required per worktree"
+  - Label: "npm install" | Description: "Install Node.js dependencies in each worktree"
+  - Label: "pnpm install" | Description: "Install dependencies with pnpm"
+
 **After collecting answers, parse values:**
 
 For iterations (Question 1):
@@ -276,6 +298,17 @@ For model (Question 4):
 - "Opus 4.6 (medium effort)" → execution_model: opus, effort_level: medium
 - Custom input (via "Other") → parse model and effort from string
 
+For parallel mode:
+- "Sequential (Recommended)" → parallel_mode: sequential
+- "Parallel (3 concurrent)" → parallel_mode: parallel, max_parallel: 3
+- "Parallel (5 concurrent)" → parallel_mode: parallel, max_parallel: 5
+
+For worktree setup (only if parallel):
+- "None needed" → worktree_setup_command: ""
+- "npm install" → worktree_setup_command: "npm install"
+- "pnpm install" → worktree_setup_command: "pnpm install"
+- Custom input (via "Other") → use as-is
+
 Create config file with parsed values:
 ```yaml
 ---
@@ -293,17 +326,20 @@ branch_prefix: "taskplex"
 Edit these settings as needed and run `/taskplex:start` again.
 ```
 
-Example (8 stories, avg 4 criteria each → standard complexity):
-```yaml
----
-max_iterations: 20    # ceil(8 × 2.5) = 20 recommended
-iteration_timeout: 3600  # 60 min (45 base + 15 buffer)
-execution_mode: foreground
-execution_model: opus
-effort_level: high
-editor_command: "open"
-branch_prefix: "taskplex"
----
+Example (8 stories, avg 4 criteria each → standard complexity, parallel):
+```json
+{
+  "max_iterations": 20,
+  "iteration_timeout": 3600,
+  "execution_mode": "foreground",
+  "execution_model": "opus",
+  "effort_level": "high",
+  "branch_prefix": "taskplex",
+  "parallel_mode": "parallel",
+  "max_parallel": 3,
+  "worktree_setup_command": "npm install",
+  "conflict_strategy": "abort"
+}
 ```
 
 **Checkpoint 7: Launch**

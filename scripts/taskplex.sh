@@ -54,6 +54,11 @@ cleanup() {
     log "CLEANUP" "No active Claude process to clean up"
   fi
 
+  # Clean up parallel worktrees if in parallel mode
+  if [ "$PARALLEL_MODE" = "parallel" ] && type cleanup_all_worktrees >/dev/null 2>&1; then
+    cleanup_all_worktrees
+  fi
+
   # Clean up THIS instance's PID file only (per-branch)
   if [ -f "$PRD_FILE" ]; then
     BRANCH_NAME=$(jq -r '.branchName // "unknown"' "$PRD_FILE" 2>/dev/null || echo "unknown")
@@ -473,6 +478,11 @@ load_config() {
   TEST_COMMAND=""
   BUILD_COMMAND=""
   TYPECHECK_COMMAND=""
+  PARALLEL_MODE="sequential"
+  MAX_PARALLEL=3
+  WORKTREE_DIR=""
+  WORKTREE_SETUP_COMMAND=""
+  CONFLICT_STRATEGY="abort"
 
   # Load from config file if it exists
   if [ -f "$CONFIG_FILE" ]; then
@@ -489,6 +499,11 @@ load_config() {
     TEST_COMMAND=$(jq -r '.test_command // ""' "$CONFIG_FILE")
     BUILD_COMMAND=$(jq -r '.build_command // ""' "$CONFIG_FILE")
     TYPECHECK_COMMAND=$(jq -r '.typecheck_command // ""' "$CONFIG_FILE")
+    PARALLEL_MODE=$(jq -r '.parallel_mode // "sequential"' "$CONFIG_FILE")
+    MAX_PARALLEL=$(jq -r '.max_parallel // 3' "$CONFIG_FILE")
+    WORKTREE_DIR=$(jq -r '.worktree_dir // ""' "$CONFIG_FILE")
+    WORKTREE_SETUP_COMMAND=$(jq -r '.worktree_setup_command // ""' "$CONFIG_FILE")
+    CONFLICT_STRATEGY=$(jq -r '.conflict_strategy // "abort"' "$CONFIG_FILE")
 
     log "INIT" "Configuration loaded from $CONFIG_FILE"
   else
@@ -500,6 +515,8 @@ load_config() {
   log "INIT" "Execution mode: $EXECUTION_MODE"
   log "INIT" "Execution model: $EXECUTION_MODEL"
   [ -n "$EFFORT_LEVEL" ] && log "INIT" "Effort level: $EFFORT_LEVEL"
+  log "INIT" "Parallel mode: $PARALLEL_MODE"
+  [ "$PARALLEL_MODE" = "parallel" ] && log "INIT" "Max parallel: $MAX_PARALLEL"
 }
 
 # Update story status in prd.json
@@ -803,6 +820,7 @@ generate_report() {
 - Stories completed: $completed_stories/$total_stories
 - Stories skipped: $skipped_stories/$total_stories
 - Stories blocked: $blocked_stories/$total_stories
+- Execution mode: $PARALLEL_MODE
 - Total time: $elapsed_minutes minutes
 
 ## Completed Stories
@@ -949,6 +967,15 @@ setup_branch || {
 }
 
 # ============================================================================
+# Parallel Mode Setup (v1.2)
+# ============================================================================
+
+if [ "$PARALLEL_MODE" = "parallel" ]; then
+  log "INIT" "Sourcing parallel execution module"
+  source "$SCRIPT_DIR/parallel.sh"
+fi
+
+# ============================================================================
 # Main Execution Loop
 # ============================================================================
 
@@ -958,6 +985,7 @@ START_TIME=$(date +%s)
 echo "Starting TaskPlex - Max iterations: $MAX_ITERATIONS"
 echo "Branch: $BRANCH_NAME"
 echo "Model: $EXECUTION_MODEL$([ -n "$EFFORT_LEVEL" ] && echo " (effort: $EFFORT_LEVEL)")"
+echo "Mode: $PARALLEL_MODE$([ "$PARALLEL_MODE" = "parallel" ] && echo " (max $MAX_PARALLEL concurrent)")"
 echo "PID: $$"
 echo "Timeout: ${ITERATION_TIMEOUT}s per iteration"
 
@@ -1264,6 +1292,43 @@ Output your result as JSON in this format:
     return 1
   fi
 }
+
+# ============================================================================
+# Parallel Mode — Wave-Based Execution (v1.2)
+# ============================================================================
+
+if [ "$PARALLEL_MODE" = "parallel" ]; then
+  run_parallel_loop
+  PARALLEL_EXIT=$?
+
+  # Generate completion report
+  generate_report
+
+  if [ $PARALLEL_EXIT -eq 0 ]; then
+    echo ""
+    echo "TaskPlex completed all tasks (parallel mode)!"
+    merge_to_main
+    exit 0
+  else
+    INCOMPLETE_COUNT=$(jq '[.userStories[] | select(.passes == false)] | length' "$PRD_FILE")
+    if [ "$INCOMPLETE_COUNT" -eq 0 ]; then
+      echo ""
+      echo "TaskPlex completed all tasks (parallel mode)!"
+      merge_to_main
+      exit 0
+    fi
+
+    SKIPPED_COUNT=$(jq '[.userStories[] | select(.status == "skipped")] | length' "$PRD_FILE")
+    echo ""
+    echo "TaskPlex finished with $SKIPPED_COUNT skipped stories (parallel mode)"
+    echo "Check $PROGRESS_FILE for details"
+    exit 1
+  fi
+fi
+
+# ============================================================================
+# Sequential Mode — Original Execution Loop
+# ============================================================================
 
 for i in $(seq 1 $MAX_ITERATIONS); do
   echo ""
