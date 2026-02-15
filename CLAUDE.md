@@ -28,6 +28,7 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - **v1.2:** Wave-based parallel execution via git worktrees (opt-in)
 - **v1.2:** Conflict detection using `related_to` for safe parallelism
 - **v1.2:** Knowledge propagation across parallel waves
+- **v1.2.1:** Execution monitor sidecar (Bun + Vue 3 dashboard)
 
 ---
 
@@ -61,6 +62,26 @@ taskplex/
 │   │   └── SKILL.md
 │   └── failure-analyzer/        # Error categorization and retry strategy
 │       └── SKILL.md
+├── monitor/
+│   ├── server/                  # Bun HTTP + WebSocket + SQLite server
+│   │   ├── index.ts             # API routes, WebSocket, static serving
+│   │   ├── db.ts                # SQLite schema and queries
+│   │   ├── events.ts            # Event validation and enrichment
+│   │   └── analytics.ts         # Dashboard analytics queries
+│   ├── client/                  # Vue 3 + Tailwind dashboard
+│   │   └── src/
+│   │       ├── views/           # Timeline, StoryGantt, ErrorPatterns, AgentInsights
+│   │       ├── components/      # EventRow, FilterBar, WaveProgress, StoryCard
+│   │       └── composables/     # useWebSocket, useApi, useFilters
+│   ├── hooks/                   # Event-emitting hook scripts
+│   │   ├── send-event.sh        # Universal fire-and-forget event sender
+│   │   ├── subagent-start.sh    # SubagentStart hook → monitor
+│   │   ├── subagent-stop.sh     # SubagentStop hook → monitor
+│   │   ├── post-tool-use.sh     # PostToolUse hook → monitor
+│   │   └── session-lifecycle.sh # SessionStart/SessionEnd hook → monitor
+│   └── scripts/
+│       ├── start-monitor.sh     # Launch server, build client, open browser
+│       └── stop-monitor.sh      # Graceful shutdown with PID file
 ├── scripts/
 │   ├── taskplex.sh              # Main bash loop (orchestrator)
 │   ├── parallel.sh              # Parallel execution functions (sourced conditionally)
@@ -97,6 +118,9 @@ taskplex/
 
 **Hooks:**
 - `PostToolUse` on Bash: Runs `check-destructive.sh` to block `git push --force`, `git reset --hard`, `git clean`, and direct pushes to main/master during implementation.
+- `SubagentStart/Stop`: Async hooks that emit events to the monitor sidecar for agent lifecycle tracking.
+- `PostToolUse` (monitor): Async hook that emits tool usage events for agent behavior analysis.
+- `SessionStart/End`: Async hooks that track session lifecycle in the monitor.
 
 **Scripts:**
 - `taskplex.sh`: Main orchestration loop — runs fresh Claude instances until all stories complete
@@ -223,6 +247,50 @@ When `parallel_mode: "parallel"`, stories are partitioned into topological waves
 - `related_to`: Soft dependencies (check for related work)
 - `implementation_hint`: Free-form guidance
 - `check_before_implementing`: Grep commands to detect existing code
+
+### 8. Execution Monitor Sidecar (v1.2.1)
+
+Real-time browser dashboard for observing TaskPlex execution. Uses a hooks-first architecture where Claude Code hooks and orchestrator `curl` calls feed events into a Bun+SQLite server, which broadcasts to connected Vue 3 dashboard clients via WebSocket.
+
+**Architecture:**
+```
+Claude Code hooks (SubagentStart/Stop, PostToolUse, Session*)
+    ↓ fire-and-forget curl POST
+taskplex.sh emit_event() calls (story.start, story.complete, etc.)
+    ↓ backgrounded curl POST
+Bun server (port 4444) → SQLite WAL → WebSocket broadcast
+    ↓
+Vue 3 dashboard (Timeline, StoryGantt, ErrorPatterns, AgentInsights)
+```
+
+**Two event sources:**
+- `hook`: Automatic from Claude Code lifecycle (subagent spawns, tool usage, sessions)
+- `orchestrator`: Explicit `emit_event` calls from `taskplex.sh` at state transitions
+
+**Dashboard views:**
+- **Timeline**: Real-time event stream with filters (story, source, event type), wave progress bars
+- **Story Gantt**: Horizontal duration bars per story, color-coded status, wave separators, retry segments
+- **Error Patterns**: Error category breakdown with counts, diagnostic table
+- **Agent Insights**: Tool usage by agent type, duration averages, already-implemented detection rates
+
+**Usage:**
+```bash
+# Start monitor (done automatically by wizard at Checkpoint 6)
+bash ${CLAUDE_PLUGIN_ROOT}/monitor/scripts/start-monitor.sh
+
+# Stop monitor
+bash ${CLAUDE_PLUGIN_ROOT}/monitor/scripts/stop-monitor.sh
+
+# Set port (default: 4444)
+export TASKPLEX_MONITOR_PORT=4444
+```
+
+**Key design decisions:**
+- All hook scripts exit 0 regardless — monitor being down never blocks Claude Code
+- All `emit_event` calls are backgrounded (`&`) — never blocks orchestrator
+- SQLite WAL mode for concurrent read/write access
+- Events tied to a `run_id` for per-invocation correlation
+- Server auto-detects via `TASKPLEX_MONITOR_PORT` env var or PID file
 
 ---
 
@@ -447,6 +515,27 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v1.2.1 (2026-02-15)
+
+**Execution Monitor Sidecar:**
+
+**Added:**
+- `monitor/server/` — Bun HTTP + WebSocket server with SQLite storage (db.ts, events.ts, analytics.ts, index.ts)
+- `monitor/client/` — Vue 3 + Tailwind CSS dashboard with 4 views (Timeline, StoryGantt, ErrorPatterns, AgentInsights)
+- `monitor/hooks/` — Fire-and-forget hook scripts (send-event.sh, subagent-start.sh, subagent-stop.sh, post-tool-use.sh, session-lifecycle.sh)
+- `monitor/scripts/` — Lifecycle management (start-monitor.sh, stop-monitor.sh)
+- `emit_event()` function in taskplex.sh — orchestrator event emission at 15+ state transitions
+- `emit_run_start()` / `emit_run_end()` — run lifecycle tracking via REST API
+- Monitor launch option in wizard Checkpoint 6
+- WebSocket real-time broadcast to connected dashboard clients
+- REST API: events, runs, analytics endpoints (timeline, errors, tools, summary, agents)
+
+**Changed:**
+- `hooks/hooks.json` — added 5 async monitor hooks (SubagentStart, SubagentStop, PostToolUse, SessionStart, SessionEnd)
+- `scripts/taskplex.sh` — integrated monitor event emission (~80 lines), auto-detect monitor via env var or PID file
+- `commands/start.md` — added monitor enable/disable question at Checkpoint 6, monitor launch at Checkpoint 7
+- `.gitignore` — added monitor build artifacts exclusions
 
 ### v1.2.0 (2026-02-15)
 

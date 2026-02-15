@@ -309,6 +309,21 @@ For worktree setup (only if parallel):
 - "pnpm install" → worktree_setup_command: "pnpm install"
 - Custom input (via "Other") → use as-is
 
+**After parallel mode, ask about execution monitor:**
+
+Use AskUserQuestion:
+
+Question: "Enable the execution monitor? Opens a browser dashboard showing real-time progress."
+- Header: "Monitor"
+- multiSelect: false
+- Options:
+  - Label: "Yes — open dashboard (Recommended)" | Description: "Launches monitor sidecar on port 4444 and opens browser"
+  - Label: "No — skip monitor" | Description: "Run without the dashboard (check logs manually)"
+
+For monitor:
+- "Yes — open dashboard" → launch monitor before execution
+- "No — skip monitor" → skip monitor launch
+
 Create config file at `.claude/taskplex.config.json` (must be valid JSON — `jq` parses it):
 ```json
 {
@@ -343,8 +358,15 @@ Example (8 stories, avg 4 criteria each, parallel mode):
 
 **Checkpoint 7: Launch**
 
+**If monitor enabled**, start the monitor sidecar first:
+```bash
+MONITOR_PORT=$(bash ${CLAUDE_PLUGIN_ROOT}/monitor/scripts/start-monitor.sh 2>/dev/null | tail -1)
+export TASKPLEX_MONITOR_PORT="${MONITOR_PORT:-4444}"
+```
+
 Show user what will happen:
 "Starting TaskPlex with [max_iterations] iterations in [mode] mode..."
+If monitor is running, also show: "Monitor dashboard: http://localhost:$TASKPLEX_MONITOR_PORT"
 
 If **foreground mode**:
 ```bash

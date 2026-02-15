@@ -1,0 +1,13 @@
+{
+  "name": "taskplex-monitor-server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch index.ts",
+    "start": "bun run index.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "^1.2.0"
+  }
+}

@@ -20,6 +20,13 @@ taskplex-wizard-flow_review_log.json
 # Git worktrees
 .worktrees/
 
+# Monitor sidecar
+monitor/server/node_modules/
+monitor/client/node_modules/
+monitor/client/dist/
+monitor/node_modules/
+*.pid
+
 # TaskPlex runtime artifacts (test contamination prevention)
 prd.json
 progress.txt

@@ -54,6 +54,19 @@ cleanup() {
     log "CLEANUP" "No active Claude process to clean up"
   fi
 
+  # Emit run end to monitor (if running)
+  if type emit_run_end >/dev/null 2>&1; then
+    emit_run_end 2>/dev/null || true
+  fi
+
+  # Stop monitor if we started it
+  if [ -f "$PROJECT_DIR/.claude/taskplex-monitor.pid" ]; then
+    MONITOR_PID=$(cat "$PROJECT_DIR/.claude/taskplex-monitor.pid" 2>/dev/null)
+    if [ -n "$MONITOR_PID" ] && kill -0 "$MONITOR_PID" 2>/dev/null; then
+      log "CLEANUP" "Monitor still running (PID: $MONITOR_PID) — leaving it for review"
+    fi
+  fi
+
   # Clean up temp files from this process
   rm -f /tmp/taskplex-$$-*.txt /tmp/taskplex-$$-*.md /tmp/taskplex-parallel-$$-*.json /tmp/taskplex-prompt-$$-*.md /tmp/taskplex-context-$$-*.md
 
@@ -971,6 +984,97 @@ setup_branch || {
 }
 
 # ============================================================================
+# Monitor Integration (v1.3)
+# ============================================================================
+
+# Detect monitor port from config or environment
+MONITOR_PORT="${TASKPLEX_MONITOR_PORT:-}"
+
+# Check if monitor is running
+if [ -n "$MONITOR_PORT" ]; then
+  if curl -s --connect-timeout 1 "http://localhost:${MONITOR_PORT}/health" > /dev/null 2>&1; then
+    log "INIT" "Monitor detected on port $MONITOR_PORT"
+  else
+    log "INIT" "Monitor port set ($MONITOR_PORT) but server not responding — events will be skipped"
+    MONITOR_PORT=""
+  fi
+elif [ -f "$PROJECT_DIR/.claude/taskplex-monitor.pid" ]; then
+  # Check default port if PID file exists
+  if curl -s --connect-timeout 1 "http://localhost:4444/health" > /dev/null 2>&1; then
+    MONITOR_PORT="4444"
+    log "INIT" "Monitor auto-detected on port $MONITOR_PORT"
+  fi
+fi
+
+# Generate run ID for this execution
+RUN_ID="$$-$(date +%s)"
+
+# Fire-and-forget event emission — never blocks execution
+emit_event() {
+  local event_type="$1"
+  local payload="$2"
+  local story_id="${3:-}"
+  local wave="${4:-}"
+  local batch="${5:-}"
+
+  # Only emit if monitor is running
+  [ -z "$MONITOR_PORT" ] && return 0
+
+  curl -s -X POST "http://localhost:${MONITOR_PORT}/api/events" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+      \"source\": \"orchestrator\",
+      \"event_type\": \"${event_type}\",
+      \"run_id\": \"${RUN_ID}\",
+      \"story_id\": ${story_id:+\"$story_id\"}${story_id:-null},
+      \"wave\": ${wave:-null},
+      \"batch\": ${batch:-null},
+      \"payload\": ${payload}
+    }" > /dev/null 2>&1 &
+}
+
+# Create run record in monitor
+emit_run_start() {
+  [ -z "$MONITOR_PORT" ] && return 0
+
+  local total_stories
+  total_stories=$(jq '[.userStories[]] | length' "$PRD_FILE" 2>/dev/null || echo "0")
+
+  curl -s -X POST "http://localhost:${MONITOR_PORT}/api/runs" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"id\": \"${RUN_ID}\",
+      \"started_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+      \"mode\": \"${PARALLEL_MODE}\",
+      \"model\": \"${EXECUTION_MODEL}\",
+      \"branch\": \"${BRANCH_NAME}\",
+      \"total_stories\": ${total_stories},
+      \"config\": $(cat "$CONFIG_FILE" 2>/dev/null || echo '{}')
+    }" > /dev/null 2>&1 &
+}
+
+# Update run record on completion
+emit_run_end() {
+  [ -z "$MONITOR_PORT" ] && return 0
+
+  local completed skipped
+  completed=$(jq '[.userStories[] | select(.passes == true)] | length' "$PRD_FILE" 2>/dev/null || echo "0")
+  skipped=$(jq '[.userStories[] | select(.status == "skipped")] | length' "$PRD_FILE" 2>/dev/null || echo "0")
+  local elapsed=$(($(date +%s) - START_TIME))
+
+  curl -s -X PATCH "http://localhost:${MONITOR_PORT}/api/runs/${RUN_ID}" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"ended_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+      \"completed\": ${completed},
+      \"skipped\": ${skipped}
+    }" > /dev/null 2>&1 &
+
+  emit_event "run.end" "{\"completed\":${completed},\"skipped\":${skipped},\"elapsed_s\":${elapsed}}"
+}
+
+# ============================================================================
 # Parallel Mode Setup (v1.2)
 # ============================================================================
 
@@ -992,6 +1096,11 @@ echo "Model: $EXECUTION_MODEL$([ -n "$EFFORT_LEVEL" ] && echo " (effort: $EFFORT
 echo "Mode: $PARALLEL_MODE$([ "$PARALLEL_MODE" = "parallel" ] && echo " (max $MAX_PARALLEL concurrent)")"
 echo "PID: $$"
 echo "Timeout: ${ITERATION_TIMEOUT}s per iteration"
+[ -n "$MONITOR_PORT" ] && echo "Monitor: http://localhost:${MONITOR_PORT}"
+
+# Emit run.start event to monitor
+emit_run_start
+emit_event "run.start" "{\"mode\":\"$PARALLEL_MODE\",\"model\":\"$EXECUTION_MODEL\",\"branch\":\"$BRANCH_NAME\"}"
 
 # ============================================================================
 # Error Categorization and Retry Logic (US-004)
@@ -1074,6 +1183,10 @@ handle_error() {
   # Log to operational log (Layer 1)
   log_progress "$story_id" "FAILED" "$category (attempt $attempts/$max_retries)"
 
+  # Emit story.failed to monitor
+  local error_excerpt_monitor=$(echo "$output" | head -c 100 | tr '\n' ' ' | tr '"' "'")
+  emit_event "story.failed" "{\"error_category\":\"$category\",\"error_message\":\"$error_excerpt_monitor\",\"attempt\":$attempts,\"max_retries\":$max_retries}" "$story_id"
+
   # Add warning to knowledge.md for env/dependency failures (Layer 2)
   if [ "$category" = "env_missing" ] || [ "$category" = "dependency_missing" ]; then
     local error_excerpt=$(echo "$output" | head -c 150 | tr '\n' ' ')
@@ -1105,6 +1218,9 @@ handle_error() {
 
     # Mark as skipped
     update_story_status "$story_id" "skipped"
+
+    # Emit story.skipped to monitor
+    emit_event "story.skipped" "{\"reason\":\"max_retries_exceeded\",\"error_category\":\"$category\"}" "$story_id"
 
     if [ "$EXECUTION_MODE" = "foreground" ]; then
       # Show interactive prompt even when skipping
@@ -1288,6 +1404,11 @@ Output your result as JSON in this format:
   # Log validation result (Layer 1: operational log)
   log_progress "$story_id" "VALIDATED" "$validation_result"
 
+  # Emit story.validated to monitor
+  local passed_bool="false"
+  [ "$validation_result" = "pass" ] && passed_bool="true"
+  emit_event "story.validated" "{\"passed\":$passed_bool}" "$story_id"
+
   if [ "$validation_result" = "pass" ]; then
     log "VALIDATE-$story_id" "Validation passed ✓"
     return 0
@@ -1340,6 +1461,9 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   echo "  TaskPlex Iteration $i of $MAX_ITERATIONS"
   echo "═══════════════════════════════════════════════════════"
 
+  # Emit iteration.start to monitor
+  emit_event "iteration.start" "{\"iteration\":$i,\"max_iterations\":$MAX_ITERATIONS}"
+
   # Trim progress.txt if it exceeds size limit (US-008)
   trim_progress
 
@@ -1361,6 +1485,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
 
       # Generate completion report (US-009)
       generate_report
+      emit_run_end
 
       # Merge to main if configured (US-006)
       merge_to_main
@@ -1375,6 +1500,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
 
       # Generate completion report (US-009)
       generate_report
+      emit_run_end
 
       exit 1
     fi
@@ -1392,11 +1518,21 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   # Log story start (Layer 1: operational log)
   STORY_START_TIME=$(date +%s)
   STORY_TITLE_LOG=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .title' "$PRD_FILE" 2>/dev/null)
+  STORY_PRIORITY=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .priority // 0' "$PRD_FILE" 2>/dev/null)
+  STORY_ATTEMPTS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .attempts // 1' "$PRD_FILE" 2>/dev/null)
   log_progress "$CURRENT_STORY" "STARTED" "$STORY_TITLE_LOG"
+
+  # Emit story.start to monitor
+  emit_event "story.start" "{\"title\":\"$STORY_TITLE_LOG\",\"priority\":$STORY_PRIORITY,\"attempt\":$STORY_ATTEMPTS}" "$CURRENT_STORY"
 
   # Generate context brief (Layer 3: ephemeral)
   CONTEXT_BRIEF_FILE=$(generate_context_brief "$CURRENT_STORY")
   log "IMPL-$CURRENT_STORY" "Context brief generated: $CONTEXT_BRIEF_FILE"
+
+  # Emit context.generated to monitor
+  HAS_DEPS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | if (.depends_on // [] | length) > 0 then "true" else "false" end' "$PRD_FILE" 2>/dev/null)
+  HAS_CHECKS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | if (.check_before_implementing // [] | length) > 0 then "true" else "false" end' "$PRD_FILE" 2>/dev/null)
+  emit_event "context.generated" "{\"has_deps\":$HAS_DEPS,\"has_checks\":$HAS_CHECKS,\"has_retry_context\":false}" "$CURRENT_STORY"
 
   # Build the full prompt: context brief + agent instructions
   FULL_PROMPT_FILE=$(mktemp)
@@ -1463,6 +1599,9 @@ for i in $(seq 1 $MAX_ITERATIONS); do
       # Retry with context (and extended timeout for timeout category)
       RETRY_CATEGORY=$(categorize_error "$EXIT_CODE" "$OUTPUT")
       log_progress "$CURRENT_STORY" "RETRY" "$RETRY_CATEGORY, injecting error context"
+
+      # Emit story.retry to monitor
+      emit_event "story.retry" "{\"error_category\":\"$RETRY_CATEGORY\",\"attempt\":$STORY_ATTEMPTS}" "$CURRENT_STORY"
 
       # Build retry context from error output + retry_hint from structured output
       RETRY_HINT=$(get_retry_hint "$OUTPUT")
@@ -1533,6 +1672,10 @@ Please address the issue and try again."
   # Extract learnings from structured agent output (Layer 2: knowledge.md)
   extract_learnings "$CURRENT_STORY" "$OUTPUT"
 
+  # Emit knowledge.update to monitor
+  KNOWLEDGE_SIZE=$(wc -l < "$KNOWLEDGE_FILE" 2>/dev/null || echo "0")
+  emit_event "knowledge.update" "{\"learnings_count\":0,\"knowledge_size\":$KNOWLEDGE_SIZE}" "$CURRENT_STORY"
+
   # Run validator agent to verify acceptance criteria (US-007)
   VALIDATION_PASSED=0
   if [ "$CURRENT_STORY" != "unknown" ]; then
@@ -1588,6 +1731,9 @@ Please address the issue and try again."
       STORY_ELAPSED=$(($(date +%s) - STORY_START_TIME))
       STORY_ATTEMPTS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .attempts // 1' "$PRD_FILE" 2>/dev/null)
       log_progress "$CURRENT_STORY" "COMPLETED" "${STORY_ATTEMPTS} attempt(s), ${STORY_ELAPSED}s"
+
+      # Emit story.complete to monitor
+      emit_event "story.complete" "{\"attempts\":$STORY_ATTEMPTS,\"elapsed_s\":$STORY_ELAPSED}" "$CURRENT_STORY"
     fi
 
     # Check if ALL stories are complete
@@ -1599,6 +1745,7 @@ Please address the issue and try again."
 
       # Generate completion report (US-009)
       generate_report
+      emit_run_end
 
       # Merge to main if configured (US-006)
       merge_to_main
@@ -1627,5 +1774,6 @@ echo "Check $PROGRESS_FILE for status."
 
 # Generate completion report (US-009)
 generate_report
+emit_run_end
 
 exit 1

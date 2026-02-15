@@ -1,0 +1,12 @@
+{
+  "name": "taskplex-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter client build",
+    "start": "bun run server/index.ts",
+    "start:prod": "bun run build && SERVE_CLIENT=true bun run server/index.ts"
+  }
+}
