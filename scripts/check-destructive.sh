@@ -5,13 +5,14 @@
 INPUT="$1"
 
 # Check for destructive git operations
-if echo "$INPUT" | grep -qE 'git\s+(push\s+.*--force|reset\s+--hard|clean\s+-fd|checkout\s+\.\s*$)'; then
+# Covers: git push --force / -f, git reset --hard, git clean -f (any flag combo with f)
+if echo "$INPUT" | grep -qE 'git\s+(push\s+.*(--force|-f)\b|reset\s+--hard|clean\s+-[a-z]*f)'; then
   echo "BLOCKED: Destructive git command detected. TaskPlex prevents force-push, hard-reset, and clean during implementation."
   exit 2
 fi
 
 # Check for pushing to main/master directly
-if echo "$INPUT" | grep -qE 'git\s+push\s+.*\s+(main|master)\s*$'; then
+if echo "$INPUT" | grep -qE 'git\s+push\s+(origin\s+)?(main|master)(\s|$)'; then
   echo "BLOCKED: Direct push to main/master not allowed. TaskPlex manages branch merges."
   exit 2
 fi

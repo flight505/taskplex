@@ -54,6 +54,9 @@ cleanup() {
     log "CLEANUP" "No active Claude process to clean up"
   fi
 
+  # Clean up temp files from this process
+  rm -f /tmp/taskplex-$$-*.txt /tmp/taskplex-$$-*.md /tmp/taskplex-parallel-$$-*.json /tmp/taskplex-prompt-$$-*.md /tmp/taskplex-context-$$-*.md
+
   # Clean up parallel worktrees if in parallel mode
   if [ "$PARALLEL_MODE" = "parallel" ] && type cleanup_all_worktrees >/dev/null 2>&1; then
     cleanup_all_worktrees
@@ -103,7 +106,7 @@ trim_progress() {
 # Knowledge Architecture (v1.1)
 # ============================================================================
 
-KNOWLEDGE_FILE="$PROJECT_DIR/knowledge.md"
+# NOTE: KNOWLEDGE_FILE is set after PROJECT_DIR in the Configuration section below.
 
 # Write operational log entry (Layer 1: orchestrator-only)
 log_progress() {
@@ -429,6 +432,7 @@ PROGRESS_FILE="$PROJECT_DIR/progress.txt"
 ARCHIVE_DIR="$PROJECT_DIR/archive"
 LAST_BRANCH_FILE="$PROJECT_DIR/.last-branch"
 CONFIG_FILE="$PROJECT_DIR/.claude/taskplex.config.json"
+KNOWLEDGE_FILE="$PROJECT_DIR/knowledge.md"
 
 # Validate PRD file
 validate_prd() {
@@ -1340,8 +1344,9 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   trim_progress
 
   # Get next eligible story (respects dependencies)
-  CURRENT_STORY=$(get_next_task)
-  GET_NEXT_EXIT=$?
+  # Capture exit code without set -e aborting on non-zero return
+  GET_NEXT_EXIT=0
+  CURRENT_STORY=$(get_next_task) || GET_NEXT_EXIT=$?
 
   if [ $GET_NEXT_EXIT -eq 1 ]; then
     # No incomplete stories remain (all complete or skipped)
@@ -1460,18 +1465,17 @@ for i in $(seq 1 $MAX_ITERATIONS); do
       log_progress "$CURRENT_STORY" "RETRY" "$RETRY_CATEGORY, injecting error context"
 
       # Build retry context from error output + retry_hint from structured output
-      local retry_hint
-      retry_hint=$(get_retry_hint "$OUTPUT")
-      local retry_context="Previous attempt failed with error category: $RETRY_CATEGORY
+      RETRY_HINT=$(get_retry_hint "$OUTPUT")
+      RETRY_CONTEXT="Previous attempt failed with error category: $RETRY_CATEGORY
 
 Error excerpt:
 $(echo "$OUTPUT" | head -c 500)
-$(if [ -n "$retry_hint" ]; then echo ""; echo "Agent retry hint: $retry_hint"; fi)
+$(if [ -n "$RETRY_HINT" ]; then echo ""; echo "Agent retry hint: $RETRY_HINT"; fi)
 
 Please address the issue and try again."
 
       # Generate context brief with retry context (Layer 3)
-      RETRY_BRIEF_FILE=$(generate_context_brief "$CURRENT_STORY" "$retry_context")
+      RETRY_BRIEF_FILE=$(generate_context_brief "$CURRENT_STORY" "$RETRY_CONTEXT")
 
       # Build the full retry prompt
       RETRY_PROMPT_FILE=$(mktemp)
@@ -1581,9 +1585,9 @@ Please address the issue and try again."
       update_story_status "$CURRENT_STORY" "completed"
 
       # Log completion with duration (Layer 1: operational log)
-      local story_elapsed=$(($(date +%s) - STORY_START_TIME))
-      local story_attempts=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .attempts // 1' "$PRD_FILE" 2>/dev/null)
-      log_progress "$CURRENT_STORY" "COMPLETED" "${story_attempts} attempt(s), ${story_elapsed}s"
+      STORY_ELAPSED=$(($(date +%s) - STORY_START_TIME))
+      STORY_ATTEMPTS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .attempts // 1' "$PRD_FILE" 2>/dev/null)
+      log_progress "$CURRENT_STORY" "COMPLETED" "${STORY_ATTEMPTS} attempt(s), ${STORY_ELAPSED}s"
     fi
 
     # Check if ALL stories are complete

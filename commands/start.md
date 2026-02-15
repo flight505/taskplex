@@ -309,24 +309,23 @@ For worktree setup (only if parallel):
 - "pnpm install" → worktree_setup_command: "pnpm install"
 - Custom input (via "Other") → use as-is
 
-Create config file with parsed values:
-```yaml
----
-max_iterations: [parsed number from Q1]
-iteration_timeout: [parsed seconds from Q2]
-execution_mode: [parsed mode from Q3]
-execution_model: [parsed model from Q4]
-effort_level: [parsed effort from Q4, omit for Sonnet]
-editor_command: "open"
-branch_prefix: "taskplex"
----
-
-# TaskPlex Configuration
-
-Edit these settings as needed and run `/taskplex:start` again.
+Create config file at `.claude/taskplex.config.json` (must be valid JSON — `jq` parses it):
+```json
+{
+  "max_iterations": [parsed number from Q1],
+  "iteration_timeout": [parsed seconds from Q2],
+  "execution_mode": "[parsed mode from Q3]",
+  "execution_model": "[parsed model from Q4]",
+  "effort_level": "[parsed effort from Q4, empty string for Sonnet]",
+  "branch_prefix": "taskplex",
+  "parallel_mode": "[sequential or parallel from Q5]",
+  "max_parallel": [3 or 5 from Q5],
+  "worktree_setup_command": "[from Q5 follow-up]",
+  "conflict_strategy": "abort"
+}
 ```
 
-Example (8 stories, avg 4 criteria each → standard complexity, parallel):
+Example (8 stories, avg 4 criteria each, parallel mode):
 ```json
 {
   "max_iterations": 20,
@@ -361,13 +360,14 @@ If **background mode**:
 ```bash
 mkdir -p .claude
 nohup bash ${CLAUDE_PLUGIN_ROOT}/scripts/taskplex.sh [max_iterations] > .claude/taskplex.log 2>&1 &
-echo $! > .claude/taskplex.pid
 ```
 
+Note: The script creates its own per-branch PID file at `.claude/taskplex-{branchName}.pid`.
+
 Then tell user:
-"TaskPlex running in background (PID: [pid])"
+"TaskPlex running in background (PID: $!)"
 "View logs: tail -f .claude/taskplex.log"
-"Check status: ps -p [pid]"
+"Check status: ps -p $!"
 
 ## Error Handling
 

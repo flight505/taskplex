@@ -253,10 +253,14 @@ spawn_parallel_agent() {
 
   log "PARALLEL" "Spawning agent for $story_id in $worktree_dir"
 
+  # Pre-expand prompt content to avoid race condition with file deletion
+  local prompt_content
+  prompt_content=$(cat "$prompt_file")
+
   # Run claude in the worktree directory
   (
     cd "$worktree_dir" && \
-    $TIMEOUT_CMD "$ITERATION_TIMEOUT" claude -p "$(cat "$prompt_file")" \
+    $TIMEOUT_CMD "$ITERATION_TIMEOUT" claude -p "$prompt_content" \
       --output-format json \
       --no-session-persistence \
       --model "$EXECUTION_MODEL" \

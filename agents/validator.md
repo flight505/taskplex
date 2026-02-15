@@ -16,7 +16,7 @@ You are a verification agent. Your job is to confirm that a story implementation
 
 ## Your Task
 
-1. Read the story details from `prd.json` (the story marked `status: "in_progress"`)
+1. Read the story details provided in the prompt above (story ID and acceptance criteria are given directly)
 2. For each acceptance criterion:
    - Run the "Must verify" command if specified
    - Check that the expected outcome is met

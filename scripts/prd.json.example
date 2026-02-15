@@ -1,14 +1,7 @@
 {
   "project": "MyApp",
-  "branchName": "sdk-bridge/task-priority",
+  "branchName": "taskplex/task-priority",
   "description": "Task Priority System - Add priority levels to tasks",
-  "config": {
-    "max_retries_per_story": 2,
-    "merge_strategy": "no-ff",
-    "test_command": "npm test",
-    "build_command": "npm run build",
-    "typecheck_command": "npm run typecheck"
-  },
   "userStories": [
     {
       "id": "US-001",
@@ -25,7 +18,13 @@
       "notes": "",
       "attempts": 0,
       "last_error": null,
-      "last_error_category": null
+      "last_error_category": null,
+      "depends_on": [],
+      "related_to": [],
+      "implementation_hint": "",
+      "check_before_implementing": [
+        "grep -r 'priority' src/models/ || true"
+      ]
     },
     {
       "id": "US-002",
@@ -34,8 +33,7 @@
       "acceptanceCriteria": [
         "Each task card shows colored priority badge (red=high, yellow=medium, gray=low)",
         "Priority visible without hovering or clicking",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Typecheck passes"
       ],
       "priority": 2,
       "passes": false,
@@ -43,7 +41,14 @@
       "notes": "",
       "attempts": 0,
       "last_error": null,
-      "last_error_category": null
+      "last_error_category": null,
+      "depends_on": ["US-001"],
+      "related_to": [],
+      "implementation_hint": "Reuse existing badge component if available, just add priority color variants.",
+      "check_before_implementing": [
+        "grep -r 'Badge' src/components/ || true",
+        "grep -r 'priority' src/components/ || true"
+      ]
     },
     {
       "id": "US-003",
@@ -53,8 +58,7 @@
         "Priority dropdown in task edit modal",
         "Shows current priority as selected",
         "Saves immediately on selection change",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Typecheck passes"
       ],
       "priority": 3,
       "passes": false,
@@ -62,7 +66,13 @@
       "notes": "",
       "attempts": 0,
       "last_error": null,
-      "last_error_category": null
+      "last_error_category": null,
+      "depends_on": ["US-001"],
+      "related_to": ["US-002"],
+      "implementation_hint": "",
+      "check_before_implementing": [
+        "grep -r 'TaskEdit\\|task-edit' src/components/ || true"
+      ]
     },
     {
       "id": "US-004",
@@ -72,8 +82,7 @@
         "Filter dropdown with options: All | High | Medium | Low",
         "Filter persists in URL params",
         "Empty state message when no tasks match filter",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Typecheck passes"
       ],
       "priority": 4,
       "passes": false,
@@ -81,7 +90,13 @@
       "notes": "",
       "attempts": 0,
       "last_error": null,
-      "last_error_category": null
+      "last_error_category": null,
+      "depends_on": ["US-001"],
+      "related_to": ["US-002", "US-003"],
+      "implementation_hint": "Use URL search params for filter persistence.",
+      "check_before_implementing": [
+        "grep -r 'filter\\|Filter' src/components/ || true"
+      ]
     }
   ]
 }

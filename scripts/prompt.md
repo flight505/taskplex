@@ -17,7 +17,7 @@ Your context brief (prepended below) contains targeted information for your curr
 
 **Before writing ANY code, you MUST check if the work is already done:**
 
-1. **Read the PRD** at `prd.json` and identify the next story where `passes: false`
+1. **Read the PRD** at `prd.json` and identify your assigned story (the one with `status: "in_progress"`)
 2. **Search for existing implementation:**
    - Use Grep to search for functions/endpoints mentioned in acceptance criteria
    - Use Read to check files that likely contain related code
@@ -48,8 +48,9 @@ Your context brief (prepended below) contains targeted information for your curr
 3. Implement that single user story
 4. Run quality checks (e.g., typecheck, lint, test)
 5. If checks pass, commit ALL changes with message: `feat(US-XXX): Story Title`
-6. Update the PRD to set `passes: true` for the completed story
-7. Output your structured result (see Output Format below)
+6. Output your structured result (see Output Format below)
+
+**Note:** Do NOT modify `prd.json` — the orchestrator manages story status.
 
 ## Quality Requirements
 

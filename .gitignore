@@ -23,6 +23,7 @@ taskplex-wizard-flow_review_log.json
 # TaskPlex runtime artifacts (test contamination prevention)
 prd.json
 progress.txt
+knowledge.md
 tasks/
 .last-branch
 archive/
@@ -33,9 +34,7 @@ archive/
 
 # Python virtual environments
 .venv/
-__pycache__/
 
 # Generated code from autonomous runs
 flight_marketplace/
 run_dev_server.py
-.worktrees/
