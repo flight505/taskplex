@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 1.2.0** | Last Updated: 2026-02-15
+**Version 1.2.1** | Last Updated: 2026-02-15
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 

@@ -1,6 +1,6 @@
 {
   "name": "taskplex",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Resilient autonomous development with dependency-aware task execution, custom subagents, error categorization, wave-based parallel execution via git worktrees, and full branch lifecycle management. Next-generation successor to SDK Bridge.",
   "author": {
     "name": "Jesper Vang",
