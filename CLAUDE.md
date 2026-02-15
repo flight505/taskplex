@@ -38,12 +38,18 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 ```
 taskplex/
 ├── .claude-plugin/
-│   └── plugin.json              # Plugin manifest (v1.1.0)
+│   └── plugin.json              # Plugin manifest (v1.2.0)
+├── .github/
+│   └── workflows/
+│       └── notify-marketplace.yml  # Marketplace webhook notification
 ├── agents/
 │   ├── implementer.md           # Codes a single story, outputs structured result
 │   ├── validator.md             # Verifies acceptance criteria (read-only)
 │   ├── reviewer.md              # Reviews PRD from specific angles
 │   └── merger.md                # Git branch operations
+├── assets/
+│   ├── taskplex-orchestration-flow.png    # Architecture diagram
+│   └── taskplex-knowledge-architecture.png # Knowledge layer diagram
 ├── commands/
 │   └── start.md                 # Interactive wizard (7-checkpoint workflow)
 ├── hooks/
@@ -65,6 +71,7 @@ taskplex/
 ├── examples/
 │   ├── prd-simple-feature.md    # Simple PRD example
 │   └── prd-complex-feature.md   # Complex PRD with decomposition
+├── README.md                    # Public documentation with architecture diagrams
 ├── TASKPLEX-ARCHITECTURE.md     # Full architecture plan (v1.0 design doc)
 └── .gitignore
 ```
@@ -157,7 +164,7 @@ When a task fails, the failure-analyzer skill classifies the error:
 ### 3. Resilience & Process Management
 
 **Iteration Timeouts:**
-- Default: 3600 seconds (60 minutes)
+- Default: 900 seconds (15 minutes)
 - Configurable via `iteration_timeout` in config
 - Foreground: Interactive prompt (skip/retry/abort)
 - Background: Auto-skip with logging
@@ -304,10 +311,10 @@ git add --chmod=+x scripts/*.sh
 ```json
 {
   "max_iterations": 25,
-  "iteration_timeout": 3600,
+  "iteration_timeout": 900,
   "execution_mode": "foreground",
-  "execution_model": "opus",
-  "effort_level": "high",
+  "execution_model": "sonnet",
+  "effort_level": "",
   "branch_prefix": "taskplex",
   "max_retries_per_story": 2,
   "max_turns": 200,
@@ -326,10 +333,10 @@ git add --chmod=+x scripts/*.sh
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `max_iterations` | int | 25 | Stop after N iterations (1 story = 1-3 iterations) |
-| `iteration_timeout` | int | 3600 | Timeout per iteration in seconds (60 min) |
+| `iteration_timeout` | int | 900 | Timeout per iteration in seconds (15 min) |
 | `execution_mode` | string | "foreground" | "foreground" (interactive) or "background" |
-| `execution_model` | string | "opus" | "sonnet" or "opus" for story implementation |
-| `effort_level` | string | "high" | "low", "medium", or "high" (Opus 4.6 only) |
+| `execution_model` | string | "sonnet" | "sonnet" or "opus" for story implementation |
+| `effort_level` | string | "" | "low", "medium", or "high" (Opus 4.6 only, empty = default) |
 | `branch_prefix` | string | "taskplex" | Git branch prefix |
 | `max_retries_per_story` | int | 2 | Max retry attempts per story before skipping |
 | `max_turns` | int | 200 | Max agentic turns per Claude invocation |
@@ -351,9 +358,9 @@ git add --chmod=+x scripts/*.sh
 - Formula: `stories x 2.5 = recommended iterations`
 
 **Model Selection:**
-- `execution_model`: Which Claude model implements the stories
-- `effort_level`: Controls reasoning depth for Opus 4.6 (low/medium/high). Ignored for Sonnet.
-  - `high` (default): Deep reasoning, best quality, highest cost
+- `execution_model`: Which Claude model implements the stories (default: sonnet)
+- `effort_level`: Controls reasoning depth for Opus 4.6 (low/medium/high). Ignored for Sonnet. Empty by default.
+  - `high`: Deep reasoning, best quality, highest cost
   - `medium`: Best cost/quality balance
   - `low`: Fastest, minimal reasoning, cheapest
 - Planning (PRD generation) uses `CLAUDE_CODE_SUBAGENT_MODEL` env var (recommend: opus)
