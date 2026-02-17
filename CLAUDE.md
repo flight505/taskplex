@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 1.2.1** | Last Updated: 2026-02-15
+**Version 2.0.0** | Last Updated: 2026-02-17
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -29,6 +29,9 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - **v1.2:** Conflict detection using `related_to` for safe parallelism
 - **v1.2:** Knowledge propagation across parallel waves
 - **v1.2.1:** Execution monitor sidecar (Bun + Vue 3 dashboard)
+- **v2.0:** Smart Scaffold: SQLite knowledge store, 1-shot decision calls, SubagentStart/Stop hooks
+- **v2.0:** Model routing: per-story haiku/sonnet/opus selection based on complexity
+- **v2.0:** Inline validation with agent self-healing (SubagentStop hook)
 
 ---
 
@@ -515,6 +518,44 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v2.0.0 (2026-02-17)
+
+**Smart Scaffold Architecture — Hook-Based Intelligence:**
+
+**Added:**
+- `scripts/knowledge-db.sh` — SQLite knowledge store helpers (schema, CRUD, confidence decay, migration)
+- `scripts/decision-call.sh` — 1-shot Opus decision calls for per-story model/effort routing
+- `hooks/inject-knowledge.sh` — SubagentStart hook: queries SQLite, runs pre-checks, injects context
+- `hooks/validate-result.sh` — SubagentStop hook: runs typecheck/build/test, blocks agent on failure for self-healing
+- `tests/` — Test suite for knowledge-db, inject-knowledge, validate-result, decision-call
+- SQLite knowledge store (`knowledge.db`): learnings, file_patterns, error_history, decisions, runs tables
+- Confidence decay at 5%/day (stale learnings auto-expire after ~30 days)
+- One-time idempotent migration from `knowledge.md` to SQLite
+- Model routing: decision call picks haiku/sonnet/opus per story based on complexity and history
+- Enriched completion report with decision breakdown, knowledge stats, error patterns
+
+**Changed:**
+- `scripts/taskplex.sh` — sources v2.0 modules, decision call in main loop, SQLite integration
+- `hooks/hooks.json` — added SubagentStart (inject-knowledge) and SubagentStop (validate-result) hook entries
+- `agents/implementer.md` — updated for hook-based context injection and inline validation
+- `scripts/prompt.md` — updated for hook-based workflow
+- `commands/start.md` — added intelligence configuration question at Checkpoint 6
+- `extract_learnings()` — writes to SQLite instead of knowledge.md
+- `handle_error()` — records to SQLite error_history
+- `generate_report()` — includes SQLite-backed intelligence report
+
+**New Config Fields:**
+- `decision_calls` (bool, default true) — enable 1-shot decision calls
+- `decision_model` (string, default "opus") — model for decision calls
+- `knowledge_db` (string, default "knowledge.db") — SQLite knowledge store path
+- `validate_on_stop` (bool, default true) — enable SubagentStop inline validation
+- `model_routing` (string, default "auto") — "auto" (decision call picks) or "fixed" (use execution_model)
+
+**Backward Compatible:**
+- Setting `decision_calls: false, validate_on_stop: false` gives exact v1.2.1 behavior
+- Wizard offers "Classic mode" option for full backward compatibility
+- knowledge.md auto-migrated to SQLite on first run
 
 ### v1.2.1 (2026-02-15)
 

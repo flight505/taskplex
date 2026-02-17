@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "1.2.1",
-  "description": "Resilient autonomous development with dependency-aware task execution, custom subagents, error categorization, wave-based parallel execution via git worktrees, and full branch lifecycle management. Next-generation successor to SDK Bridge.",
+  "version": "2.0.0",
+  "description": "Resilient autonomous development with Smart Scaffold intelligence: 1-shot decision calls, SubagentStart/Stop hooks, SQLite knowledge store, inline validation with agent self-healing, and model routing. Successor to SDK Bridge.",
   "author": {
     "name": "Jesper Vang",
     "url": "https://github.com/flight505"
