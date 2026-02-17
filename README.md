@@ -4,11 +4,11 @@
   <img src="./assets/TaskPlex_Hero@0.5x.png" alt="TaskPlex - Parallel Autonomous Dev Assistant" width="800" />
 </p>
 
-[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/flight505/taskplex)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/flight505/taskplex)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://github.com/anthropics/claude-code)
 
-Resilient autonomous development assistant with custom subagents, error categorization, wave-based parallel execution via git worktrees, and a three-layer knowledge architecture that learns as it builds.
+Resilient autonomous development assistant with Smart Scaffold intelligence: 1-shot decision calls for per-story model routing, SubagentStart/Stop hooks for context injection and inline validation, SQLite knowledge store with confidence decay, and wave-based parallel execution via git worktrees.
 
 Successor to [SDK Bridge](https://github.com/flight505/sdk-bridge). Based on [Geoffrey Huntley's Ralph pattern](https://ghuntley.com/ralph/).
 
@@ -20,7 +20,7 @@ Successor to [SDK Bridge](https://github.com/flight505/sdk-bridge). Based on [Ge
   <img src="./assets/taskplex-orchestration-flow.png" alt="TaskPlex Orchestration Loop" width="800" />
 </p>
 
-TaskPlex runs a **bash orchestration loop** that spawns fresh Claude subagents for each story. Each agent gets a clean context window with a targeted **context brief** — no context pollution, no accumulated hallucinations.
+TaskPlex runs a **bash orchestration loop** that spawns fresh Claude subagents for each story. A **1-shot decision call** picks the optimal model and effort level per story. The **SubagentStart hook** injects context from the SQLite knowledge store, and the **SubagentStop hook** runs inline validation with agent self-healing.
 
 The loop continues until all stories pass validation or max iterations are reached.
 
@@ -28,19 +28,25 @@ The loop continues until all stories pass validation or max iterations are reach
 
 ## Features
 
+**Decision Calls** (v2.0) — 1-shot Opus call per story picks the optimal model (haiku/sonnet/opus) and effort level based on story complexity, error history, and codebase patterns. ~$0.03/story overhead.
+
+**SubagentStart Hook** (v2.0) — Automatically queries the SQLite knowledge store and injects context (learnings, error history, dependency diffs, pre-implementation checks) into each agent spawn. Replaces manual context brief generation.
+
+**Inline Validation & Self-Healing** (v2.0) — SubagentStop hook runs typecheck/build/test after each agent finishes. If validation fails, the agent is blocked and continues fixing in the same session — no iteration wasted.
+
+**SQLite Knowledge Store** (v2.0) — Persistent storage for learnings, errors, decisions, and runs. Confidence decay at 5%/day ensures stale knowledge auto-expires. Auto-migrates from `knowledge.md` on first run.
+
 **Custom Subagents** — Purpose-built agents with restricted tools and right-sized models replace monolithic `claude -p` calls.
 
 **Error Categorization & Retry** — Failed tasks are classified (env_missing, test_failure, code_error, etc.) with intelligent retry/skip decisions and max retry limits.
 
-**Three-Layer Knowledge** — Operational log, curated knowledge base, and ephemeral context briefs ensure each agent gets exactly the context it needs.
-
-**Dependency-Aware Execution** — Stories declare `depends_on` and `related_to` relationships. The orchestrator enforces execution order and injects dependency diffs into context briefs.
+**Dependency-Aware Execution** — Stories declare `depends_on` and `related_to` relationships. The orchestrator enforces execution order and injects dependency diffs.
 
 **Quality Gate Hooks** — PostToolUse hooks block destructive git commands (`push --force`, `reset --hard`, direct push to main) during implementation.
 
 **Already-Implemented Detection** — Agents search for existing implementation before coding. If all acceptance criteria are already met, the story is marked complete in seconds.
 
-**Parallel Execution via Worktrees** (v1.2) — Independent stories run simultaneously in separate git worktrees. The dependency graph is partitioned into waves — all stories within a wave execute in parallel, then merge back before the next wave begins. Opt-in with `parallel_mode: "parallel"`.
+**Parallel Execution via Worktrees** (v1.2) — Independent stories run simultaneously in separate git worktrees, partitioned into waves based on the dependency graph. Opt-in with `parallel_mode: "parallel"`.
 
 ---
 
@@ -127,39 +133,39 @@ TaskPlex will guide you through a 7-checkpoint interactive wizard:
 
 ---
 
-## Knowledge Architecture
+## Smart Scaffold Knowledge Architecture (v2.0)
 
 <p align="center">
-  <img src="./assets/taskplex-knowledge-architecture.png" alt="Three-Layer Knowledge Architecture" width="800" />
+  <img src="./assets/taskplex-knowledge-architecture.png" alt="Smart Scaffold Knowledge Architecture v2.0" width="800" />
 </p>
 
-TaskPlex uses a three-layer system to manage knowledge across agent spawns:
+TaskPlex uses a three-layer system with SQLite-backed persistence and hook-based context injection:
 
 ### Layer 1: Operational Log (`progress.txt`)
 
 Orchestrator-only. Compact timestamped entries tracking story lifecycle events. Agents never read or write this file.
 
-```
-[14:32] story-1 START
-[14:45] story-1 COMPLETE (learnings extracted)
-[14:45] story-2 START
-[14:52] story-2 FAIL (test_failure, retry 1/2)
-```
+### Layer 2: SQLite Knowledge Store (`knowledge.db`)
 
-### Layer 2: Project Knowledge Base (`knowledge.md`)
+Five tables with automatic confidence decay (5%/day — stale learnings expire after ~30 days):
+- **learnings** — codebase patterns and conventions extracted from agent output
+- **error_history** — categorized errors with resolution tracking
+- **decisions** — per-story decision call results (action, model, effort)
+- **file_patterns** — discovered file conventions
+- **runs** — execution lifecycle tracking
 
-Orchestrator-curated. After each story, the orchestrator extracts `learnings` from the agent's structured output and appends them here. Sections: **Codebase Patterns**, **Environment Notes**, **Recent Learnings**. Capped at 100 lines with oldest-entry trimming.
+Auto-migrates from `knowledge.md` on first run (one-time, idempotent).
 
-### Layer 3: Per-Story Context Brief (ephemeral)
+### Layer 3: Hook-Based Context Injection
 
-Generated before each agent spawn. Contains:
+The **SubagentStart hook** (`inject-knowledge.sh`) automatically queries SQLite and injects into each agent:
 - Story details and acceptance criteria
 - `check_before_implementing` results (grep output)
 - Git diffs from dependency stories
-- Relevant entries from `knowledge.md`
-- Retry context (if retrying a failed story)
+- Relevant learnings from knowledge store
+- Error history and retry context
 
-Deleted after use. This is the bridge between persistent knowledge and fresh agent context.
+The **SubagentStop hook** (`validate-result.sh`) runs typecheck/build/test after each agent finishes. If validation fails, the agent is blocked (exit 2) and self-heals in the same session.
 
 ---
 
@@ -215,7 +221,12 @@ After first run, edit `.claude/taskplex.config.json`:
   "max_parallel": 3,
   "worktree_dir": "",
   "worktree_setup_command": "",
-  "conflict_strategy": "abort"
+  "conflict_strategy": "abort",
+  "decision_calls": true,
+  "decision_model": "opus",
+  "knowledge_db": "knowledge.db",
+  "validate_on_stop": true,
+  "model_routing": "auto"
 }
 ```
 
@@ -238,6 +249,11 @@ After first run, edit `.claude/taskplex.config.json`:
 | `worktree_dir` | — | Custom worktree base directory (default: `../.worktrees`) |
 | `worktree_setup_command` | — | Command run in each new worktree (e.g., `npm install`) |
 | `conflict_strategy` | abort | `abort` (skip on conflict) or `merger` (invoke merger agent) |
+| `decision_calls` | true | Enable 1-shot decision calls per story (~$0.03/story) |
+| `decision_model` | opus | Model for decision calls |
+| `knowledge_db` | knowledge.db | SQLite knowledge store path |
+| `validate_on_stop` | true | Enable SubagentStop inline validation |
+| `model_routing` | auto | `auto` (decision call picks) or `fixed` (use execution_model) |
 
 **Model selection:**
 - **Opus 4.6 (high effort)**: Best code quality, deepest reasoning
@@ -273,7 +289,7 @@ OAuth is used when available, with automatic fallback to API key.
 | `prd.json` | Task list with execution status (source of truth) |
 | `tasks/prd-*.md` | Human-readable PRD |
 | `progress.txt` | Operational log (orchestrator-only) |
-| `knowledge.md` | Curated project knowledge base |
+| `knowledge.db` | SQLite knowledge store (v2.0 — replaces knowledge.md) |
 | `.claude/taskplex.config.json` | Configuration |
 
 ---
@@ -318,14 +334,16 @@ git log --oneline -10
 
 TaskPlex is a **next-generation rewrite** of SDK Bridge with:
 
-- **Custom subagents** replace monolithic `claude -p` calls — each agent has restricted tools and a right-sized model
+- **Smart Scaffold intelligence** (v2.0) — 1-shot decision calls, SQLite knowledge store, hook-based context injection, inline validation with self-healing
+- **Model routing** (v2.0) — decision call picks haiku/sonnet/opus per story based on complexity and error history
+- **SubagentStart/Stop hooks** (v2.0) — automatic context injection and inline validation replace manual flows
+- **Custom subagents** — purpose-built agents with restricted tools and right-sized models
 - **Error categorization** with intelligent retry/skip decisions (6 error categories)
-- **Three-layer knowledge architecture** — operational log, curated knowledge base, ephemeral context briefs
+- **SQLite knowledge store** with confidence decay, error tracking, and decision history
 - **Structured agent output** with learnings extraction, per-AC results, and retry hints
 - **Dependency-aware execution** with enforced ordering and dependency diffs
 - **Quality gate hooks** blocking destructive git commands during implementation
-- **JSON configuration** replacing YAML frontmatter
-- **Wave-based parallel execution** (v1.2) — independent stories run simultaneously in git worktrees with automatic merge and knowledge propagation
+- **Wave-based parallel execution** (v1.2) — independent stories run simultaneously in git worktrees
 
 ---
 
