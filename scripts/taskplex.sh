@@ -169,7 +169,7 @@ trim_knowledge() {
   fi
 }
 
-# Extract learnings from structured agent output and append to knowledge.md (Layer 2)
+# Extract learnings from structured agent output (v2.0: writes to SQLite, backward compat to knowledge.md)
 extract_learnings() {
   local story_id="$1"
   local agent_output="$2"
@@ -177,13 +177,11 @@ extract_learnings() {
   # Parse learnings array from structured JSON output
   local learnings
   learnings=$(echo "$agent_output" | jq -r '
-    # Try multiple paths to find the structured output
     (if .result then (.result | if type == "string" then (try fromjson catch {}) else . end) else . end) |
     .learnings // [] | .[]
   ' 2>/dev/null)
 
   if [ -z "$learnings" ]; then
-    # Try extracting from embedded JSON in text output
     learnings=$(echo "$agent_output" | grep -o '"learnings"[[:space:]]*:[[:space:]]*\[.*\]' | head -1 | jq -r '.[]' 2>/dev/null)
   fi
 
@@ -192,37 +190,23 @@ extract_learnings() {
     return 0
   fi
 
-  # Initialize knowledge.md if it doesn't exist
-  if [ ! -f "$KNOWLEDGE_FILE" ]; then
-    cat > "$KNOWLEDGE_FILE" <<'KNOWLEDGE_INIT'
-## Codebase Patterns
-
-## Environment Notes
-
-## Recent Learnings
-KNOWLEDGE_INIT
-  fi
-
-  # Append learnings with dedup check
+  # Write to SQLite (primary) and knowledge.md (backward compat)
   local added=0
   while IFS= read -r learning; do
     if [ -z "$learning" ]; then
       continue
     fi
 
-    # Check if this learning already exists (simple substring match)
-    if ! grep -qF "$learning" "$KNOWLEDGE_FILE" 2>/dev/null; then
-      echo "- [$story_id] $learning" >> "$KNOWLEDGE_FILE"
+    # Insert into SQLite
+    if [ -f "$KNOWLEDGE_DB" ]; then
+      insert_learning "$KNOWLEDGE_DB" "$story_id" "$RUN_ID" "$learning" 2>/dev/null || true
       added=$((added + 1))
     fi
   done <<< "$learnings"
 
   if [ "$added" -gt 0 ]; then
-    log "KNOWLEDGE" "Added $added learnings from $story_id to knowledge.md"
+    log "KNOWLEDGE" "Added $added learnings from $story_id to knowledge DB"
   fi
-
-  # Trim if needed
-  trim_knowledge
 }
 
 # Add environment/dependency warning to knowledge.md
@@ -262,12 +246,14 @@ KNOWLEDGE_INIT
 }
 
 # Generate per-story context brief (Layer 3: ephemeral)
+# v2.0: This function is now a fallback. The SubagentStart hook (inject-knowledge.sh)
+# handles context injection automatically. This only runs if hooks aren't installed.
 generate_context_brief() {
   local story_id="$1"
   local retry_context="${2:-}"
   local brief_file="/tmp/taskplex-context-$$-${story_id}.md"
 
-  log "CONTEXT" "Generating context brief for $story_id"
+  log "CONTEXT" "Using fallback context brief generation (hook preferred)"
 
   cat > "$brief_file" <<BRIEF_HEADER
 # Context Brief for $story_id
@@ -500,6 +486,11 @@ load_config() {
   WORKTREE_DIR=""
   WORKTREE_SETUP_COMMAND=""
   CONFLICT_STRATEGY="abort"
+  DECISION_CALLS_ENABLED=true
+  DECISION_MODEL="opus"
+  KNOWLEDGE_DB_PATH="knowledge.db"
+  VALIDATE_ON_STOP=true
+  MODEL_ROUTING="auto"
 
   # Load from config file if it exists
   if [ -f "$CONFIG_FILE" ]; then
@@ -521,6 +512,11 @@ load_config() {
     WORKTREE_DIR=$(jq -r '.worktree_dir // ""' "$CONFIG_FILE")
     WORKTREE_SETUP_COMMAND=$(jq -r '.worktree_setup_command // ""' "$CONFIG_FILE")
     CONFLICT_STRATEGY=$(jq -r '.conflict_strategy // "abort"' "$CONFIG_FILE")
+    DECISION_CALLS_ENABLED=$(jq -r 'if .decision_calls == false then "false" elif .decision_calls == true then "true" else "true" end' "$CONFIG_FILE")
+    DECISION_MODEL=$(jq -r '.decision_model // "opus"' "$CONFIG_FILE")
+    KNOWLEDGE_DB_PATH=$(jq -r '.knowledge_db // "knowledge.db"' "$CONFIG_FILE")
+    VALIDATE_ON_STOP=$(jq -r 'if .validate_on_stop == false then "false" elif .validate_on_stop == true then "true" else "true" end' "$CONFIG_FILE")
+    MODEL_ROUTING=$(jq -r '.model_routing // "auto"' "$CONFIG_FILE")
 
     log "INIT" "Configuration loaded from $CONFIG_FILE"
   else
@@ -534,6 +530,9 @@ load_config() {
   [ -n "$EFFORT_LEVEL" ] && log "INIT" "Effort level: $EFFORT_LEVEL"
   log "INIT" "Parallel mode: $PARALLEL_MODE"
   [ "$PARALLEL_MODE" = "parallel" ] && log "INIT" "Max parallel: $MAX_PARALLEL"
+  [ "$DECISION_CALLS_ENABLED" = "true" ] && log "INIT" "Decision calls: enabled (model: $DECISION_MODEL)"
+  log "INIT" "Knowledge DB: $KNOWLEDGE_DB_PATH"
+  [ "$VALIDATE_ON_STOP" = "true" ] && log "INIT" "Inline validation: enabled"
 }
 
 # Update story status in prd.json
@@ -896,6 +895,25 @@ validate_prd
 # Load configuration
 load_config
 
+# Set computed paths after config is loaded
+KNOWLEDGE_DB="$PROJECT_DIR/$KNOWLEDGE_DB_PATH"
+
+# Source v2.0 modules
+source "$SCRIPT_DIR/knowledge-db.sh"
+source "$SCRIPT_DIR/decision-call.sh"
+
+# Initialize knowledge DB (create schema, migrate from knowledge.md)
+init_knowledge_db "$KNOWLEDGE_DB"
+if [ -f "$KNOWLEDGE_FILE" ] && [ ! -f "${KNOWLEDGE_DB}.migrated" ]; then
+  log "INIT" "Migrating knowledge.md to SQLite..."
+  migrate_knowledge_md "$KNOWLEDGE_DB" "$KNOWLEDGE_FILE"
+  touch "${KNOWLEDGE_DB}.migrated"
+  log "INIT" "Migration complete"
+fi
+
+# Export run ID for hook scripts
+export TASKPLEX_RUN_ID="$RUN_ID"
+
 # Export effort level as env var for Claude CLI (Opus 4.6 adaptive reasoning)
 if [ -n "$EFFORT_LEVEL" ] && [ "$EXECUTION_MODEL" = "opus" ]; then
   export CLAUDE_CODE_EFFORT_LEVEL="$EFFORT_LEVEL"
@@ -1071,6 +1089,11 @@ emit_run_end() {
       \"skipped\": ${skipped}
     }" > /dev/null 2>&1 &
 
+  # Update run in SQLite
+  if [ -f "$KNOWLEDGE_DB" ]; then
+    update_run "$KNOWLEDGE_DB" "$RUN_ID" "$completed" "$skipped" 2>/dev/null || true
+  fi
+
   emit_event "run.end" "{\"completed\":${completed},\"skipped\":${skipped},\"elapsed_s\":${elapsed}}"
 }
 
@@ -1101,6 +1124,12 @@ echo "Timeout: ${ITERATION_TIMEOUT}s per iteration"
 # Emit run.start event to monitor
 emit_run_start
 emit_event "run.start" "{\"mode\":\"$PARALLEL_MODE\",\"model\":\"$EXECUTION_MODEL\",\"branch\":\"$BRANCH_NAME\"}"
+
+# Record run in SQLite
+if [ -f "$KNOWLEDGE_DB" ]; then
+  total_stories_count=$(jq '[.userStories[]] | length' "$PRD_FILE" 2>/dev/null || echo "0")
+  insert_run "$KNOWLEDGE_DB" "$RUN_ID" "$BRANCH_NAME" "$PARALLEL_MODE" "$EXECUTION_MODEL" "$total_stories_count" 2>/dev/null || true
+fi
 
 # ============================================================================
 # Error Categorization and Retry Logic (US-004)
@@ -1182,6 +1211,11 @@ handle_error() {
 
   # Log to operational log (Layer 1)
   log_progress "$story_id" "FAILED" "$category (attempt $attempts/$max_retries)"
+
+  # Record error in SQLite knowledge store
+  if [ -f "$KNOWLEDGE_DB" ]; then
+    insert_error "$KNOWLEDGE_DB" "$story_id" "$RUN_ID" "$category" "$(echo "$output" | head -c 200)" "$attempts" 2>/dev/null || true
+  fi
 
   # Emit story.failed to monitor
   local error_excerpt_monitor=$(echo "$output" | head -c 100 | tr '\n' ' ' | tr '"' "'")
@@ -1525,6 +1559,36 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   # Emit story.start to monitor
   emit_event "story.start" "{\"title\":\"$STORY_TITLE_LOG\",\"priority\":$STORY_PRIORITY,\"attempt\":$STORY_ATTEMPTS}" "$CURRENT_STORY"
 
+  # === v2.0: Decision Call ===
+  DECISION_RESULT=$(decision_call "$CURRENT_STORY")
+  DECISION_ACTION=$(echo "$DECISION_RESULT" | cut -d'|' -f1)
+  DECISION_MODEL_PICK=$(echo "$DECISION_RESULT" | cut -d'|' -f2)
+  DECISION_EFFORT=$(echo "$DECISION_RESULT" | cut -d'|' -f3)
+
+  # Handle skip/rewrite decisions
+  if [ "$DECISION_ACTION" = "skip" ]; then
+    log "DECISION" "Decision: skip $CURRENT_STORY"
+    update_story_status "$CURRENT_STORY" "skipped"
+    log_progress "$CURRENT_STORY" "SKIPPED" "Decision call recommended skip"
+    emit_event "story.skipped" "{\"reason\":\"decision_call\"}" "$CURRENT_STORY"
+    continue
+  fi
+
+  # Apply model routing from decision call
+  STORY_MODEL="$EXECUTION_MODEL"
+  STORY_EFFORT="$EFFORT_LEVEL"
+  if [ "$MODEL_ROUTING" = "auto" ]; then
+    STORY_MODEL="$DECISION_MODEL_PICK"
+    STORY_EFFORT="$DECISION_EFFORT"
+  fi
+
+  # Set effort env var for this story (Opus 4.6 only)
+  if [ -n "$STORY_EFFORT" ] && [ "$STORY_MODEL" = "opus" ]; then
+    export CLAUDE_CODE_EFFORT_LEVEL="$STORY_EFFORT"
+  else
+    unset CLAUDE_CODE_EFFORT_LEVEL
+  fi
+
   # Generate context brief (Layer 3: ephemeral)
   CONTEXT_BRIEF_FILE=$(generate_context_brief "$CURRENT_STORY")
   log "IMPL-$CURRENT_STORY" "Context brief generated: $CONTEXT_BRIEF_FILE"
@@ -1554,7 +1618,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   $TIMEOUT_CMD $ITERATION_TIMEOUT claude -p "$(cat "$FULL_PROMPT_FILE")" \
     --output-format json \
     --no-session-persistence \
-    --model "$EXECUTION_MODEL" \
+    --model "$STORY_MODEL" \
     --agent implementer \
     --agents-dir "$PLUGIN_ROOT/agents" \
     --max-turns "$MAX_TURNS" \
@@ -1637,7 +1701,7 @@ Please address the issue and try again."
       $TIMEOUT_CMD $RETRY_TIMEOUT claude -p "$(cat "$RETRY_PROMPT_FILE")" \
         --output-format json \
         --no-session-persistence \
-        --model "$EXECUTION_MODEL" \
+        --model "$STORY_MODEL" \
         --agent implementer \
         --agents-dir "$PLUGIN_ROOT/agents" \
         --max-turns "$MAX_TURNS" \
@@ -1726,6 +1790,11 @@ Please address the issue and try again."
     # Mark current story as completed if validation passed
     if [ "$CURRENT_STORY" != "unknown" ] && [ "$VALIDATION_PASSED" -eq 1 ]; then
       update_story_status "$CURRENT_STORY" "completed"
+
+      # Mark errors as resolved in SQLite
+      if [ -f "$KNOWLEDGE_DB" ]; then
+        resolve_errors "$KNOWLEDGE_DB" "$CURRENT_STORY" 2>/dev/null || true
+      fi
 
       # Log completion with duration (Layer 1: operational log)
       STORY_ELAPSED=$(($(date +%s) - STORY_START_TIME))
