@@ -324,6 +324,23 @@ For monitor:
 - "Yes — open dashboard" → launch monitor before execution
 - "No — skip monitor" → skip monitor launch
 
+**After monitor question, ask about v2.0 intelligence features:**
+
+Use AskUserQuestion:
+
+Question: "Enable Smart Scaffold intelligence features? (decision calls cost ~$0.03/story via Opus)"
+- Header: "Intelligence"
+- multiSelect: false
+- Options:
+  - Label: "Full intelligence (Recommended)" | Description: "Decision calls + knowledge store + inline validation — ~$0.03/story overhead"
+  - Label: "Knowledge store only" | Description: "SQLite knowledge + inline validation, no decision calls — $0 overhead"
+  - Label: "Classic mode" | Description: "Exact v1.2.1 behavior — no decision calls, no inline validation, no SQLite"
+
+For intelligence:
+- "Full intelligence" → decision_calls: true, validate_on_stop: true, model_routing: "auto"
+- "Knowledge store only" → decision_calls: false, validate_on_stop: true, model_routing: "fixed"
+- "Classic mode" → decision_calls: false, validate_on_stop: false, model_routing: "fixed"
+
 Create config file at `.claude/taskplex.config.json` (must be valid JSON — `jq` parses it):
 ```json
 {
@@ -336,11 +353,16 @@ Create config file at `.claude/taskplex.config.json` (must be valid JSON — `jq
   "parallel_mode": "[sequential or parallel from Q5]",
   "max_parallel": [3 or 5 from Q5],
   "worktree_setup_command": "[from Q5 follow-up]",
-  "conflict_strategy": "abort"
+  "conflict_strategy": "abort",
+  "decision_calls": "[from intelligence question]",
+  "decision_model": "opus",
+  "knowledge_db": "knowledge.db",
+  "validate_on_stop": "[from intelligence question]",
+  "model_routing": "[from intelligence question]"
 }
 ```
 
-Example (8 stories, avg 4 criteria each, parallel mode):
+Example (8 stories, avg 4 criteria each, parallel mode, full intelligence):
 ```json
 {
   "max_iterations": 20,
@@ -352,7 +374,12 @@ Example (8 stories, avg 4 criteria each, parallel mode):
   "parallel_mode": "parallel",
   "max_parallel": 3,
   "worktree_setup_command": "npm install",
-  "conflict_strategy": "abort"
+  "conflict_strategy": "abort",
+  "decision_calls": true,
+  "decision_model": "opus",
+  "knowledge_db": "knowledge.db",
+  "validate_on_stop": true,
+  "model_routing": "auto"
 }
 ```
 
