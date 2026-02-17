@@ -9,6 +9,20 @@
     },
     {
       "event": "SubagentStart",
+      "matcher": "implementer|validator",
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-knowledge.sh",
+      "description": "Inject knowledge store context into agent spawn"
+    },
+    {
+      "event": "SubagentStop",
+      "matcher": "implementer",
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-result.sh",
+      "description": "Inline validation — block agent if checks fail"
+    },
+    {
+      "event": "SubagentStart",
       "type": "command",
       "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"agent_name\": \"'\"$AGENT_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-start.sh",
       "async": true,
