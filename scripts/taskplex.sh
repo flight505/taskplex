@@ -884,6 +884,61 @@ EOF
 EOF
   fi
 
+  # === v2.0: SQLite Knowledge Store Statistics ===
+  if [ -f "$KNOWLEDGE_DB" ]; then
+    cat >> "$report_file" <<EOF
+
+## Intelligence Report (v2.0)
+EOF
+
+    # Decision breakdown
+    local decision_count
+    decision_count=$(sqlite3 "$KNOWLEDGE_DB" "SELECT COUNT(*) FROM decisions WHERE run_id = '$RUN_ID';" 2>/dev/null || echo "0")
+    if [ "$decision_count" -gt 0 ]; then
+      cat >> "$report_file" <<EOF
+
+### Decision Calls
+- Total decisions: $decision_count
+EOF
+      sqlite3 "$KNOWLEDGE_DB" "
+        SELECT action, model, COUNT(*) as count
+        FROM decisions WHERE run_id = '$RUN_ID'
+        GROUP BY action, model ORDER BY count DESC;
+      " 2>/dev/null | while IFS='|' read -r action model count; do
+        echo "- $action ($model): $count" >> "$report_file"
+      done
+    fi
+
+    # Learnings
+    local learning_count
+    learning_count=$(sqlite3 "$KNOWLEDGE_DB" "SELECT COUNT(*) FROM learnings WHERE run_id = '$RUN_ID';" 2>/dev/null || echo "0")
+    local active_learnings
+    active_learnings=$(sqlite3 "$KNOWLEDGE_DB" "SELECT COUNT(*) FROM learnings WHERE ROUND(confidence * POWER(0.95, julianday('now') - julianday(created_at)), 3) > 0.3;" 2>/dev/null || echo "0")
+    cat >> "$report_file" <<EOF
+
+### Knowledge Store
+- Learnings extracted this run: $learning_count
+- Total active learnings: $active_learnings
+EOF
+
+    # Error patterns
+    local error_count
+    error_count=$(sqlite3 "$KNOWLEDGE_DB" "SELECT COUNT(*) FROM error_history WHERE run_id = '$RUN_ID';" 2>/dev/null || echo "0")
+    if [ "$error_count" -gt 0 ]; then
+      cat >> "$report_file" <<EOF
+
+### Error Patterns
+EOF
+      sqlite3 "$KNOWLEDGE_DB" "
+        SELECT category, COUNT(*) as count, SUM(resolved) as resolved
+        FROM error_history WHERE run_id = '$RUN_ID'
+        GROUP BY category ORDER BY count DESC;
+      " 2>/dev/null | while IFS='|' read -r category count resolved; do
+        echo "- $category: $count total, $resolved resolved" >> "$report_file"
+      done
+    fi
+  fi
+
   log "INIT" "Completion report generated: $report_file"
   echo ""
   echo "📝 Report generated: $report_file"
