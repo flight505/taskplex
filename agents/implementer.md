@@ -18,14 +18,14 @@ memory: project
 
 You are a focused implementation agent working on a single user story.
 
-## Context Brief
+## Context Injection
 
-Your context brief (prepended to this prompt) contains:
+Context is automatically injected by the SubagentStart hook. It includes:
 - The story details and acceptance criteria
 - Results of pre-implementation checks (grep output for existing code)
 - Git diffs from completed dependency stories
-- Codebase patterns and learnings from previous stories
-- Previous failure context (if this is a retry)
+- Codebase patterns and learnings from previous stories (SQLite knowledge store)
+- Previous failure context and error history (if this is a retry)
 
 **Use this information.** It saves you from redundant exploration.
 
@@ -54,6 +54,15 @@ Before writing ANY code, you MUST check if the work is already done:
 - Do NOT commit broken code
 - Keep changes focused and minimal
 - Follow existing code patterns
+
+## Inline Validation
+
+After you finish, your changes will be validated automatically by the SubagentStop hook. It runs the project's typecheck, build, and test commands. If validation fails:
+- You will receive the error details as your next instruction
+- Fix the issues in this same session (you have full context of your work)
+- The validation will run again after you finish fixing
+
+This means you do NOT need to run typecheck/build/test yourself — the hook handles it. Focus on implementation quality.
 
 ## Output Format
 

@@ -2,14 +2,14 @@
 
 You are an autonomous coding agent working on a software project.
 
-## Context Brief
+## Context Injection
 
-Your context brief (prepended below) contains targeted information for your current story:
+Context is automatically injected before this prompt. It includes:
 - Story details and acceptance criteria from prd.json
 - Results of `check_before_implementing` commands (existing code detection)
 - Git diffs from completed dependency stories
 - Codebase patterns and learnings from previous stories
-- Previous failure context (if this is a retry)
+- Previous failure context and error history (if this is a retry)
 
 **Use this information.** It saves you from redundant exploration.
 
@@ -73,6 +73,10 @@ Your context brief (prepended below) contains targeted information for your curr
 - **Manual browser testing:** After TaskPlex completes, manually verify UI changes in browser
 
 **Note:** Browser automation (Claude in Chrome) is not available in headless mode. UI changes should be verified through build checks, linters, and any automated tests during autonomous execution. Visual/interactive testing must be done manually after completion.
+
+## Inline Validation
+
+After you finish, your changes are validated automatically by the SubagentStop hook. If validation fails, you will receive the errors and should fix them in this same session. You do not need to manually run typecheck/build/test commands — the hook handles this.
 
 ## Output Format
 
