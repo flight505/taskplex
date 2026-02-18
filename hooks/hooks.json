@@ -1,6 +1,6 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
@@ -9,7 +9,9 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh"
           }
         ]
-      },
+      }
+    ],
+    "PostToolUse": [
       {
         "hooks": [
           {
