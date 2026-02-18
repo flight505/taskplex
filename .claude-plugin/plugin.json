@@ -32,5 +32,6 @@
     "./agents/validator.md",
     "./agents/reviewer.md",
     "./agents/merger.md"
-  ]
+  ],
+  "hooks": "./hooks/hooks.json"
 }

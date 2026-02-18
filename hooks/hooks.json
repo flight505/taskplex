@@ -1,60 +1,86 @@
 {
-  "hooks": [
-    {
-      "event": "PostToolUse",
-      "matcher": "Bash",
-      "type": "command",
-      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh \"$TOOL_INPUT\"",
-      "description": "Block destructive git commands during implementation"
-    },
-    {
-      "event": "SubagentStart",
-      "matcher": "implementer|validator",
-      "type": "command",
-      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-knowledge.sh",
-      "description": "Inject knowledge store context into agent spawn"
-    },
-    {
-      "event": "SubagentStop",
-      "matcher": "implementer",
-      "type": "command",
-      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-result.sh",
-      "description": "Inline validation — block agent if checks fail"
-    },
-    {
-      "event": "SubagentStart",
-      "type": "command",
-      "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"agent_name\": \"'\"$AGENT_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-start.sh",
-      "async": true,
-      "description": "Monitor: track subagent spawn events"
-    },
-    {
-      "event": "SubagentStop",
-      "type": "command",
-      "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"agent_name\": \"'\"$AGENT_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-stop.sh",
-      "async": true,
-      "description": "Monitor: track subagent completion events"
-    },
-    {
-      "event": "PostToolUse",
-      "type": "command",
-      "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"tool_name\": \"'\"$TOOL_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/post-tool-use.sh",
-      "async": true,
-      "description": "Monitor: track tool usage for agent behavior analysis"
-    },
-    {
-      "event": "SessionStart",
-      "type": "command",
-      "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.start",
-      "async": true,
-      "description": "Monitor: track session start"
-    },
-    {
-      "event": "SessionEnd",
-      "type": "command",
-      "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.end",
-      "async": true,
-      "description": "Monitor: track session end"
-    }
-  ]
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh \"$TOOL_INPUT\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"tool_name\": \"'\"$TOOL_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/post-tool-use.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "implementer|validator",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-knowledge.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"agent_name\": \"'\"$AGENT_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-start.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "implementer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-result.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"agent_name\": \"'\"$AGENT_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-stop.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.start",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.end",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
 }
