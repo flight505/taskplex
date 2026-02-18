@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useWebSocket } from "@/composables/useWebSocket";
 import { useApi } from "@/composables/useApi";
 import type { Run, RunSummary, StoryTimelineEntry } from "@/types";
@@ -45,19 +45,21 @@ async function loadRunData(runId: string) {
   }
 }
 
-// Reload data when run changes
-watch(selectedRunId, (id) => { if (id) loadRunData(id); });
-
-// Reload data periodically while run is active (every 5s)
+// Reload data when run changes + auto-refresh every 5s
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 watch(selectedRunId, (id) => {
   if (refreshTimer) clearInterval(refreshTimer);
   if (id) {
+    loadRunData(id);
     refreshTimer = setInterval(() => {
       loadRunData(id);
     }, 5000);
+  } else {
+    summary.value = null;
+    stories.value = [];
   }
 }, { immediate: true });
+onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 
 // Auto-select new run when received via WebSocket
 watch(latestRun, (run) => {
