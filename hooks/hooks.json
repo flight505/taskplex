@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh \"$TOOL_INPUT\""
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh"
           }
         ]
       },
@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"tool_name\": \"'\"$TOOL_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/post-tool-use.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/monitor/hooks/post-tool-use.sh",
             "async": true
           }
         ]
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"agent_name\": \"'\"$AGENT_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-start.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-start.sh",
             "async": true
           }
         ]
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\", \"agent_name\": \"'\"$AGENT_NAME\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-stop.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/monitor/hooks/subagent-stop.sh",
             "async": true
           }
         ]
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.start",
+            "command": "${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.start",
             "async": true
           }
         ]
@@ -76,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"session_id\": \"'\"$SESSION_ID\"'\"}' | ${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.end",
+            "command": "${CLAUDE_PLUGIN_ROOT}/monitor/hooks/session-lifecycle.sh session.end",
             "async": true
           }
         ]

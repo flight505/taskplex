@@ -1,8 +1,15 @@
 #!/bin/bash
 # TaskPlex - Block destructive git commands during implementation
 # Used as a PostToolUse hook for Bash commands
+# Reads hook JSON from stdin, extracts the command, checks for destructive ops
 
-INPUT="$1"
+# Read hook input from stdin and extract the bash command
+INPUT=$(cat | jq -r '.tool_input.command // ""' 2>/dev/null)
+
+# If no command found, allow
+if [ -z "$INPUT" ]; then
+  exit 0
+fi
 
 # Check for destructive git operations
 # Covers: git push --force / -f, git reset --hard, git clean -f (any flag combo with f)
