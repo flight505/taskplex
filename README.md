@@ -4,7 +4,7 @@
   <img src="./assets/TaskPlex_Hero@0.5x.png" alt="TaskPlex - Parallel Autonomous Dev Assistant" width="800" />
 </p>
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/flight505/taskplex)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/flight505/taskplex)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://github.com/anthropics/claude-code)
 
