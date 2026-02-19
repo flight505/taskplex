@@ -6,7 +6,12 @@ tools:
   - Read
   - Glob
   - Grep
+disallowedTools:
+  - Write
+  - Edit
+  - Task
 model: haiku
+maxTurns: 50
 memory: project
 ---
 

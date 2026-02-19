@@ -11,6 +11,7 @@ tools:
 disallowedTools:
   - Task
 model: inherit
+maxTurns: 150
 memory: project
 hooks:
   PreToolUse:

@@ -5,7 +5,13 @@ tools:
   - Read
   - Glob
   - Grep
+disallowedTools:
+  - Write
+  - Edit
+  - Bash
+  - Task
 model: sonnet
+maxTurns: 30
 ---
 
 # PRD Reviewer Agent

@@ -11,6 +11,17 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/monitor/hooks/post-tool-use-failure.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
     "SubagentStart": [
       {
         "matcher": "implementer",

@@ -167,6 +167,19 @@ TaskPlex uses a three-layer system for knowledge management:
 
 **Layer 3: Per-Story Context Brief (ephemeral)** — Generated before each agent spawn. Contains story details, `check_before_implementing` results, git diffs from dependency stories, relevant knowledge from `knowledge.md`, and retry context. Passed to the agent via the prompt. Deleted after use.
 
+### Memory vs Knowledge Precedence (v2.0)
+
+Agents receive context from two sources that may overlap:
+
+| Source | Mechanism | Persistence | Scope |
+|--------|-----------|-------------|-------|
+| `memory: project` (agent frontmatter) | Claude Code built-in project memory | Cross-session, never expires | All agents with `memory: project` share the same store |
+| SQLite knowledge injection (`inject-knowledge.sh`) | SubagentStart hook queries `knowledge.db` | 5%/day confidence decay (~30 day half-life) | Per-story, filtered by file patterns and relevance |
+
+**Resolution:** SQLite injection takes precedence for implementation decisions because it is story-specific and decay-weighted. Project memory serves as a safety net for broad patterns that survive across runs (e.g., "this project uses pnpm not npm"). When both provide conflicting guidance, the fresher SQLite entry wins.
+
+**Why both exist:** Project memory is zero-config and captures patterns agents discover organically. SQLite injection is structured, queryable, and decays stale entries automatically. Removing either would lose a useful dimension.
+
 ---
 
 ## Key Features

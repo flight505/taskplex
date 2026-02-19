@@ -1,7 +1,7 @@
 ---
 description: "Start TaskPlex interactive wizard - generates PRD, converts to JSON, and runs resilient autonomous agent loop with dependency enforcement"
 argument-hint: ""
-allowed-tools: ["Bash", "Read", "Write", "Edit", "Task", "AskUserQuestion", "TodoWrite"]
+allowed-tools: Bash, Read, Write, Edit, Task, AskUserQuestion, TodoWrite
 ---
 
 # TaskPlex Start

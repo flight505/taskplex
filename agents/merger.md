@@ -6,6 +6,7 @@ tools:
   - Read
   - Grep
 model: haiku
+maxTurns: 50
 ---
 
 # Merger Agent

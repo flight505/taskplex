@@ -378,35 +378,73 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
 ## 10. Future Roadmap
 
-### Implemented in v2.0
+### Implemented (v2.0.0–v2.0.4)
 
 - SubagentStart/Stop hooks (knowledge injection, inline validation)
 - SQLite knowledge store with confidence decay
 - 1-shot Opus decision calls for model/effort routing
 - Auto-migration from `knowledge.md` to SQLite
+- `last_assistant_message` for learnings extraction (v2.0.3)
+- Agent-scoped PreToolUse hooks in implementer frontmatter (v2.0.3)
+- `context: fork` on PRD generation/conversion skills (v2.0.3)
+- Effort level tuning for per-story decision calls (v2.0.0)
+- Git repo bootstrap wizard with diagnostic script (v2.0.3)
 
-### Not Yet Implemented
+### Next Up: v2.1 — Agent Hardening + New Hook Events
 
-| Feature | Priority | Effort | Notes |
-|---------|----------|--------|-------|
-| Transcript mining | P2 | Medium | SubagentStop provides `agent_transcript_path`; spawn Haiku to extract implicit learnings |
-| Checkpoint resume | P2 | Low | Write checkpoint JSON after each story; resume on restart |
-| Live intervention via dashboard | P3 | Medium | REST endpoint for skip/hint/pause commands; orchestrator polls between stories |
-| Self-improving prompts | P3 | High | Cross-run analytics proposes `prompt.md` modifications |
-| Adaptive PRD rewriting | P2 | Medium | Orchestrator rewrites story criteria after repeated failures |
-| Code review agent | P3 | Medium | Review git diff before merge; new `code-reviewer` agent |
-| Dependency graph visualization | P3 | Low | Mermaid DAG in monitor dashboard |
-| Post-merge regression check | P2 | Low | Full test suite after merge; `git revert` on regression |
-| Preemptive conflict detection | P2 | Low | Run `check_before_implementing` across all stories to auto-populate `related_to` |
-| Scope drift detection | P2 | Low | Compare git diff against expected file scope |
+**Batch 1: Quick wins (Low effort, unblocked)**
+
+| Feature | Effort | Impact | Details |
+|---------|--------|--------|---------|
+| Add `maxTurns` to all agents | Low | Medium | Safety net: prevent runaway agents. Recommend 150 for implementer, 50 for validator/merger, 30 for reviewer. |
+| Add `disallowedTools` to validator/reviewer | Low | Low | Defense-in-depth: `[Write, Edit, Task]` for validator, `[Write, Edit, Bash, Task]` for reviewer. |
+| `PostToolUseFailure` monitor hook | Low | Medium | New CLI event. Add to `hooks.json` → `monitor/hooks/post-tool-use-failure.sh`. Richer error tracking in dashboard (tool failures as distinct from successes). |
+| Fix `allowed-tools` format in start.md | Low | Low | Change from YAML array to comma-separated string per CLI docs: `allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Task, AskUserQuestion`. |
+| Document memory vs knowledge precedence | Low | Medium | Add section to CLAUDE.md: `memory: project` provides cross-run persistence; SQLite injection provides decay-weighted fresh context. SQLite takes precedence for recent learnings. |
+
+**Batch 2: Medium effort, high value**
+
+| Feature | Effort | Impact | Details |
+|---------|--------|--------|---------|
+| PreToolUse `additionalContext` per-edit | Medium | High | **Newly unblocked.** CLI docs confirm PreToolUse supports `additionalContext` output. Hook on `Edit`/`Write` to inject file-specific guidance (patterns, conventions, related code) from SQLite `file_patterns` table before each edit. |
+| Preload failure-analyzer via `skills` field | Medium | Medium | Agent frontmatter `skills:` preloads skill content into subagent context. Give implementer the failure-analyzer skill so it can self-diagnose errors without orchestrator intervention. |
+| `PreCompact` knowledge preservation | Medium | Medium | New CLI event. Save critical context to SQLite before compaction. Ensures long-running implementer agents don't lose project knowledge when context is compressed. |
+| Checkpoint resume | Low | High | Write checkpoint JSON after each story (`{story_id, status, attempt, timestamp}`). On restart, skip completed stories and resume from last in-progress. Currently reruns everything from scratch. |
+
+**Batch 3: Larger features**
+
+| Feature | Effort | Impact | Details |
+|---------|--------|--------|---------|
+| Transcript mining | Medium | Medium | SubagentStop provides `agent_transcript_path`. Spawn Haiku to extract implicit learnings (code patterns, environment quirks) not captured in structured output. |
+| Adaptive PRD rewriting | Medium | High | After 2 failed attempts, orchestrator rewrites story criteria via decision call. Splits oversized stories or adjusts acceptance criteria. |
+| Post-merge regression check | Low | Medium | Full test suite after merge to main. `git revert` on regression. Simple but high safety value. |
+| Scope drift detection | Low | Medium | Compare `git diff --stat` against expected files from story context. Flag unexpected file changes for review. |
+| Code review agent | Medium | Medium | New `code-reviewer.md` agent (model: sonnet). Review git diff before merge. Check for regressions, style violations, security issues. |
+| Live intervention via dashboard | Medium | Medium | REST endpoint for skip/hint/pause commands. Orchestrator polls between stories. Requires monitor server extension. |
+
+**Batch 4: Aspirational**
+
+| Feature | Effort | Impact | Details |
+|---------|--------|--------|---------|
+| Dependency graph visualization | Low | Low | Mermaid DAG in monitor dashboard. Nice-to-have. |
+| Self-improving prompts | High | High | Cross-run analytics proposes `prompt.md` modifications. Requires statistical significance across runs. |
+| `permissionMode` on agents | Low | Low | Use `permissionMode: bypassPermissions` in agent frontmatter instead of CLI flag `--dangerously-skip-permissions`. Cleaner invocation. Needs testing. |
 
 ### Blocked by Platform
 
-| Feature | Blocking Reason |
-|---------|----------------|
-| Agent Teams for parallel execution | Interactive-only. No headless API. Cannot be driven by `claude -p`. |
-| Configurable compaction | API-level only. Claude Code CLI exposes only `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`, not full compaction parameters. |
-| Persistent Opus orchestrator | Requires either API-direct orchestrator or CLI compaction support. Current Option C (decision calls) provides 80% of the benefit. |
+| Feature | Blocking Reason | Last Checked |
+|---------|----------------|--------------|
+| Agent Teams for parallel execution | Interactive-only. No headless API. Cannot be driven by `claude -p`. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` flag exists but only for interactive sessions. | 2026-02-19 |
+| Configurable compaction | API-level only. CLI exposes `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` but not full compaction parameters. | 2026-02-19 |
+| Per-agent effort level in frontmatter | No `effortLevel` field in agent frontmatter. Workaround: set `CLAUDE_CODE_EFFORT_LEVEL` env var per-invocation (already done). | 2026-02-19 |
+| `Task(agent_type)` selective restrictions | CLI supports `Task(type)` in `tools:` list but not in `disallowedTools:`. Cannot say "allow Task but only for validator type". Workaround: blanket `disallowedTools: [Task]`. | 2026-02-19 |
+
+### Resolved / No Longer Relevant
+
+| Item | Resolution |
+|------|-----------|
+| Memory vs knowledge injection overlap | Audited: overlap is intentional. `memory: project` provides cross-run persistence; SQLite provides decay-weighted fresh context. Document precedence rules in CLAUDE.md. |
+| Effort level tuning for decision calls | Implemented in v2.0.0. Decision call selects effort per-story; env var applied before each agent spawn. |
 
 ---
 
