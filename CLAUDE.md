@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 2.0.5** | Last Updated: 2026-02-19
+**Version 2.0.6** | Last Updated: 2026-02-19
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -33,6 +33,8 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - **v2.0:** Model routing: per-story haiku/sonnet/opus selection based on complexity
 - **v2.0:** Inline validation with agent self-healing (SubagentStop hook)
 - **v2.0.3:** Leverages CLI 2.1.47 features: `last_assistant_message`, agent frontmatter hooks, `context: fork` skills
+- **v2.0.5:** Agent hardening: `maxTurns`, `disallowedTools`, `PostToolUseFailure` hook, memory vs knowledge docs
+- **v2.0.6:** Per-edit context injection (`additionalContext`), failure-analyzer skill preload, `PreCompact` hook, checkpoint resume
 
 ---
 
@@ -545,6 +547,22 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v2.0.6 (2026-02-19)
+
+**v2.1 Batch 2 — Per-Edit Intelligence + Crash Recovery:**
+
+**Added:**
+- `hooks/inject-edit-context.sh` — PreToolUse hook on `Edit`/`Write` (agent-scoped in implementer). Queries SQLite `file_patterns` table and relevant learnings, injects file-specific guidance via `additionalContext` before each edit.
+- `hooks/pre-compact.sh` — PreCompact hook (matcher: `auto`). Saves current story state, git diff snapshot, and progress to SQLite + recovery JSON before context compaction. Preserves knowledge for long-running implementer agents.
+- Checkpoint resume in `scripts/taskplex.sh` — `recover_stuck_stories()` resets stuck `in_progress` stories to `pending` on startup (crash recovery). `write_checkpoint()` writes `.claude/taskplex-checkpoint.json` after each story state transition.
+- `scripts/knowledge-db.sh` — New helpers: `query_file_patterns()`, `insert_file_pattern()`, `save_compaction_snapshot()`.
+- `agents/implementer.md` — Added `skills: [failure-analyzer]` for self-diagnosis; added agent-scoped PreToolUse hook on `Edit|Write` for per-edit context injection.
+- Implementer agent docs: new "Per-Edit Context Injection" and "Self-Diagnosis" sections.
+
+**Changed:**
+- `hooks/hooks.json` — Added `PreCompact` hook entry (9 hooks total, was 8).
+- State files: added `.claude/taskplex-checkpoint.json` (crash recovery) and `.claude/taskplex-pre-compact.json` (compaction snapshot).
 
 ### v2.0.5 (2026-02-19)
 

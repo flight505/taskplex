@@ -1,6 +1,6 @@
 # TaskPlex Architecture
 
-**Version 2.0.5** | Last Updated: 2026-02-19
+**Version 2.0.6** | Last Updated: 2026-02-19
 
 Ground truth for TaskPlex's current design, implementation status, known issues, and roadmap. For component-level docs (config schema, agent frontmatter, skill details), see [CLAUDE.md](./CLAUDE.md).
 
@@ -21,7 +21,7 @@ TaskPlex is a resilient autonomous development assistant for Claude Code. A sing
 
 ---
 
-## 2. Current Architecture (v2.0.4)
+## 2. Current Architecture (v2.0.6)
 
 ### Component Structure
 
@@ -40,8 +40,10 @@ taskplex/
 │   ├── prd-converter/SKILL.md        # Markdown → JSON (context: fork)
 │   └── failure-analyzer/SKILL.md     # Error categorization and retry strategy
 ├── hooks/
-│   ├── hooks.json                    # Hook definitions (7 hooks across 5 events)
+│   ├── hooks.json                    # Hook definitions (9 hooks across 7 events)
 │   ├── inject-knowledge.sh           # SubagentStart: SQLite → additionalContext
+│   ├── inject-edit-context.sh        # PreToolUse Edit/Write: file patterns → additionalContext
+│   ├── pre-compact.sh               # PreCompact: saves story state before compaction
 │   └── validate-result.sh            # SubagentStop: uses last_assistant_message
 ├── scripts/
 │   ├── taskplex.sh                   # Main orchestration loop
@@ -121,11 +123,15 @@ User → /taskplex:start (wizard)
 INIT → TASK SELECTION → DECISION CALL → IMPLEMENTATION → VALIDATION → ERROR HANDLING → COMPLETION CHECK → loop
 ```
 
+**Crash recovery (v2.0.6):** On startup, `recover_stuck_stories()` resets any `in_progress` stories back to `pending` (preserving attempt counts). This handles cases where the orchestrator was killed mid-story.
+
 **Task selection:** Find all stories with `passes: false`, filter out those whose `depends_on` contains incomplete stories, filter out skipped stories, pick highest priority.
 
 **Decision call (v2.0):** A 1-shot Opus call selects model/effort per story based on complexity, error history, and knowledge store contents. Disabled with `decision_calls: false`.
 
-**Implementation:** Spawn implementer via Task tool. The SubagentStart hook injects context from SQLite. The agent codes the story and outputs structured JSON. The SubagentStop hook runs typecheck/build/test — if they fail, the agent continues in the same context to fix the issue (self-healing).
+**Implementation:** Spawn implementer via Task tool. The SubagentStart hook injects context from SQLite. Per-edit PreToolUse hooks inject file-specific patterns before each Edit/Write. The agent codes the story and outputs structured JSON. The SubagentStop hook runs typecheck/build/test — if they fail, the agent continues in the same context to fix the issue (self-healing). PreCompact hook preserves state if auto-compaction triggers mid-story.
+
+**Checkpoint (v2.0.6):** After each story state change (`in_progress`, `completed`, `skipped`), `write_checkpoint()` persists a JSON snapshot to `.claude/taskplex-checkpoint.json`.
 
 **Completion check:** All stories pass → optional merge. All remaining blocked → report. Max iterations → report.
 
@@ -207,16 +213,19 @@ Configured via `decision_calls` (bool, default true) and `decision_model` (strin
 
 ### Agent Definitions
 
-| Agent | Model | Tools | Memory | Purpose |
-|-------|-------|-------|--------|---------|
-| implementer | inherit | Bash, Read, Edit, Write, Glob, Grep | project | Code a single story |
-| validator | haiku | Bash, Read, Glob, Grep | project | Verify acceptance criteria |
-| reviewer | sonnet | Read, Glob, Grep | — | Review PRD quality |
-| merger | haiku | Bash, Read, Grep | — | Git branch operations |
+| Agent | Model | maxTurns | Tools | Skills | Memory | Purpose |
+|-------|-------|----------|-------|--------|--------|---------|
+| implementer | inherit | 150 | Bash, Read, Edit, Write, Glob, Grep | failure-analyzer | project | Code a single story |
+| validator | haiku | 50 | Bash, Read, Glob, Grep | — | project | Verify acceptance criteria |
+| reviewer | sonnet | 30 | Read, Glob, Grep | — | — | Review PRD quality |
+| merger | haiku | 50 | Bash, Read, Grep | — | — | Git branch operations |
 
 - `disallowedTools: [Task]` on implementer prevents subagent spawning
+- `disallowedTools: [Write, Edit, Task]` on validator enforces read-only
+- `disallowedTools: [Write, Edit, Bash, Task]` on reviewer enforces read-only
 - `model: inherit` means implementer uses the user's configured model
 - `memory: project` provides cross-run learning via `.claude/agent-memory/`
+- `skills: [failure-analyzer]` on implementer preloads error categorization for self-diagnosis
 
 ### Structured Output Schema
 
@@ -245,14 +254,17 @@ The orchestrator extracts `learnings` and writes them to the SQLite knowledge st
 
 ## 6. Hook System
 
-TaskPlex defines 7 hooks across 5 events in `hooks/hooks.json`, plus 1 agent-scoped hook in `implementer.md` frontmatter:
+TaskPlex defines 9 hooks across 7 events in `hooks/hooks.json`, plus 2 agent-scoped hooks in `implementer.md` frontmatter:
 
-### PreToolUse: Quality Gate (agent-scoped)
+### PreToolUse: Quality Gate + Per-Edit Context (agent-scoped)
 
 ```
 implementer.md frontmatter → Bash → check-destructive.sh
+implementer.md frontmatter → Edit|Write → inject-edit-context.sh
 ```
-Blocks: `git push --force`, `git reset --hard`, `git clean -f`, direct pushes to main/master. Defined in the implementer agent's YAML frontmatter (not in `hooks.json`), so it only runs during implementer agent lifecycle — not globally.
+**Quality gate:** Blocks `git push --force`, `git reset --hard`, `git clean -f`, direct pushes to main/master. Allows `--force-with-lease`.
+
+**Per-edit context (v2.0.6):** Queries SQLite `file_patterns` table and relevant learnings for the file being edited. Returns `additionalContext` with file-specific patterns and conventions before each Edit/Write. Both defined in implementer YAML frontmatter — only run during implementer lifecycle, not globally.
 
 ### SubagentStart: Knowledge Injection
 
@@ -268,14 +280,22 @@ implementer → validate-result.sh
 ```
 Extracts learnings from `last_assistant_message` (CLI 2.1.47) instead of grepping transcript files. Runs `typecheck_command`, `build_command`, `test_command` from config. If any fail, returns `{"decision": "block", "reason": "..."}` — the implementer continues in the same context with the error injected as feedback (self-healing). This eliminates most separate validator invocations.
 
+### PreCompact: Knowledge Preservation (v2.0.6)
+
+```
+auto → pre-compact.sh
+```
+Fires before auto-compaction. Saves current story state, git diff snapshot, and progress to SQLite via `save_compaction_snapshot()`. Also writes `.claude/taskplex-pre-compact.json` recovery file. Ensures long-running implementer agents don't lose project knowledge when context is compressed. Cannot block compaction (informational only).
+
 ### Monitor Event Hooks (async, fire-and-forget)
 
 ```
-SubagentStart  → monitor/hooks/subagent-start.sh
-SubagentStop   → monitor/hooks/subagent-stop.sh
-PostToolUse    → monitor/hooks/post-tool-use.sh
-SessionStart   → monitor/hooks/session-lifecycle.sh session.start
-SessionEnd     → monitor/hooks/session-lifecycle.sh session.end
+SubagentStart      → monitor/hooks/subagent-start.sh
+SubagentStop       → monitor/hooks/subagent-stop.sh
+PostToolUse        → monitor/hooks/post-tool-use.sh
+PostToolUseFailure → monitor/hooks/post-tool-use-failure.sh
+SessionStart       → monitor/hooks/session-lifecycle.sh session.start
+SessionEnd         → monitor/hooks/session-lifecycle.sh session.end
 ```
 
 All monitor hooks exit 0 regardless — the monitor being down never blocks Claude Code. All event emission is backgrounded (`&`) in the orchestrator.
@@ -343,7 +363,7 @@ A story is marked complete **only when validation passes** — not when the agen
 
 ---
 
-## 9. Known Issues & Fixes (v2.0.4)
+## 9. Known Issues & Fixes (v2.0.6)
 
 These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
