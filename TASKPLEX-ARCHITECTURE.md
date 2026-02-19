@@ -34,15 +34,15 @@ taskplex/
 │   ├── reviewer.md                   # Reviews PRD from specific angles (model: sonnet)
 │   └── merger.md                     # Git branch operations (model: haiku)
 ├── commands/
-│   └── start.md                      # 7-checkpoint interactive wizard
+│   └── start.md                      # 8-checkpoint interactive wizard
 ├── skills/
-│   ├── prd-generator/SKILL.md        # PRD creation with clarifying questions
-│   ├── prd-converter/SKILL.md        # Markdown → JSON with dependency inference
+│   ├── prd-generator/SKILL.md        # PRD creation (context: fork)
+│   ├── prd-converter/SKILL.md        # Markdown → JSON (context: fork)
 │   └── failure-analyzer/SKILL.md     # Error categorization and retry strategy
 ├── hooks/
-│   ├── hooks.json                    # All hook definitions (7 hooks across 5 events)
+│   ├── hooks.json                    # Hook definitions (7 hooks across 5 events)
 │   ├── inject-knowledge.sh           # SubagentStart: SQLite → additionalContext
-│   └── validate-result.sh            # SubagentStop: typecheck/build/test gate
+│   └── validate-result.sh            # SubagentStop: uses last_assistant_message
 ├── scripts/
 │   ├── taskplex.sh                   # Main orchestration loop
 │   ├── parallel.sh                   # Wave-based parallel execution (sourced conditionally)
@@ -50,6 +50,7 @@ taskplex/
 │   ├── knowledge-db.sh              # SQLite knowledge store helpers
 │   ├── decision-call.sh             # 1-shot Opus decision calls
 │   ├── check-deps.sh                # Dependency checker (claude, jq, coreutils)
+│   ├── check-git.sh                 # Git repo diagnostic (JSON output)
 │   └── check-destructive.sh         # PreToolUse: blocks dangerous git commands
 ├── monitor/
 │   ├── server/                       # Bun HTTP + WebSocket + SQLite server
@@ -64,9 +65,11 @@ taskplex/
 ```
 User → /taskplex:start (wizard)
          │
-         ├─ Checkpoint 1-5: PRD generation → prd.json
-         ├─ Checkpoint 6: Config (.claude/taskplex.config.json)
-         └─ Checkpoint 7: Launch taskplex.sh
+         ├─ Checkpoint 1: Gather project input
+         ├─ Checkpoint 2: Validate git repository (init/fix/bootstrap)
+         ├─ Checkpoint 3-6: PRD generation → prd.json
+         ├─ Checkpoint 7: Config (.claude/taskplex.config.json)
+         └─ Checkpoint 8: Launch taskplex.sh
                 │
                 ▼
          ┌─────────────────────────────────────┐
@@ -242,14 +245,14 @@ The orchestrator extracts `learnings` and writes them to the SQLite knowledge st
 
 ## 6. Hook System
 
-TaskPlex defines 7 hooks across 5 events in `hooks/hooks.json`:
+TaskPlex defines 7 hooks across 5 events in `hooks/hooks.json`, plus 1 agent-scoped hook in `implementer.md` frontmatter:
 
-### PreToolUse: Quality Gate
+### PreToolUse: Quality Gate (agent-scoped)
 
 ```
-Bash → check-destructive.sh
+implementer.md frontmatter → Bash → check-destructive.sh
 ```
-Blocks: `git push --force`, `git reset --hard`, `git clean -f`, direct pushes to main/master.
+Blocks: `git push --force`, `git reset --hard`, `git clean -f`, direct pushes to main/master. Defined in the implementer agent's YAML frontmatter (not in `hooks.json`), so it only runs during implementer agent lifecycle — not globally.
 
 ### SubagentStart: Knowledge Injection
 
@@ -263,7 +266,7 @@ Queries SQLite knowledge store for relevant learnings. Returns `additionalContex
 ```
 implementer → validate-result.sh
 ```
-Runs `typecheck_command`, `build_command`, `test_command` from config. If any fail, returns `{"decision": "block", "reason": "..."}` — the implementer continues in the same context with the error injected as feedback (self-healing). This eliminates most separate validator invocations.
+Extracts learnings from `last_assistant_message` (CLI 2.1.47) instead of grepping transcript files. Runs `typecheck_command`, `build_command`, `test_command` from config. If any fail, returns `{"decision": "block", "reason": "..."}` — the implementer continues in the same context with the error injected as feedback (self-healing). This eliminates most separate validator invocations.
 
 ### Monitor Event Hooks (async, fire-and-forget)
 
@@ -281,7 +284,7 @@ All monitor hooks exit 0 regardless — the monitor being down never blocks Clau
 
 ## 7. Monitor Dashboard
 
-Real-time browser dashboard for observing TaskPlex execution. Optional sidecar launched at Checkpoint 7.
+Real-time browser dashboard for observing TaskPlex execution. Optional sidecar launched at Checkpoint 8.
 
 ### Architecture
 
@@ -361,6 +364,7 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 | Story marked complete on COMPLETE signal | Must be tied to validation pass, not agent signal |
 | `commit_story` failure halts pipeline | Must be non-fatal: `commit_story ... \|\| log "WARN" "..."` |
 | Duplicate watcher timers in monitor | Merge watchers, add cleanup in `onUnmounted` |
+| `set -e` + `grep -c` returns exit 1 on zero matches | Use `\|\| true` instead of `\|\| echo 0` to prevent premature script exit |
 
 ---
 
@@ -402,7 +406,7 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 2.0.3 | 2026-02-18 | 10 orchestration bug fixes from real-world testing |
+| 2.0.3 | 2026-02-19 | CLI 2.1.47 adoption (last_assistant_message, agent-scoped hooks, context: fork), git repo bootstrap wizard |
 | 2.0.0 | 2026-02-17 | Smart Scaffold: SQLite knowledge store, decision calls, SubagentStart/Stop hooks, inline validation |
 | 1.2.1 | 2026-02-15 | Execution monitor sidecar (Bun + Vue 3 dashboard) |
 | 1.2.0 | 2026-02-15 | Wave-based parallel execution via git worktrees |
