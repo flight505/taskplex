@@ -1,17 +1,19 @@
 import { ref, type Ref } from "vue";
-import type { MonitorEvent } from "@/types";
+import type { MonitorEvent, WsMessage, Run } from "@/types";
 
 const MAX_EVENTS = 500;
 
 interface UseWebSocketReturn {
   events: Ref<MonitorEvent[]>;
   connected: Ref<boolean>;
+  latestRun: Ref<Run | null>;
   clear: () => void;
 }
 
 export function useWebSocket(): UseWebSocketReturn {
   const events = ref<MonitorEvent[]>([]);
   const connected = ref(false);
+  const latestRun = ref<Run | null>(null);
 
   let ws: WebSocket | null = null;
   let reconnectDelay = 1000;
@@ -43,10 +45,17 @@ export function useWebSocket(): UseWebSocketReturn {
       reconnectDelay = 1000;
     };
 
-    ws.onmessage = (event: MessageEvent) => {
+    ws.onmessage = (msgEvent: MessageEvent) => {
       try {
-        const parsed: MonitorEvent = JSON.parse(event.data);
-        events.value = [parsed, ...events.value].slice(0, MAX_EVENTS);
+        const msg: WsMessage = JSON.parse(msgEvent.data);
+
+        if (msg.type === "event") {
+          events.value = [msg.event, ...events.value].slice(0, MAX_EVENTS);
+        } else if (msg.type === "run.created") {
+          latestRun.value = msg.run;
+        } else if (msg.type === "run.updated") {
+          latestRun.value = msg.run;
+        }
       } catch {
         // ignore malformed messages
       }
@@ -81,5 +90,5 @@ export function useWebSocket(): UseWebSocketReturn {
   // initial connection
   connect();
 
-  return { events, connected, clear };
+  return { events, connected, latestRun, clear };
 }
