@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 2.0.6** | Last Updated: 2026-02-19
+**Version 2.0.7** | Last Updated: 2026-02-19
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -35,6 +35,7 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - **v2.0.3:** Leverages CLI 2.1.47 features: `last_assistant_message`, agent frontmatter hooks, `context: fork` skills
 - **v2.0.5:** Agent hardening: `maxTurns`, `disallowedTools`, `PostToolUseFailure` hook, memory vs knowledge docs
 - **v2.0.6:** Per-edit context injection (`additionalContext`), failure-analyzer skill preload, `PreCompact` hook, checkpoint resume
+- **v2.0.7:** Transcript mining, adaptive PRD rewriting, post-merge regression check, scope drift detection, code review agent, live dashboard intervention
 
 ---
 
@@ -53,7 +54,8 @@ taskplex/
 │   ├── implementer.md           # Codes a single story, outputs structured result
 │   ├── validator.md             # Verifies acceptance criteria (read-only)
 │   ├── reviewer.md              # Reviews PRD from specific angles
-│   └── merger.md                # Git branch operations
+│   ├── merger.md                # Git branch operations
+│   └── code-reviewer.md         # Two-stage code review (spec + quality)
 ├── assets/
 │   ├── taskplex-orchestration-flow.png    # Architecture diagram
 │   └── taskplex-knowledge-architecture.png # Knowledge layer diagram
@@ -124,6 +126,7 @@ taskplex/
 - `validator`: Verifies completed stories work. Tools: Bash, Read, Glob, Grep. Model: haiku (fast, cheap). Memory: project. Read-only — does NOT fix issues.
 - `reviewer`: Reviews PRDs from specific angles (security, performance, testability, sizing). Tools: Read, Glob, Grep. Model: sonnet. No memory (runs infrequently).
 - `merger`: Git branch lifecycle (create, merge, cleanup). Tools: Bash, Read, Grep. Model: haiku. No memory (git ops only).
+- `code-reviewer`: Two-stage code review (spec compliance + code quality). Tools: Read, Grep, Glob, Bash. Disallowed: Edit, Write, Task. Model: sonnet. Adversarial framing. Returns structured verdict with file:line references. Optional (enabled by `code_review: true` in config).
 
 **Skills:**
 - `prd-generator`: Creates detailed PRDs with verifiable acceptance criteria and dependency tracking. Uses 5-criteria threshold for story decomposition.
@@ -153,6 +156,7 @@ taskplex/
 ├── taskplex.config.json         # Config (JSON format)
 ├── taskplex-checkpoint.json     # Last story state (crash recovery)
 ├── taskplex-pre-compact.json    # Pre-compaction snapshot (context preservation)
+├── taskplex-hint.txt            # Dashboard hint injection (ephemeral)
 ├── taskplex-{branch}.pid        # Per-branch PID file
 └── taskplex.log                 # Background mode log
 
@@ -203,6 +207,7 @@ Each agent has restricted tools and a specific model, replacing the monolithic `
 | validator | haiku | Bash, Read, Glob, Grep | — | Verify acceptance criteria |
 | reviewer | sonnet | Read, Glob, Grep | — | Review PRD quality |
 | merger | haiku | Bash, Read, Grep | — | Git branch operations |
+| code-reviewer | sonnet | Read, Grep, Glob, Bash | — | Two-stage code review (opt-in) |
 
 ### 2. Error Categorization & Retry
 
@@ -449,6 +454,7 @@ git add --chmod=+x scripts/*.sh
 | `worktree_dir` | string | "" | Custom worktree base dir. Empty = `../.worktrees` relative to project |
 | `worktree_setup_command` | string | "" | Command run in each new worktree (e.g., "npm install") |
 | `conflict_strategy` | string | "abort" | "abort" (skip on merge conflict) or "merger" (invoke merger agent) |
+| `code_review` | bool | false | Enable two-stage code review after validation (sonnet agent) |
 
 **Iteration Guidelines:**
 - Each story typically consumes 1-3 iterations
@@ -547,6 +553,25 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v2.0.7 (2026-02-19)
+
+**v2.1 Batch 3 — Observability, Adaptive Control, Code Review:**
+
+**Added:**
+- `agents/code-reviewer.md` — New two-stage code review agent (model: sonnet). Stage 1: spec compliance ("nothing more, nothing less"). Stage 2: code quality (correctness, security, architecture). Adversarial framing. Issue taxonomy: Critical/Important/Minor with `file:line` references. Binary verdict: approve/request_changes/reject. Opt-in via `code_review: true` in config.
+- `scripts/knowledge-db.sh` — `mine_implicit_learnings()`: transcript mining function that extracts observations, file relationships, and environment notes from agent prose responses. Three regex-based extraction patterns with deduplication. Confidence: 0.6-0.8 depending on pattern type.
+- `scripts/decision-call.sh` — `rewrite_story()`: adaptive PRD rewriting function. When a story fails 2+ times and decision call returns "rewrite", spawns a Haiku call to split/simplify the story. Uses additive pattern: marks original story as "rewritten" and inserts new sub-stories with `depends_on` linkage.
+- `scripts/taskplex.sh` — `post_merge_test()`: runs test suite after `merge_to_main()` succeeds. On failure, reverts the merge commit and returns to feature branch. Applied to all three merge paths (sequential complete, COMPLETE signal, parallel complete).
+- `scripts/taskplex.sh` — `run_code_review()`: invokes code-reviewer agent after validation passes but before commit. Config-driven (`code_review: true`). Rejection triggers standard error handling; requested changes logged as warning but non-blocking.
+- `scripts/taskplex.sh` — `check_intervention()`: polls monitor dashboard for user interventions (skip/pause/hint/resume) between iterations. Supports foreground (interactive pause) and background (poll for resume) modes.
+- `monitor/server/index.ts` — `POST /api/intervention`, `GET /api/interventions`, `POST /api/intervention/consume` endpoints with SQLite `interventions` table. Orchestrator polls `consume` endpoint for pending interventions.
+
+**Changed:**
+- `hooks/validate-result.sh` — Added transcript mining (calls `mine_implicit_learnings` after structured learnings extraction). Added scope drift detection (compares `git diff --stat` against expected files, logs warnings to SQLite). Both are informational — never block the agent.
+- `.claude-plugin/plugin.json` — Added `./agents/code-reviewer.md` to agents list (5 agents, was 4).
+- Config schema: new `code_review` (bool, default false) field.
+- Main loop: `check_intervention()` called at start of each iteration; `rewrite_story` handling after decision call.
 
 ### v2.0.6 (2026-02-19)
 

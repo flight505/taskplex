@@ -1,6 +1,6 @@
 # TaskPlex Architecture
 
-**Version 2.0.6** | Last Updated: 2026-02-19
+**Version 2.0.7** | Last Updated: 2026-02-19
 
 Ground truth for TaskPlex's current design, implementation status, known issues, and roadmap. For component-level docs (config schema, agent frontmatter, skill details), see [CLAUDE.md](./CLAUDE.md).
 
@@ -21,7 +21,7 @@ TaskPlex is a resilient autonomous development assistant for Claude Code. A sing
 
 ---
 
-## 2. Current Architecture (v2.0.6)
+## 2. Current Architecture (v2.0.7)
 
 ### Component Structure
 
@@ -32,7 +32,8 @@ taskplex/
 │   ├── implementer.md                # Codes a single story (model: inherit)
 │   ├── validator.md                  # Verifies acceptance criteria (model: haiku)
 │   ├── reviewer.md                   # Reviews PRD from specific angles (model: sonnet)
-│   └── merger.md                     # Git branch operations (model: haiku)
+│   ├── merger.md                     # Git branch operations (model: haiku)
+│   └── code-reviewer.md              # Two-stage code review (model: sonnet)
 ├── commands/
 │   └── start.md                      # 8-checkpoint interactive wizard
 ├── skills/
@@ -219,6 +220,7 @@ Configured via `decision_calls` (bool, default true) and `decision_model` (strin
 | validator | haiku | 50 | Bash, Read, Glob, Grep | — | project | Verify acceptance criteria |
 | reviewer | sonnet | 30 | Read, Glob, Grep | — | — | Review PRD quality |
 | merger | haiku | 50 | Bash, Read, Grep | — | — | Git branch operations |
+| code-reviewer | sonnet | 40 | Read, Grep, Glob, Bash | Edit, Write, Task | — | Two-stage code review (opt-in) |
 
 - `disallowedTools: [Task]` on implementer prevents subagent spawning
 - `disallowedTools: [Write, Edit, Task]` on validator enforces read-only
@@ -427,16 +429,14 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 - `PreCompact` knowledge preservation: `pre-compact.sh` saves story state + progress to SQLite before auto-compaction
 - Checkpoint resume: reset stuck `in_progress` stories on startup, write checkpoint JSON after each state change
 
-**Batch 3: Larger features**
+**Batch 3: Larger features** *(Done — v2.0.7)*
 
-| Feature | Effort | Impact | Details |
-|---------|--------|--------|---------|
-| Transcript mining | Medium | Medium | SubagentStop provides `agent_transcript_path`. Spawn Haiku to extract implicit learnings (code patterns, environment quirks) not captured in structured output. |
-| Adaptive PRD rewriting | Medium | High | After 2 failed attempts, orchestrator rewrites story criteria via decision call. Splits oversized stories or adjusts acceptance criteria. |
-| Post-merge regression check | Low | Medium | Full test suite after merge to main. `git revert` on regression. Simple but high safety value. |
-| Scope drift detection | Low | Medium | Compare `git diff --stat` against expected files from story context. Flag unexpected file changes for review. |
-| Code review agent | Medium | Medium | New `code-reviewer.md` agent (model: sonnet). Review git diff before merge. Check for regressions, style violations, security issues. |
-| Live intervention via dashboard | Medium | Medium | REST endpoint for skip/hint/pause commands. Orchestrator polls between stories. Requires monitor server extension. |
+- Transcript mining: `mine_implicit_learnings()` in knowledge-db.sh extracts observations, file relationships, environment notes from agent prose via regex patterns. Called from validate-result.sh SubagentStop hook.
+- Adaptive PRD rewriting: `rewrite_story()` in decision-call.sh spawns Haiku to split/simplify failed stories. Additive pattern (inserts sub-stories, marks original as "rewritten"). Integrated into orchestrator decision handling.
+- Post-merge regression check: `post_merge_test()` in taskplex.sh runs test suite after merge, reverts on failure. Applied to all 3 merge paths.
+- Scope drift detection: SubagentStop hook compares `git diff --stat` against expected files. Logs warnings to SQLite. Informational only — never blocks agent.
+- Code review agent: `agents/code-reviewer.md` (model: sonnet). Two-stage: spec compliance then code quality. Adversarial framing, issue taxonomy (Critical/Important/Minor with file:line), binary verdict. Opt-in via `code_review: true`.
+- Live intervention: `POST/GET /api/intervention`, `POST /api/intervention/consume` endpoints on monitor server. `check_intervention()` in orchestrator polls between iterations. Actions: skip, pause, hint, resume.
 
 **Batch 4: Aspirational**
 
@@ -468,6 +468,7 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 2.0.7 | 2026-02-19 | v2.1 Batch 3: Transcript mining, adaptive PRD rewriting, post-merge regression check, scope drift detection, code review agent, live intervention via dashboard |
 | 2.0.6 | 2026-02-19 | v2.1 Batch 2: PreToolUse per-edit context injection, failure-analyzer preload on implementer, PreCompact hook, checkpoint resume |
 | 2.0.5 | 2026-02-19 | v2.1 Batch 1: maxTurns on agents, disallowedTools enforcement, PostToolUseFailure hook, allowed-tools format fix, memory vs knowledge docs |
 | 2.0.4 | 2026-02-19 | Bug fix round: 9 fixes from code-simplifier + docs compliance review (set -e crashes, RUN_ID export, sqlite3 dep check, learnings extraction, force-with-lease) |

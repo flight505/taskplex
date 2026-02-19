@@ -191,6 +191,65 @@ save_compaction_snapshot() {
   sqlite3 "$db" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$story_id', '${TASKPLEX_RUN_ID:-unknown}', '$escaped_summary', 1.0, 'compaction-snapshot', 'pre-compact');"
 }
 
+# Mine implicit learnings from agent prose (transcript mining)
+# Looks for patterns, environment quirks, and file relationships
+# mentioned in the agent's response but not in structured output.
+# Args: $1=db, $2=story_id, $3=run_id, $4=message_text
+mine_implicit_learnings() {
+  local db="$1" story_id="$2" run_id="$3" message="$4"
+  local mined=0
+
+  # Truncate message to avoid processing huge outputs
+  message=$(echo "$message" | head -c 5000)
+
+  # Pattern 1: "I noticed that..." / "I found that..." / "It turns out..."
+  # These are observations the agent made during implementation
+  local observations
+  observations=$(echo "$message" | grep -ioE '(I (noticed|found|discovered|realized) that [^.]+\.)|(It turns out [^.]+\.)|(Note: [^.]+\.)' 2>/dev/null | head -5)
+  if [ -n "$observations" ]; then
+    while IFS= read -r obs; do
+      [ -z "$obs" ] && continue
+      local escaped_obs
+      escaped_obs=$(echo "$obs" | sed "s/'/''/g")
+      # Check for duplicate before inserting
+      local existing
+      existing=$(sqlite3 "$db" "SELECT COUNT(*) FROM learnings WHERE content LIKE '%$(echo "$escaped_obs" | head -c 50)%' AND story_id = '$story_id';" 2>/dev/null || echo "0")
+      if [ "$existing" = "0" ]; then
+        sqlite3 "$db" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$story_id', '$run_id', '$escaped_obs', 0.7, 'implicit', 'transcript-mining');" 2>/dev/null || true
+        mined=$((mined + 1))
+      fi
+    done <<< "$observations"
+  fi
+
+  # Pattern 2: File relationship mentions ("when updating X, also update Y" / "X imports from Y")
+  local file_rels
+  file_rels=$(echo "$message" | grep -ioE '(when (updating|changing|modifying) [^ ,]+, (also )?(update|change|modify) [^ .]+)|(imports from [^ .]+)|(depends on [^ .]+)' 2>/dev/null | head -3)
+  if [ -n "$file_rels" ]; then
+    while IFS= read -r rel; do
+      [ -z "$rel" ] && continue
+      local escaped_rel
+      escaped_rel=$(echo "$rel" | sed "s/'/''/g")
+      sqlite3 "$db" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$story_id', '$run_id', '$escaped_rel', 0.6, 'file-relationship,implicit', 'transcript-mining');" 2>/dev/null || true
+      mined=$((mined + 1))
+    done <<< "$file_rels"
+  fi
+
+  # Pattern 3: Environment/config observations ("requires X" / "needs X installed" / "X must be set")
+  local env_obs
+  env_obs=$(echo "$message" | grep -ioE '(requires [^ ]+ (to be |)(installed|configured|set|enabled))|(needs [^ ]+ (installed|set|configured))' 2>/dev/null | head -3)
+  if [ -n "$env_obs" ]; then
+    while IFS= read -r env; do
+      [ -z "$env" ] && continue
+      local escaped_env
+      escaped_env=$(echo "$env" | sed "s/'/''/g")
+      sqlite3 "$db" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$story_id', '$run_id', '$escaped_env', 0.8, 'environment,implicit', 'transcript-mining');" 2>/dev/null || true
+      mined=$((mined + 1))
+    done <<< "$env_obs"
+  fi
+
+  return 0
+}
+
 # Query top-N learnings with confidence decay (5%/day)
 # Args: $1=db, $2=limit (default 10), $3=tags_filter (optional JSON array string)
 query_learnings() {

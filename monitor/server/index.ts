@@ -165,6 +165,116 @@ function handleHealth(): Response {
   return jsonResponse({ status: "ok", events: eventCount, runs: runCount });
 }
 
+// ---------------------------------------------------------------------------
+// Intervention queue (live user commands)
+// ---------------------------------------------------------------------------
+
+interface Intervention {
+  id: number;
+  action: "skip" | "hint" | "pause" | "resume";
+  story_id?: string;
+  message?: string;
+  created_at: string;
+  consumed: boolean;
+}
+
+// Create interventions table on startup
+(() => {
+  const d = getDb();
+  d.run(`
+    CREATE TABLE IF NOT EXISTS interventions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      action TEXT NOT NULL,
+      story_id TEXT,
+      message TEXT,
+      run_id TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      consumed INTEGER DEFAULT 0
+    )
+  `);
+})();
+
+async function handlePostIntervention(req: Request): Promise<Response> {
+  try {
+    const body = await req.json() as {
+      action: string;
+      story_id?: string;
+      message?: string;
+      run_id?: string;
+    };
+
+    if (!body.action || !["skip", "hint", "pause", "resume"].includes(body.action)) {
+      return errorResponse("'action' must be one of: skip, hint, pause, resume", 400);
+    }
+
+    const d = getDb();
+    const stmt = d.prepare(
+      "INSERT INTO interventions (action, story_id, message, run_id) VALUES (?, ?, ?, ?)"
+    );
+    const result = stmt.run(body.action, body.story_id ?? null, body.message ?? null, body.run_id ?? null);
+
+    const intervention = {
+      id: result.lastInsertRowid,
+      action: body.action,
+      story_id: body.story_id,
+      message: body.message,
+    };
+
+    broadcast({ type: "intervention.created", intervention });
+    return jsonResponse(intervention, 201);
+  } catch (e) {
+    return errorResponse(`Failed to create intervention: ${(e as Error).message}`, 500);
+  }
+}
+
+function handleGetInterventions(url: URL): Response {
+  const d = getDb();
+  const runId = extractParam(url, "run_id");
+  const pending = extractParam(url, "pending");
+
+  let query = "SELECT * FROM interventions WHERE 1=1";
+  const params: string[] = [];
+
+  if (runId) {
+    query += " AND run_id = ?";
+    params.push(runId);
+  }
+  if (pending === "true") {
+    query += " AND consumed = 0";
+  }
+
+  query += " ORDER BY created_at DESC LIMIT 50";
+
+  const stmt = d.prepare(query);
+  const rows = stmt.all(...params);
+  return jsonResponse(rows);
+}
+
+function handleConsumeIntervention(url: URL): Response {
+  const d = getDb();
+  const runId = extractParam(url, "run_id");
+
+  if (!runId) {
+    return errorResponse("'run_id' query parameter is required", 400);
+  }
+
+  // Get the oldest unconsumed intervention for this run
+  const stmt = d.prepare(
+    "SELECT * FROM interventions WHERE run_id = ? AND consumed = 0 ORDER BY created_at ASC LIMIT 1"
+  );
+  const row = stmt.get(runId) as Intervention | undefined;
+
+  if (!row) {
+    return jsonResponse({ intervention: null });
+  }
+
+  // Mark as consumed
+  d.prepare("UPDATE interventions SET consumed = 1 WHERE id = ?").run(row.id);
+
+  broadcast({ type: "intervention.consumed", intervention: row });
+  return jsonResponse({ intervention: row });
+}
+
 // Analytics
 function handleTimeline(runId: string): Response {
   return jsonResponse(getStoryTimeline(runId));
@@ -310,6 +420,21 @@ const server = Bun.serve({
     // GET /api/analytics/agents
     if (method === "GET" && pathname === "/api/analytics/agents") {
       return handleAgents(url);
+    }
+
+    // POST /api/intervention
+    if (method === "POST" && pathname === "/api/intervention") {
+      return handlePostIntervention(req);
+    }
+
+    // GET /api/interventions
+    if (method === "GET" && pathname === "/api/interventions") {
+      return handleGetInterventions(url);
+    }
+
+    // POST /api/intervention/consume (orchestrator polls this)
+    if (method === "POST" && pathname === "/api/intervention/consume") {
+      return handleConsumeIntervention(url);
     }
 
     // GET /health

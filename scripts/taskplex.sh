@@ -795,6 +795,60 @@ merge_to_main() {
   fi
 }
 
+# Post-merge regression check — runs test suite after merge to main
+# If tests fail, reverts the merge and returns to feature branch.
+# Args: $1 = branch_name (to return to on failure)
+# Returns: 0 = tests passed (or no test command), 1 = regression detected and reverted
+post_merge_test() {
+  local branch_name="$1"
+
+  # Only run if test command is configured
+  if [ -z "$TEST_COMMAND" ]; then
+    log "REGRESSION" "No test_command configured — skipping post-merge regression check"
+    return 0
+  fi
+
+  log "REGRESSION" "Running post-merge regression check: $TEST_COMMAND"
+  emit_event "regression.check" "{\"command\":\"$(echo "$TEST_COMMAND" | tr '"' "'")\"}"
+
+  local test_output test_exit
+  test_output=$(eval "$TEST_COMMAND" 2>&1)
+  test_exit=$?
+
+  if [ $test_exit -eq 0 ]; then
+    log "REGRESSION" "Post-merge tests passed"
+    emit_event "regression.passed" "{}"
+    return 0
+  fi
+
+  # Tests failed — revert the merge
+  log "REGRESSION" "Post-merge tests FAILED (exit $test_exit). Reverting merge."
+  emit_event "regression.failed" "{\"exit_code\":$test_exit,\"output\":\"$(echo "$test_output" | head -c 200 | tr '"' "'" | tr '\n' ' ')\"}"
+
+  # Revert the merge commit (HEAD is the merge commit on main)
+  if git revert --no-commit HEAD 2>/dev/null; then
+    git commit -m "revert: post-merge regression detected — reverting merge of $branch_name" 2>/dev/null || true
+    log "REGRESSION" "Merge reverted on main"
+  else
+    # Revert failed — abort and go back to feature branch
+    git revert --abort 2>/dev/null || true
+    log "REGRESSION" "Revert failed, resetting to pre-merge state"
+    git reset --hard HEAD~1 2>/dev/null || true
+  fi
+
+  # Return to feature branch
+  git checkout "$branch_name" 2>/dev/null || true
+  log "REGRESSION" "Returned to branch $branch_name"
+
+  echo ""
+  echo "Post-merge regression detected. Merge reverted."
+  echo "Test output (first 500 chars):"
+  echo "$test_output" | head -c 500
+  echo ""
+
+  return 1
+}
+
 # Generate completion report at end of execution
 generate_report() {
   local report_file="$PROJECT_DIR/.claude/taskplex-report.md"
@@ -1221,6 +1275,83 @@ if [ "$PARALLEL_MODE" = "parallel" ]; then
 fi
 
 # ============================================================================
+# Live Intervention (v2.1 Batch 3)
+# ============================================================================
+
+# Check for pending interventions from the dashboard
+# Returns: 0=no intervention (continue), 1=skip current story, 2=pause execution
+check_intervention() {
+  # Only check if monitor is running
+  [ -z "$MONITOR_PORT" ] && return 0
+
+  local response
+  response=$(curl -s -X POST "http://localhost:${MONITOR_PORT}/api/intervention/consume?run_id=${RUN_ID}" 2>/dev/null) || return 0
+
+  local intervention_action
+  intervention_action=$(echo "$response" | jq -r '.intervention.action // empty' 2>/dev/null)
+
+  [ -z "$intervention_action" ] && return 0
+
+  local intervention_message
+  intervention_message=$(echo "$response" | jq -r '.intervention.message // ""' 2>/dev/null)
+  local intervention_story
+  intervention_story=$(echo "$response" | jq -r '.intervention.story_id // ""' 2>/dev/null)
+
+  log "INTERVENTION" "Received: action=$intervention_action story=$intervention_story message=$intervention_message"
+  emit_event "intervention.received" "{\"action\":\"$intervention_action\",\"message\":\"$(echo "$intervention_message" | tr '"' "'")\"}" "$intervention_story"
+
+  case "$intervention_action" in
+    skip)
+      if [ -n "$intervention_story" ]; then
+        log "INTERVENTION" "Skipping story $intervention_story by user request"
+        update_story_status "$intervention_story" "skipped" "Skipped by user intervention" ""
+        write_checkpoint "$intervention_story" "skipped"
+        emit_event "story.skipped" "{\"reason\":\"user_intervention\"}" "$intervention_story"
+      fi
+      return 1
+      ;;
+    pause)
+      log "INTERVENTION" "Pausing execution by user request"
+      echo ""
+      echo "PAUSED by dashboard intervention. ${intervention_message:+Message: $intervention_message}"
+      echo "Press Enter to resume, or Ctrl+C to abort..."
+      if [ "$EXECUTION_MODE" = "foreground" ]; then
+        read -r
+        log "INTERVENTION" "Resumed after pause"
+      else
+        # Background mode: poll for resume intervention
+        log "INTERVENTION" "Background mode — waiting for resume intervention..."
+        while true; do
+          sleep 5
+          local resume_response
+          resume_response=$(curl -s -X POST "http://localhost:${MONITOR_PORT}/api/intervention/consume?run_id=${RUN_ID}" 2>/dev/null) || continue
+          local resume_action
+          resume_action=$(echo "$resume_response" | jq -r '.intervention.action // empty' 2>/dev/null)
+          if [ "$resume_action" = "resume" ]; then
+            log "INTERVENTION" "Resumed by dashboard"
+            break
+          fi
+        done
+      fi
+      return 0
+      ;;
+    hint)
+      # Hint gets injected into next agent context via a temp file
+      if [ -n "$intervention_message" ]; then
+        local hint_file="$PROJECT_DIR/.claude/taskplex-hint.txt"
+        echo "$intervention_message" > "$hint_file"
+        log "INTERVENTION" "Hint saved to $hint_file — will be injected into next agent context"
+      fi
+      return 0
+      ;;
+    *)
+      log "INTERVENTION" "Unknown action: $intervention_action"
+      return 0
+      ;;
+  esac
+}
+
+# ============================================================================
 # Main Execution Loop
 # ============================================================================
 
@@ -1566,6 +1697,111 @@ Output your result as JSON in this format:
   fi
 }
 
+# Function to run code review agent after story validation
+# Args: story_id
+# Returns: 0=approved or no review configured, 1=changes requested, 2=rejected
+run_code_review() {
+  local story_id=$1
+
+  # Code review is optional — controlled by config
+  local CODE_REVIEW_ENABLED
+  CODE_REVIEW_ENABLED=$(jq -r 'if .code_review == true then "true" else "false" end' "$CONFIG_FILE" 2>/dev/null || echo "false")
+
+  if [ "$CODE_REVIEW_ENABLED" != "true" ]; then
+    return 0
+  fi
+
+  log "REVIEW-$story_id" "Starting code review..."
+  emit_event "review.start" "{}" "$story_id"
+
+  # Get story details
+  local story_json story_title
+  story_json=$(jq --arg id "$story_id" '.userStories[] | select(.id == $id)' "$PRD_FILE")
+  story_title=$(echo "$story_json" | jq -r '.title')
+
+  # Get git diff for review
+  local base_sha diff_stat
+  base_sha=$(git merge-base main HEAD 2>/dev/null || git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
+  diff_stat=$(git diff --stat "$base_sha"..HEAD 2>/dev/null | tail -5)
+
+  local review_prompt="# Code Review Task
+
+Story ID: $story_id
+Story Title: $story_title
+
+## Acceptance Criteria
+$(echo "$story_json" | jq -r '.acceptanceCriteria | to_entries | map("\(.key + 1). \(.value)") | .[]')
+
+## Changes Overview
+\`\`\`
+$diff_stat
+\`\`\`
+
+## Instructions
+
+Review the changes for story $story_id. Follow the two-stage review process:
+1. Stage 1: Spec compliance — verify all criteria are met, no scope creep
+2. Stage 2: Code quality — check correctness, security, architecture
+
+Run \`git diff $base_sha..HEAD\` to see the full changes.
+
+Output your review as the structured JSON verdict described in your system prompt.
+"
+
+  local review_timeout=$((ITERATION_TIMEOUT / 3))
+  local review_output
+  review_output=$($TIMEOUT_CMD $review_timeout env -u CLAUDECODE claude -p "$review_prompt" \
+    --output-format json \
+    --no-session-persistence \
+    --dangerously-skip-permissions \
+    2>&1)
+
+  local review_exit=$?
+
+  if [ $review_exit -ne 0 ]; then
+    log "REVIEW-$story_id" "Code review agent failed (exit $review_exit) — approving by default"
+    return 0
+  fi
+
+  # Parse verdict
+  local verdict
+  verdict=$(echo "$review_output" | jq -r '
+    .. | objects | .verdict // empty
+  ' 2>/dev/null | head -1)
+
+  local issue_count
+  issue_count=$(echo "$review_output" | jq '
+    [.. | objects | .issues // [] | .[]] | length
+  ' 2>/dev/null || echo "0")
+
+  local critical_count
+  critical_count=$(echo "$review_output" | jq '
+    [.. | objects | .issues // [] | .[] | select(.severity == "critical")] | length
+  ' 2>/dev/null || echo "0")
+
+  log "REVIEW-$story_id" "Verdict: $verdict ($issue_count issues, $critical_count critical)"
+  emit_event "review.complete" "{\"verdict\":\"$verdict\",\"issues\":$issue_count,\"critical\":$critical_count}" "$story_id"
+
+  case "$verdict" in
+    approve)
+      log "REVIEW-$story_id" "Code review approved"
+      return 0
+      ;;
+    request_changes)
+      log "REVIEW-$story_id" "Code review: changes requested ($issue_count issues)"
+      return 1
+      ;;
+    reject)
+      log "REVIEW-$story_id" "Code review: rejected (spec compliance failed)"
+      return 2
+      ;;
+    *)
+      log "REVIEW-$story_id" "Unknown verdict '$verdict' — approving by default"
+      return 0
+      ;;
+  esac
+}
+
 # ============================================================================
 # Parallel Mode — Wave-Based Execution (v1.2)
 # ============================================================================
@@ -1581,6 +1817,7 @@ if [ "$PARALLEL_MODE" = "parallel" ]; then
     echo ""
     echo "TaskPlex completed all tasks (parallel mode)!"
     merge_to_main
+    post_merge_test "$BRANCH_NAME" || log "REGRESSION" "Regression detected — branch $BRANCH_NAME NOT merged"
     exit 0
   else
     INCOMPLETE_COUNT=$(jq '[.userStories[] | select(.passes == false)] | length' "$PRD_FILE")
@@ -1588,6 +1825,7 @@ if [ "$PARALLEL_MODE" = "parallel" ]; then
       echo ""
       echo "TaskPlex completed all tasks (parallel mode)!"
       merge_to_main
+      post_merge_test "$BRANCH_NAME" || log "REGRESSION" "Regression detected — branch $BRANCH_NAME NOT merged"
       exit 0
     fi
 
@@ -1608,6 +1846,14 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   echo "═══════════════════════════════════════════════════════"
   echo "  TaskPlex Iteration $i of $MAX_ITERATIONS"
   echo "═══════════════════════════════════════════════════════"
+
+  # Check for dashboard interventions (skip/pause/hint)
+  check_intervention
+  INTERVENTION_RESULT=$?
+  if [ $INTERVENTION_RESULT -eq 1 ]; then
+    # Story was skipped by intervention — restart iteration to pick next story
+    continue
+  fi
 
   # Emit iteration.start to monitor
   emit_event "iteration.start" "{\"iteration\":$i,\"max_iterations\":$MAX_ITERATIONS}"
@@ -1637,6 +1883,8 @@ for i in $(seq 1 $MAX_ITERATIONS); do
 
       # Merge to main if configured (US-006)
       merge_to_main
+      # Post-merge regression check
+      post_merge_test "$BRANCH_NAME" || log "REGRESSION" "Regression detected — branch $BRANCH_NAME NOT merged"
 
       exit 0
     else
@@ -1687,6 +1935,22 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     log_progress "$CURRENT_STORY" "SKIPPED" "Decision call recommended skip"
     emit_event "story.skipped" "{\"reason\":\"decision_call\"}" "$CURRENT_STORY"
     continue
+  fi
+
+  if [ "$DECISION_ACTION" = "rewrite" ]; then
+    log "DECISION" "Decision: rewrite $CURRENT_STORY"
+    if rewrite_story "$CURRENT_STORY"; then
+      log_progress "$CURRENT_STORY" "REWRITTEN" "Story split/simplified by adaptive rewrite"
+      # Re-validate PRD since new stories were added
+      validate_prd
+      continue
+    else
+      log "DECISION" "Rewrite failed for $CURRENT_STORY, falling back to skip"
+      update_story_status "$CURRENT_STORY" "skipped"
+      log_progress "$CURRENT_STORY" "SKIPPED" "Rewrite failed, skipped"
+      emit_event "story.skipped" "{\"reason\":\"rewrite_failed\"}" "$CURRENT_STORY"
+      continue
+    fi
   fi
 
   # Apply model routing from decision call
@@ -1888,6 +2152,25 @@ Please address the issue and try again."
 
   # Only commit and mark complete if validation passed
   if [ "$VALIDATION_PASSED" -eq 1 ]; then
+    # Run code review (optional, config-driven)
+    REVIEW_RESULT=0
+    if [ "$CURRENT_STORY" != "unknown" ]; then
+      run_code_review "$CURRENT_STORY" || REVIEW_RESULT=$?
+      if [ $REVIEW_RESULT -eq 2 ]; then
+        # Rejected — treat like validation failure
+        log "REVIEW-$CURRENT_STORY" "Review rejected — treating as validation failure"
+        handle_error $i "$CURRENT_STORY" 1 "Code review rejected: spec compliance failed"
+        ERROR_HANDLING_RESULT=$?
+        if [ $ERROR_HANDLING_RESULT -eq 0 ]; then continue
+        elif [ $ERROR_HANDLING_RESULT -eq 1 ]; then exit 1
+        elif [ $ERROR_HANDLING_RESULT -eq 2 ]; then continue
+        fi
+      elif [ $REVIEW_RESULT -eq 1 ]; then
+        # Changes requested — log warning but continue (non-blocking)
+        log "REVIEW-$CURRENT_STORY" "Review requested changes — proceeding with commit (non-blocking)"
+      fi
+    fi
+
     # Commit changes after successful validation (US-006)
     # The agent stages files, script commits them
     if [ "$CURRENT_STORY" != "unknown" ]; then
@@ -1941,6 +2224,8 @@ Please address the issue and try again."
 
       # Merge to main if configured (US-006)
       merge_to_main
+      # Post-merge regression check
+      post_merge_test "$BRANCH_NAME" || log "REGRESSION" "Regression detected — branch $BRANCH_NAME NOT merged"
 
       exit 0
     fi
