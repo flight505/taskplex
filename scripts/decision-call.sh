@@ -89,10 +89,11 @@ DECISION_PROMPT
 
   # Make the 1-shot call
   local result
-  result=$($TIMEOUT_CMD 30 claude -p "$(cat "$prompt_file")" \
+  result=$(env -u CLAUDECODE $TIMEOUT_CMD 30 claude -p "$(cat "$prompt_file")" \
     --model "${DECISION_MODEL:-opus}" \
     --output-format json \
     --max-turns 1 \
+    --dangerously-skip-permissions \
     --no-session-persistence 2>/dev/null) || {
     log "DECISION" "Decision call failed for $story_id, using defaults"
     rm -f "$prompt_file"

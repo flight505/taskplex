@@ -260,12 +260,11 @@ spawn_parallel_agent() {
   # Run claude in the worktree directory
   (
     cd "$worktree_dir" && \
-    $TIMEOUT_CMD "$ITERATION_TIMEOUT" claude -p "$prompt_content" \
+    env -u CLAUDECODE $TIMEOUT_CMD "$ITERATION_TIMEOUT" claude -p "$prompt_content" \
       --output-format json \
       --no-session-persistence \
+      --dangerously-skip-permissions \
       --model "$EXECUTION_MODEL" \
-      --agent implementer \
-      --agents-dir "$PLUGIN_ROOT/agents" \
       --max-turns "$MAX_TURNS" \
       > "$output_file" 2>&1
   ) &
@@ -428,11 +427,10 @@ Steps:
 4. Stage resolved files and commit the merge"
 
     local merger_output
-    merger_output=$($TIMEOUT_CMD 300 claude -p "$merger_prompt" \
+    merger_output=$(env -u CLAUDECODE $TIMEOUT_CMD 300 claude -p "$merger_prompt" \
       --output-format json \
       --no-session-persistence \
-      --agent merger \
-      --agents-dir "$PLUGIN_ROOT/agents" \
+      --dangerously-skip-permissions \
       2>&1)
 
     if [ $? -eq 0 ]; then
@@ -623,7 +621,7 @@ run_wave_parallel() {
             # Commit story in feature branch context if needed
             local story_title
             story_title=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .title' "$PRD_FILE")
-            commit_story "$story_id" "$story_title"
+            commit_story "$story_id" "$story_title" || log "COMMIT" "Commit skipped or failed for $story_id (non-fatal)"
           else
             log "PARALLEL" "Validation failed for $story_id"
             log_progress "$story_id" "VALIDATION_FAILED" "wave $wave_num"
