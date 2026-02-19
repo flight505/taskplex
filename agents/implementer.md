@@ -13,12 +13,18 @@ disallowedTools:
 model: inherit
 maxTurns: 150
 memory: project
+skills:
+  - failure-analyzer
 hooks:
   PreToolUse:
     - matcher: "Bash"
       hooks:
         - type: command
           command: "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh"
+    - matcher: "Edit|Write"
+      hooks:
+        - type: command
+          command: "${CLAUDE_PLUGIN_ROOT}/hooks/inject-edit-context.sh"
 ---
 
 # Implementer Agent
@@ -70,6 +76,22 @@ After you finish, your changes will be validated automatically by the SubagentSt
 - The validation will run again after you finish fixing
 
 This means you do NOT need to run typecheck/build/test yourself — the hook handles it. Focus on implementation quality.
+
+## Per-Edit Context Injection
+
+Before each `Edit` or `Write` tool call, a PreToolUse hook automatically injects file-specific guidance from the knowledge store. This includes:
+- File patterns (naming conventions, import styles, code organization)
+- Relevant learnings from previous stories that touched the same files
+
+Use this context to stay consistent with existing patterns.
+
+## Self-Diagnosis
+
+The failure-analyzer skill is preloaded into your context. If you encounter errors during implementation, use its categorization framework to diagnose the issue before attempting a fix:
+- `env_missing`: Missing environment variables or credentials — report, don't fix
+- `dependency_missing`: Missing packages — report, don't fix
+- `code_error`: Syntax/type/logic errors — fix and retry
+- `test_failure`: Test assertions failing — analyze root cause, fix implementation
 
 ## Output Format
 

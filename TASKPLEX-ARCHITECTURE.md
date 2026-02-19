@@ -392,24 +392,20 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
 ### Next Up: v2.1 — Agent Hardening + New Hook Events
 
-**Batch 1: Quick wins (Low effort, unblocked)**
+**Batch 1: Quick wins** — Done (v2.0.5)
 
-| Feature | Effort | Impact | Details |
-|---------|--------|--------|---------|
-| Add `maxTurns` to all agents | Low | Medium | Safety net: prevent runaway agents. Recommend 150 for implementer, 50 for validator/merger, 30 for reviewer. |
-| Add `disallowedTools` to validator/reviewer | Low | Low | Defense-in-depth: `[Write, Edit, Task]` for validator, `[Write, Edit, Bash, Task]` for reviewer. |
-| `PostToolUseFailure` monitor hook | Low | Medium | New CLI event. Add to `hooks.json` → `monitor/hooks/post-tool-use-failure.sh`. Richer error tracking in dashboard (tool failures as distinct from successes). |
-| Fix `allowed-tools` format in start.md | Low | Low | Change from YAML array to comma-separated string per CLI docs: `allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Task, AskUserQuestion`. |
-| Document memory vs knowledge precedence | Low | Medium | Add section to CLAUDE.md: `memory: project` provides cross-run persistence; SQLite injection provides decay-weighted fresh context. SQLite takes precedence for recent learnings. |
+- `maxTurns` on all agents (implementer:150, validator:50, reviewer:30, merger:50)
+- `disallowedTools` on validator (`Write, Edit, Task`) and reviewer (`Write, Edit, Bash, Task`)
+- `PostToolUseFailure` monitor hook
+- Fixed `allowed-tools` format in start.md
+- Documented memory vs knowledge precedence
 
-**Batch 2: Medium effort, high value**
+**Batch 2: Medium effort, high value** — Done (v2.0.6)
 
-| Feature | Effort | Impact | Details |
-|---------|--------|--------|---------|
-| PreToolUse `additionalContext` per-edit | Medium | High | **Newly unblocked.** CLI docs confirm PreToolUse supports `additionalContext` output. Hook on `Edit`/`Write` to inject file-specific guidance (patterns, conventions, related code) from SQLite `file_patterns` table before each edit. |
-| Preload failure-analyzer via `skills` field | Medium | Medium | Agent frontmatter `skills:` preloads skill content into subagent context. Give implementer the failure-analyzer skill so it can self-diagnose errors without orchestrator intervention. |
-| `PreCompact` knowledge preservation | Medium | Medium | New CLI event. Save critical context to SQLite before compaction. Ensures long-running implementer agents don't lose project knowledge when context is compressed. |
-| Checkpoint resume | Low | High | Write checkpoint JSON after each story (`{story_id, status, attempt, timestamp}`). On restart, skip completed stories and resume from last in-progress. Currently reruns everything from scratch. |
+- PreToolUse `additionalContext` per-edit: `inject-edit-context.sh` queries `file_patterns` table + relevant learnings before each Edit/Write
+- Preloaded failure-analyzer skill on implementer via `skills:` frontmatter field
+- `PreCompact` knowledge preservation: `pre-compact.sh` saves story state + progress to SQLite before auto-compaction
+- Checkpoint resume: reset stuck `in_progress` stories on startup, write checkpoint JSON after each state change
 
 **Batch 3: Larger features**
 
@@ -452,6 +448,7 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 2.0.6 | 2026-02-19 | v2.1 Batch 2: PreToolUse per-edit context injection, failure-analyzer preload on implementer, PreCompact hook, checkpoint resume |
 | 2.0.5 | 2026-02-19 | v2.1 Batch 1: maxTurns on agents, disallowedTools enforcement, PostToolUseFailure hook, allowed-tools format fix, memory vs knowledge docs |
 | 2.0.4 | 2026-02-19 | Bug fix round: 9 fixes from code-simplifier + docs compliance review (set -e crashes, RUN_ID export, sqlite3 dep check, learnings extraction, force-with-lease) |
 | 2.0.3 | 2026-02-19 | CLI 2.1.47 adoption (last_assistant_message, agent-scoped hooks, context: fork), git repo bootstrap wizard |

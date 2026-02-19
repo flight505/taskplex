@@ -58,8 +58,10 @@ taskplex/
 ├── commands/
 │   └── start.md                 # Interactive wizard (8-checkpoint workflow)
 ├── hooks/
-│   ├── hooks.json               # 7 hooks: monitor events, knowledge injection, inline validation
+│   ├── hooks.json               # 9 hooks: monitor, knowledge injection, validation, per-edit context, pre-compact
 │   ├── inject-knowledge.sh      # SubagentStart: SQLite → additionalContext
+│   ├── inject-edit-context.sh   # PreToolUse on Edit/Write: file-specific patterns → additionalContext
+│   ├── pre-compact.sh           # PreCompact: saves story state to SQLite before compaction
 │   └── validate-result.sh       # SubagentStop: inline validation + learnings extraction
 ├── skills/
 │   ├── prd-generator/           # PRD creation with clarifying questions
@@ -116,7 +118,7 @@ taskplex/
 - Launches bash scripts via Bash tool for execution
 
 **Agents:**
-- `implementer`: Implements a single user story. Tools: Bash, Read, Edit, Write, Glob, Grep. Disallowed: Task (no subagent spawning). Model: inherit from parent. Memory: project. Outputs structured JSON with learnings, per-AC results, and retry hints.
+- `implementer`: Implements a single user story. Tools: Bash, Read, Edit, Write, Glob, Grep. Disallowed: Task (no subagent spawning). Model: inherit from parent. Memory: project. Skills: failure-analyzer (preloaded). Outputs structured JSON with learnings, per-AC results, and retry hints.
 - `validator`: Verifies completed stories work. Tools: Bash, Read, Glob, Grep. Model: haiku (fast, cheap). Memory: project. Read-only — does NOT fix issues.
 - `reviewer`: Reviews PRDs from specific angles (security, performance, testability, sizing). Tools: Read, Glob, Grep. Model: sonnet. No memory (runs infrequently).
 - `merger`: Git branch lifecycle (create, merge, cleanup). Tools: Bash, Read, Grep. Model: haiku. No memory (git ops only).
@@ -128,8 +130,11 @@ taskplex/
 
 **Hooks:**
 - `PreToolUse` on Bash (agent-scoped): `check-destructive.sh` blocks `git push --force`, `git reset --hard`, `git clean`, and direct pushes to main/master. Defined in `implementer.md` frontmatter — only runs during implementer agent lifecycle, not globally.
+- `PreToolUse` on Edit/Write (agent-scoped): `inject-edit-context.sh` injects file-specific patterns and learnings from SQLite before each edit. Defined in `implementer.md` frontmatter.
 - `SubagentStart/Stop`: Async hooks that emit events to the monitor sidecar for agent lifecycle tracking.
 - `PostToolUse` (monitor): Async hook that emits tool usage events for agent behavior analysis.
+- `PostToolUseFailure` (monitor): Async hook that captures tool failures for error pattern analysis.
+- `PreCompact` (auto): `pre-compact.sh` saves current story state and progress to SQLite before context compaction. Preserves knowledge for long-running implementer agents.
 - `SessionStart/End`: Async hooks that track session lifecycle in the monitor.
 
 **Scripts:**
@@ -144,6 +149,8 @@ taskplex/
 ```
 .claude/
 ├── taskplex.config.json         # Config (JSON format)
+├── taskplex-checkpoint.json     # Last story state (crash recovery)
+├── taskplex-pre-compact.json    # Pre-compaction snapshot (context preservation)
 ├── taskplex-{branch}.pid        # Per-branch PID file
 └── taskplex.log                 # Background mode log
 
@@ -188,12 +195,12 @@ Agents receive context from two sources that may overlap:
 
 Each agent has restricted tools and a specific model, replacing the monolithic `claude -p` approach:
 
-| Agent | Model | Tools | Purpose |
-|-------|-------|-------|---------|
-| implementer | inherit | Bash, Read, Edit, Write, Glob, Grep | Code a single story |
-| validator | haiku | Bash, Read, Glob, Grep | Verify acceptance criteria |
-| reviewer | sonnet | Read, Glob, Grep | Review PRD quality |
-| merger | haiku | Bash, Read, Grep | Git branch operations |
+| Agent | Model | Tools | Skills | Purpose |
+|-------|-------|-------|--------|---------|
+| implementer | inherit | Bash, Read, Edit, Write, Glob, Grep | failure-analyzer | Code a single story |
+| validator | haiku | Bash, Read, Glob, Grep | — | Verify acceptance criteria |
+| reviewer | sonnet | Read, Glob, Grep | — | Review PRD quality |
+| merger | haiku | Bash, Read, Grep | — | Git branch operations |
 
 ### 2. Error Categorization & Retry
 

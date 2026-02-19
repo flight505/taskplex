@@ -67,7 +67,7 @@ cleanup() {
     fi
   fi
 
-  # Clean up temp files from this process
+  # Clean up temp files from this process (keep checkpoint file for recovery)
   rm -f /tmp/taskplex-$$-*.txt /tmp/taskplex-$$-*.md /tmp/taskplex-parallel-$$-*.json /tmp/taskplex-prompt-$$-*.md /tmp/taskplex-context-$$-*.md
 
   # Clean up parallel worktrees if in parallel mode
@@ -945,6 +945,62 @@ EOF
   echo "📝 Report generated: $report_file"
 }
 
+# ============================================================================
+# Checkpoint Resume (v2.1)
+# ============================================================================
+
+CHECKPOINT_FILE=""  # Set after PROJECT_DIR is available
+
+# Write checkpoint after each story state change
+write_checkpoint() {
+  local story_id="$1"
+  local status="$2"
+  local attempt="${3:-1}"
+
+  [ -z "$CHECKPOINT_FILE" ] && return 0
+
+  mkdir -p "$(dirname "$CHECKPOINT_FILE")"
+
+  # Build checkpoint JSON (full story status snapshot)
+  jq -n \
+    --arg story_id "$story_id" \
+    --arg status "$status" \
+    --argjson attempt "$attempt" \
+    --arg run_id "${RUN_ID:-$$}" \
+    --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{
+      last_story: $story_id,
+      last_status: $status,
+      last_attempt: $attempt,
+      run_id: $run_id,
+      timestamp: $timestamp
+    }' > "$CHECKPOINT_FILE" 2>/dev/null || true
+}
+
+# Reset stuck in_progress stories on startup (crash recovery)
+recover_stuck_stories() {
+  if [ ! -f "$PRD_FILE" ]; then
+    return 0
+  fi
+
+  local stuck_count
+  stuck_count=$(jq '[.userStories[] | select(.status == "in_progress")] | length' "$PRD_FILE" 2>/dev/null || echo "0")
+
+  if [ "$stuck_count" -gt 0 ]; then
+    log "RECOVERY" "Found $stuck_count stuck in_progress stories, resetting to pending"
+
+    local TEMP_PRD
+    TEMP_PRD=$(mktemp)
+    jq '.userStories |= map(
+      if .status == "in_progress" then
+        .status = "pending"
+      else . end
+    )' "$PRD_FILE" > "$TEMP_PRD" && mv "$TEMP_PRD" "$PRD_FILE"
+
+    log "RECOVERY" "Reset $stuck_count stories to pending (attempts preserved)"
+  fi
+}
+
 # Validate PRD before proceeding
 validate_prd
 
@@ -953,6 +1009,10 @@ load_config
 
 # Set computed paths after config is loaded
 KNOWLEDGE_DB="$PROJECT_DIR/$KNOWLEDGE_DB_PATH"
+CHECKPOINT_FILE="$PROJECT_DIR/.claude/taskplex-checkpoint.json"
+
+# Recover from previous crash (reset stuck in_progress stories)
+recover_stuck_stories
 
 # Source v2.0 modules
 source "$SCRIPT_DIR/knowledge-db.sh"
@@ -1306,6 +1366,7 @@ handle_error() {
 
     # Mark as skipped
     update_story_status "$story_id" "skipped"
+    write_checkpoint "$story_id" "skipped" "$attempts"
 
     # Emit story.skipped to monitor
     emit_event "story.skipped" "{\"reason\":\"max_retries_exceeded\",\"error_category\":\"$category\"}" "$story_id"
@@ -1601,6 +1662,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
 
   # Mark story as in progress
   update_story_status "$CURRENT_STORY" "in_progress"
+  write_checkpoint "$CURRENT_STORY" "in_progress"
 
   # Log story start (Layer 1: operational log)
   STORY_START_TIME=$(date +%s)
@@ -1838,6 +1900,7 @@ Please address the issue and try again."
     # Mark story as completed (validation passed = done, regardless of COMPLETE signal)
     if [ "$CURRENT_STORY" != "unknown" ]; then
       update_story_status "$CURRENT_STORY" "completed"
+      write_checkpoint "$CURRENT_STORY" "completed" "$STORY_ATTEMPTS"
 
       # Mark errors as resolved in SQLite
       if [ -f "$KNOWLEDGE_DB" ]; then

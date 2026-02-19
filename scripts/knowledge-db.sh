@@ -154,6 +154,43 @@ update_run() {
   sqlite3 "$db" "UPDATE runs SET completed = $completed, skipped = $skipped, ended_at = datetime('now') WHERE id = '$run_id';"
 }
 
+# Query file patterns matching a given path
+# Args: $1=db, $2=file_path
+query_file_patterns() {
+  local db="$1" file_path="$2"
+  local escaped_path
+  escaped_path=$(echo "$file_path" | sed "s/'/''/g")
+
+  sqlite3 -separator '|' "$db" "
+    SELECT pattern_type, description, source_story
+    FROM file_patterns
+    WHERE '$escaped_path' GLOB path_glob
+    ORDER BY created_at DESC
+    LIMIT 10;
+  " 2>/dev/null
+}
+
+# Insert a file pattern
+# Args: $1=db, $2=path_glob, $3=pattern_type, $4=description, $5=source_story
+insert_file_pattern() {
+  local db="$1" path_glob="$2" pattern_type="$3" description="$4" source_story="${5:-}"
+  local escaped_desc
+  escaped_desc=$(echo "$description" | sed "s/'/''/g")
+
+  sqlite3 "$db" "INSERT INTO file_patterns (path_glob, pattern_type, description, source_story) VALUES ('$path_glob', '$pattern_type', '$escaped_desc', '$source_story');"
+}
+
+# Save a compaction snapshot (pre-compact state preservation)
+# Args: $1=db, $2=story_id, $3=context_summary
+save_compaction_snapshot() {
+  local db="$1" story_id="$2" context_summary="$3"
+  local escaped_summary
+  escaped_summary=$(echo "$context_summary" | sed "s/'/''/g" | head -c 2000)
+
+  # Store as a high-confidence learning tagged for recovery
+  sqlite3 "$db" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$story_id', '${TASKPLEX_RUN_ID:-unknown}', '$escaped_summary', 1.0, 'compaction-snapshot', 'pre-compact');"
+}
+
 # Query top-N learnings with confidence decay (5%/day)
 # Args: $1=db, $2=limit (default 10), $3=tags_filter (optional JSON array string)
 query_learnings() {
