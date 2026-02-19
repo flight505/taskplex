@@ -8,12 +8,13 @@ allowed-tools: ["Bash", "Read", "Write", "Edit", "Task", "AskUserQuestion", "Tod
 
 Interactive wizard that guides you through the complete TaskPlex workflow:
 1. Check dependencies
-2. Describe your project/feature
-3. Generate PRD with clarifying questions
-4. Review and approve PRD
-5. Convert to execution format
-6. Configure execution settings
-7. Launch autonomous agent loop
+2. Validate git repository
+3. Describe your project/feature
+4. Generate PRD with clarifying questions
+5. Review and approve PRD
+6. Convert to execution format
+7. Configure execution settings
+8. Launch autonomous agent loop
 
 ## Execution
 
@@ -43,6 +44,112 @@ If user approves automatic install:
 
 If user declines or install fails, show manual installation instructions and exit.
 
+**Checkpoint 2: Validate Git Repository**
+
+Run the git diagnostic script:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/check-git.sh
+```
+
+Parse the JSON output. Handle each scenario:
+
+**Scenario A: No git repository (`needs_init: true`, exit code 1)**
+
+Use AskUserQuestion:
+
+Question: "No git repository found. TaskPlex needs a git repo to manage branches and track changes. Initialize one?"
+- Header: "Git Init"
+- multiSelect: false
+- Options:
+  - Label: "Yes — initialize git repo (Recommended)" | Description: "Run git init, create .gitignore with TaskPlex entries, and make initial commit"
+  - Label: "No — I'll set it up myself" | Description: "Exit so you can configure git manually"
+
+If user approves:
+1. Run `git init`
+2. Create `.gitignore` with TaskPlex state files (see gitignore entries below)
+3. Run `git add .gitignore && git commit -m "chore: initialize repository with .gitignore"`
+4. Display: "Git repository initialized. Continuing..."
+
+If user declines, exit gracefully: "Please initialize a git repository and run /taskplex:start again."
+
+**Scenario B: Detached HEAD (`is_detached: true`)**
+
+Display warning: "You are in detached HEAD state. TaskPlex needs a named branch to create feature branches."
+
+Use AskUserQuestion:
+
+Question: "Create a new branch from current state?"
+- Header: "Branch"
+- multiSelect: false
+- Options:
+  - Label: "Yes — create 'main' branch" | Description: "git checkout -b main"
+  - Label: "No — I'll fix this myself" | Description: "Exit to resolve manually"
+
+If user approves, run `git checkout -b main`.
+
+**Scenario C: Dirty working tree (`is_dirty: true`)**
+
+Display the dirty files summary from the diagnostic output (show the `dirty_files` array, e.g., " M src/index.ts", "?? new-file.txt").
+
+Use AskUserQuestion:
+
+Question: "[dirty_count] uncommitted changes found. TaskPlex creates a feature branch — uncommitted changes may cause conflicts."
+- Header: "Dirty state"
+- multiSelect: false
+- Options:
+  - Label: "Stash changes (Recommended)" | Description: "git stash — restore later with git stash pop"
+  - Label: "Commit changes now" | Description: "Quick commit of all changes before starting"
+  - Label: "Continue anyway" | Description: "Proceed with uncommitted changes (may cause issues with branch creation)"
+
+Handle:
+- **Stash**: Run `git stash push -m "taskplex: auto-stash before run"`. Display: "Changes stashed. Restore with: git stash pop"
+- **Commit**: Run `git add -A && git commit -m "chore: save work before taskplex run"`. Display: "Changes committed."
+- **Continue**: Display: "Continuing with uncommitted changes. If branch creation fails, stash or commit first."
+
+**Scenario D: New repo with no commits (`has_commits: false`)**
+
+Display: "Git repository exists but has no commits yet."
+
+Run:
+1. Check if `.gitignore` exists; if not, create it with TaskPlex entries
+2. Run `git add .` (stage everything)
+3. Run `git commit -m "chore: initial commit"`
+4. Display: "Initial commit created. Continuing..."
+
+**Scenario E: Missing .gitignore entries (`missing_ignores` is non-empty)**
+
+Display which TaskPlex state files are not in `.gitignore`.
+
+Silently add missing entries — these are always correct to ignore. Append to `.gitignore`:
+
+```
+# TaskPlex state files (auto-added)
+prd.json
+progress.txt
+knowledge.db
+knowledge.md
+.claude/taskplex*.pid
+.claude/taskplex.log
+.claude/taskplex.config.json
+```
+
+Only add entries that are actually missing (don't duplicate existing ones). Display: "Updated .gitignore with TaskPlex state files."
+
+**Scenario F: Stale worktrees (`stale_worktrees > 0`)**
+
+Display: "[stale_worktrees] leftover git worktrees found from a previous run."
+
+Run `git worktree prune` silently. Display: "Cleaned up stale worktrees."
+
+**After all scenarios resolved**, display summary:
+- "Git repository: [git_root]"
+- "Branch: [current_branch]"
+- "Remote: [configured/not configured]"
+- "Status: Ready"
+
+Proceed to Checkpoint 3.
+
 **Optional: Optimize Planning Quality**
 
 For best results, configure Opus for PRD generation (Steps 3 & 5 use subagents):
@@ -54,7 +161,7 @@ export CLAUDE_CODE_SUBAGENT_MODEL=opus
 
 This makes the PRD generator and converter use Opus 4.6 (the latest, with adaptive reasoning) for superior planning. The planning phase only runs once, so the cost is minimal. Restart your terminal after adding this.
 
-**Checkpoint 2: Project Input**
+**Checkpoint 3: Project Input**
 
 Ask the user directly for their project description:
 
@@ -70,7 +177,7 @@ Then wait for the user's response in the chat.
 - If it looks like a file path:
   - Expand `~` to user's home directory if needed
   - Use Read tool to read the file
-  - If file exists: Store content as `project_input` and proceed to Checkpoint 3
+  - If file exists: Store content as `project_input` and proceed to Checkpoint 4
   - If file doesn't exist: Show error and ask user to provide the description directly
 - If it's not a file path:
   - Use `user_input` directly as `project_input`
@@ -94,7 +201,7 @@ Conduct a smart interview to gather REQUIRED information:
    - "Is this a small feature, medium project, or large system?"
 
 **When to proceed:**
-- Once you have clear answers to both REQUIRED items (project type + main functionality), proceed automatically to Checkpoint 3
+- Once you have clear answers to both REQUIRED items (project type + main functionality), proceed automatically to Checkpoint 4
 - No need to ask "do you have enough?" - use your judgment
 - If user provides very detailed initial input (>50 words), skip interview entirely
 
@@ -106,12 +213,12 @@ User: "It's a REST API"
 You: "What's the core functionality? What should users be able to do with authentication?"
 User: "User registration, login with email/password, JWT tokens"
 [You now have: type=API, functionality=auth with registration/login/JWT]
-→ Proceed to Checkpoint 3 automatically
+→ Proceed to Checkpoint 4 automatically
 ```
 
-- Proceed to Checkpoint 3
+- Proceed to Checkpoint 4
 
-**Checkpoint 3: Generate PRD**
+**Checkpoint 4: Generate PRD**
 
 Load the `prd-generator` skill using Task tool:
 ```
@@ -123,7 +230,7 @@ The skill will:
 - Generate structured PRD
 - Save to `tasks/prd-[feature-name].md`
 
-**Checkpoint 4: Review PRD**
+**Checkpoint 5: Review PRD**
 
 Open the PRD file with the default editor:
 - Run `open tasks/prd-[feature-name].md` to open with default app
@@ -141,7 +248,7 @@ Question: "Review the PRD in `tasks/prd-[feature-name].md`. Ready to proceed?"
 
 **After collecting answer:**
 
-- **If "Approved - convert to JSON"**: Proceed to Checkpoint 5
+- **If "Approved - convert to JSON"**: Proceed to Checkpoint 6
 
 - **If "Suggest improvements"**:
   1. Read the PRD file with Read tool
@@ -159,16 +266,16 @@ Question: "Review the PRD in `tasks/prd-[feature-name].md`. Ready to proceed?"
   5. If user approves suggestions:
      - Update the PRD file with improvements using Edit tool
      - Display: "PRD updated with improvements"
-  6. **Return to the beginning of Checkpoint 4**: Use AskUserQuestion again with the same 4 options (this creates a loop - user can approve improved PRD, request more improvements, manually edit, or start over)
+  6. **Return to the beginning of Checkpoint 5**: Use AskUserQuestion again with the same 4 options (this creates a loop - user can approve improved PRD, request more improvements, manually edit, or start over)
 
 - **If "Need edits - I'll edit"**:
   1. Pause and display "Make your edits to tasks/prd-[feature-name].md and let me know when ready."
   2. Wait for user confirmation in chat
-  3. **Return to the beginning of Checkpoint 4**: Use AskUserQuestion again with the same 4 options
+  3. **Return to the beginning of Checkpoint 5**: Use AskUserQuestion again with the same 4 options
 
-- **If "Start over"**: Return to Checkpoint 2
+- **If "Start over"**: Return to Checkpoint 3
 
-**Checkpoint 5: Convert to JSON**
+**Checkpoint 6: Convert to JSON**
 
 Load the `prd-converter` skill using Task tool:
 ```
@@ -186,7 +293,7 @@ The skill will:
 - Calculate average criteria per story
 - Display: "✓ PRD converted: [story_count] stories, [total_criteria] criteria (avg [avg_criteria]/story)"
 
-**Checkpoint 6: Execution Settings**
+**Checkpoint 7: Execution Settings**
 
 Create `.claude/taskplex.config.json` configuration if it doesn't exist.
 
@@ -383,7 +490,7 @@ Example (8 stories, avg 4 criteria each, parallel mode, full intelligence):
 }
 ```
 
-**Checkpoint 7: Launch**
+**Checkpoint 8: Launch**
 
 **If monitor enabled**, start the monitor sidecar first:
 ```bash

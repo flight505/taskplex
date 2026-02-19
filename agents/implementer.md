@@ -12,6 +12,12 @@ disallowedTools:
   - Task
 model: inherit
 memory: project
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh"
 ---
 
 # Implementer Agent

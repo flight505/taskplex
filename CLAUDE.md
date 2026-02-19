@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 2.0.0** | Last Updated: 2026-02-17
+**Version 2.0.3** | Last Updated: 2026-02-19
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -32,6 +32,7 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - **v2.0:** Smart Scaffold: SQLite knowledge store, 1-shot decision calls, SubagentStart/Stop hooks
 - **v2.0:** Model routing: per-story haiku/sonnet/opus selection based on complexity
 - **v2.0:** Inline validation with agent self-healing (SubagentStop hook)
+- **v2.0.3:** Leverages CLI 2.1.47 features: `last_assistant_message`, agent frontmatter hooks, `context: fork` skills
 
 ---
 
@@ -90,6 +91,7 @@ taskplex/
 │   ├── parallel.sh              # Parallel execution functions (sourced conditionally)
 │   ├── prompt.md                # Instructions for each Claude iteration
 │   ├── check-deps.sh            # Dependency checker (claude, jq, coreutils)
+│   ├── check-git.sh             # Git repo diagnostic (state, dirty files, .gitignore)
 │   ├── check-destructive.sh     # Hook script: blocks destructive git commands
 │   └── prd.json.example         # Reference format
 ├── examples/
@@ -103,7 +105,8 @@ taskplex/
 ### Component Roles
 
 **Commands (`start.md`):**
-- Single entry point orchestrating 7-checkpoint workflow
+- Single entry point orchestrating 8-checkpoint workflow
+- Checkpoint 2 validates git state (or bootstraps a fresh repo)
 - Uses AskUserQuestion for user input at decision points
 - Invokes skills via Task tool for PRD generation/conversion
 - Launches bash scripts via Bash tool for execution
@@ -120,7 +123,7 @@ taskplex/
 - `failure-analyzer`: Categorizes failed task output into: `env_missing`, `test_failure`, `timeout`, `code_error`, `dependency_missing`, `unknown`. Recommends retry strategy with max retry limits per category.
 
 **Hooks:**
-- `PostToolUse` on Bash: Runs `check-destructive.sh` to block `git push --force`, `git reset --hard`, `git clean`, and direct pushes to main/master during implementation.
+- `PreToolUse` on Bash (agent-scoped): `check-destructive.sh` blocks `git push --force`, `git reset --hard`, `git clean`, and direct pushes to main/master. Defined in `implementer.md` frontmatter — only runs during implementer agent lifecycle, not globally.
 - `SubagentStart/Stop`: Async hooks that emit events to the monitor sidecar for agent lifecycle tracking.
 - `PostToolUse` (monitor): Async hook that emits tool usage events for agent behavior analysis.
 - `SessionStart/End`: Async hooks that track session lifecycle in the monitor.
@@ -302,7 +305,7 @@ export TASKPLEX_MONITOR_PORT=4444
 ### Modifying Components
 
 **Commands (`start.md`):**
-- Follow 7-checkpoint structure
+- Follow 8-checkpoint structure
 - Use AskUserQuestion at decision points
 - Test both foreground and background modes
 
@@ -518,6 +521,27 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v2.0.3 (2026-02-19)
+
+**CLI 2.1.47 Feature Adoption + Git Bootstrap:**
+
+**Added:**
+- `scripts/check-git.sh` — Git repository diagnostic script outputting JSON state (repo exists, dirty files, branch status, .gitignore coverage, stale worktrees). Handles fresh folders (no repo) gracefully.
+- Checkpoint 2 in wizard: "Validate Git Repository" — can bootstrap a fresh repo with `git init`, stash/commit dirty state, fix detached HEAD, update .gitignore, and prune stale worktrees. Wizard is now 8 checkpoints (was 7).
+
+**Changed:**
+- `hooks/validate-result.sh` — Learnings extraction now uses `last_assistant_message` from SubagentStop hook input instead of grepping the transcript file. Simpler, faster, no file I/O.
+- `agents/implementer.md` — Destructive command hook (`check-destructive.sh`) moved from global `hooks.json` into implementer YAML frontmatter as a scoped `PreToolUse` hook. Only runs during implementer lifecycle, reducing overhead.
+- `hooks/hooks.json` — Removed global `PreToolUse` Bash hook (now agent-scoped in implementer.md).
+- `skills/prd-generator/SKILL.md` — Added `context: fork` to run PRD generation in isolated subagent context, preserving main conversation context window.
+- `skills/prd-converter/SKILL.md` — Added `context: fork` to run PRD conversion in isolated subagent context.
+- `commands/start.md` — Renumbered all checkpoints (1-8), added git validation as Checkpoint 2, fixed cross-references.
+
+**Leverages:**
+- `last_assistant_message` field in SubagentStop hooks (CLI 2.1.47)
+- Agent frontmatter hooks with `PreToolUse` scoping (CLI 2.1.0)
+- `context: fork` for skills running in isolated subagent context (CLI 2.1.0)
 
 ### v2.0.0 (2026-02-17)
 

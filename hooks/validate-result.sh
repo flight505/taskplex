@@ -3,7 +3,7 @@
 # Runs inline validation (typecheck/build/test) after implementer finishes.
 # If validation fails, blocks agent with error details so it can self-heal.
 #
-# Input: JSON on stdin with agent_id, agent_type, agent_transcript_path, stop_hook_active
+# Input: JSON on stdin with agent_id, agent_type, agent_transcript_path, stop_hook_active, last_assistant_message
 # Output: JSON on stdout with decision:"block" and reason (if failing)
 # Exit 0 = allow agent to stop normally
 # Exit 2 = block agent, inject reason (agent continues fixing)
@@ -16,7 +16,6 @@ HOOK_INPUT=$(cat)
 # Extract fields
 AGENT_TYPE=$(echo "$HOOK_INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 STOP_HOOK_ACTIVE=$(echo "$HOOK_INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null)
-TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.agent_transcript_path // ""' 2>/dev/null)
 
 # Prevent infinite validation loops
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
@@ -92,8 +91,12 @@ ${TEST_OUTPUT}
   fi
 fi
 
-# Extract learnings from transcript and save to SQLite (best-effort)
-if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+# Extract learnings from last_assistant_message and save to SQLite (best-effort)
+# Since CLI 2.1.47, SubagentStop provides last_assistant_message directly —
+# no need to parse the transcript file.
+LAST_MESSAGE=$(echo "$HOOK_INPUT" | jq -r '.last_assistant_message // ""' 2>/dev/null)
+
+if [ -n "$LAST_MESSAGE" ]; then
   source "$SCRIPT_DIR/scripts/knowledge-db.sh" 2>/dev/null || true
 
   PRD_FILE="$PROJECT_DIR/prd.json"
@@ -104,13 +107,12 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   fi
 
   if [ -f "$KNOWLEDGE_DB" ] && [ -f "$PRD_FILE" ]; then
-    # Find current story
     STORY_ID=$(jq -r '.userStories[] | select(.status == "in_progress") | .id' "$PRD_FILE" 2>/dev/null | head -1)
     RUN_ID="${TASKPLEX_RUN_ID:-unknown}"
 
-    # Try to extract learnings from the transcript's last JSON block
-    # The implementer outputs structured JSON as its last response
-    LEARNINGS=$(grep -o '"learnings"[[:space:]]*:[[:space:]]*\[.*\]' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1 | jq -r '.[].[]' 2>/dev/null || true)
+    # Extract the JSON block from the implementer's final response.
+    # The implementer outputs structured JSON with a "learnings" array.
+    LEARNINGS=$(echo "$LAST_MESSAGE" | grep -o '"learnings"[[:space:]]*:[[:space:]]*\[.*\]' 2>/dev/null | tail -1 | jq -r '.[].[]' 2>/dev/null || true)
 
     if [ -n "$LEARNINGS" ] && [ -n "$STORY_ID" ]; then
       while IFS= read -r learning; do
