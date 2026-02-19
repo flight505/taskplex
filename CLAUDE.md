@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 2.0.4** | Last Updated: 2026-02-19
+**Version 2.0.5** | Last Updated: 2026-02-19
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -538,6 +538,19 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v2.0.5 (2026-02-19)
+
+**v2.1 Batch 1 — Quick Wins:**
+
+**Added:**
+- `maxTurns` on all agents: implementer (150), validator (50), reviewer (30), merger (50). Prevents runaway agent loops.
+- `disallowedTools` on validator (`Write`, `Edit`, `Task`) and reviewer (`Write`, `Edit`, `Bash`, `Task`). Enforces read-only contracts.
+- `PostToolUseFailure` monitor hook (`monitor/hooks/post-tool-use-failure.sh`). Captures tool failures for error pattern analysis in dashboard.
+- Memory vs knowledge precedence documentation in CLAUDE.md. Clarifies how `memory: project` and SQLite injection coexist.
+
+**Fixed:**
+- `commands/start.md` — `allowed-tools` frontmatter changed from JSON array to comma-separated string (correct skill schema format).
 
 ### v2.0.4 (2026-02-19)
 
