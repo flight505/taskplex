@@ -7,6 +7,7 @@
 # Output: JSON on stdout with decision:"block" and reason (if failing)
 # Exit 0 = allow agent to stop normally
 # Exit 2 = block agent, inject reason (agent continues fixing)
+# NOTE: set -e intentionally omitted — hook requires explicit exit code control
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -110,9 +111,16 @@ if [ -n "$LAST_MESSAGE" ]; then
     STORY_ID=$(jq -r '.userStories[] | select(.status == "in_progress") | .id' "$PRD_FILE" 2>/dev/null | head -1)
     RUN_ID="${TASKPLEX_RUN_ID:-unknown}"
 
-    # Extract the JSON block from the implementer's final response.
-    # The implementer outputs structured JSON with a "learnings" array.
-    LEARNINGS=$(echo "$LAST_MESSAGE" | grep -o '"learnings"[[:space:]]*:[[:space:]]*\[.*\]' 2>/dev/null | tail -1 | jq -r '.[].[]' 2>/dev/null || true)
+    # Extract learnings from the implementer's final response.
+    # Try jq parsing first (structured JSON), fall back to regex extraction.
+    LEARNINGS=$(echo "$LAST_MESSAGE" | jq -r '
+      (if type == "string" then (try fromjson catch {}) else . end) |
+      .learnings // [] | .[]
+    ' 2>/dev/null || true)
+    if [ -z "$LEARNINGS" ]; then
+      # Fallback: extract JSON object containing learnings, then parse
+      LEARNINGS=$(echo "$LAST_MESSAGE" | grep -o '{[^{}]*"learnings"[^{}]*}' 2>/dev/null | tail -1 | jq -r '.learnings // [] | .[]' 2>/dev/null || true)
+    fi
 
     if [ -n "$LEARNINGS" ] && [ -n "$STORY_ID" ]; then
       while IFS= read -r learning; do

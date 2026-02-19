@@ -13,7 +13,7 @@
     ],
     "SubagentStart": [
       {
-        "matcher": "implementer|validator",
+        "matcher": "implementer",
         "hooks": [
           {
             "type": "command",

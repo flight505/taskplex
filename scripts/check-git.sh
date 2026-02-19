@@ -52,7 +52,9 @@ if [ -n "$DIRTY_FILES" ]; then
 fi
 
 IS_DIRTY="false"
-[ "$DIRTY_COUNT" -gt 0 ] && IS_DIRTY="true"
+if [ "$DIRTY_COUNT" -gt 0 ]; then
+  IS_DIRTY="true"
+fi
 
 # Remote configured?
 HAS_REMOTE="false"
@@ -90,7 +92,9 @@ if [ -n "$WORKTREE_LIST" ]; then
   STALE_WORKTREES=$(echo "$WORKTREE_LIST" | grep -c '^worktree ' || true)
   # Subtract 1 for the main worktree
   STALE_WORKTREES=$((STALE_WORKTREES - 1))
-  [ "$STALE_WORKTREES" -lt 0 ] && STALE_WORKTREES=0
+  if [ "$STALE_WORKTREES" -lt 0 ]; then
+    STALE_WORKTREES=0
+  fi
 fi
 
 # ----- 5. Check if this is a brand new repo with no commits -----

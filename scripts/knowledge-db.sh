@@ -88,7 +88,10 @@ migrate_knowledge_md() {
   fi
 
   # Parse knowledge.md entries (lines starting with "- [")
+  local learning_lines
+  learning_lines=$(grep '^- \[' "$md_file" || true)
   while IFS= read -r line; do
+    [ -z "$line" ] && continue
     # Extract story_id and content from "- [US-001] learning text"
     local story_id content
     story_id=$(echo "$line" | sed -n 's/^- \[\([^]]*\)\] .*/\1/p')
@@ -97,7 +100,7 @@ migrate_knowledge_md() {
     if [ -n "$content" ]; then
       sqlite3 "$db" "INSERT INTO learnings (story_id, content, confidence, source) VALUES ('${story_id:-unknown}', '$(echo "$content" | sed "s/'/''/g")', 0.8, 'migration');"
     fi
-  done < <(grep '^- \[' "$md_file")
+  done <<< "$learning_lines"
 }
 
 # Insert a learning into the database

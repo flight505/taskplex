@@ -17,6 +17,11 @@ if ! command -v jq &> /dev/null; then
   MISSING+=("jq")
 fi
 
+# Check for sqlite3 (knowledge store)
+if ! command -v sqlite3 &> /dev/null; then
+  MISSING+=("sqlite3")
+fi
+
 # Check for timeout command (GNU coreutils)
 # On macOS with Homebrew coreutils, it's called gtimeout
 # On Linux, it's timeout

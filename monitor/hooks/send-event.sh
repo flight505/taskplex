@@ -3,8 +3,7 @@
 # Called by each hook script to forward events to the monitor server.
 # Reads hook payload from stdin, enriches with event type, POSTs to server.
 # Always exits 0 — never blocks Claude Code.
-
-set -e
+# NOTE: no set -e — failures must not produce non-zero exit
 
 EVENT_TYPE="${1:-unknown}"
 MONITOR_PORT="${TASKPLEX_MONITOR_PORT:-4444}"

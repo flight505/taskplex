@@ -182,7 +182,7 @@ extract_learnings() {
   ' 2>/dev/null)
 
   if [ -z "$learnings" ]; then
-    learnings=$(echo "$agent_output" | grep -o '"learnings"[[:space:]]*:[[:space:]]*\[.*\]' | head -1 | jq -r '.[]' 2>/dev/null)
+    learnings=$(echo "$agent_output" | grep -o '{[^{}]*"learnings"[^{}]*}' | head -1 | jq -r '.learnings // [] | .[]' 2>/dev/null)
   fi
 
   if [ -z "$learnings" ]; then
@@ -967,9 +967,6 @@ if [ -f "$KNOWLEDGE_FILE" ] && [ ! -f "${KNOWLEDGE_DB}.migrated" ]; then
   log "INIT" "Migration complete"
 fi
 
-# Export run ID for hook scripts
-export TASKPLEX_RUN_ID="$RUN_ID"
-
 # Export effort level as env var for Claude CLI (Opus 4.6 adaptive reasoning)
 if [ -n "$EFFORT_LEVEL" ] && [ "$EXECUTION_MODEL" = "opus" ]; then
   export CLAUDE_CODE_EFFORT_LEVEL="$EFFORT_LEVEL"
@@ -1082,6 +1079,7 @@ fi
 
 # Generate run ID for this execution
 RUN_ID="$$-$(date +%s)"
+export TASKPLEX_RUN_ID="$RUN_ID"
 
 # Fire-and-forget event emission — never blocks execution
 emit_event() {
