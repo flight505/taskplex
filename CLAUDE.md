@@ -96,7 +96,7 @@ taskplex/
 │   ├── prd-simple-feature.md    # Simple PRD example
 │   └── prd-complex-feature.md   # Complex PRD with decomposition
 ├── README.md                    # Public documentation with architecture diagrams
-├── TASKPLEX-ARCHITECTURE.md     # Full architecture plan (v1.0 design doc)
+├── TASKPLEX-ARCHITECTURE.md     # Architecture ground truth (design, issues, roadmap)
 └── .gitignore
 ```
 
@@ -668,7 +668,7 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 - [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md)
 - [Plugin Development Guide](https://github.com/anthropics/claude-code/blob/main/docs/plugins.md)
 - [Marketplace Format](https://github.com/anthropics/claude-code/blob/main/docs/plugin-marketplace.md)
-- [TaskPlex Architecture Plan](./TASKPLEX-ARCHITECTURE.md)
+- [TaskPlex Architecture](./TASKPLEX-ARCHITECTURE.md)
 
 ---
 

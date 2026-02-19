@@ -1,7 +1,7 @@
 # TASKPLEX-EVOLUTION.md — Deep Dive Audit Report
 
 **Date:** 2026-02-17
-**Audited Document:** `TASKPLEX-EVOLUTION.md` (v2.0 proposal)
+**Audited Document:** `TASKPLEX-EVOLUTION.md` (v2.0 proposal, since deleted — findings consolidated into `TASKPLEX-ARCHITECTURE.md`)
 **Research Method:** Parallel Tier 4 deep dives into CLI docs (21,721 lines), API docs (1,079,918 lines), and token cost modeling against v1.2.1 architecture.
 
 ---
