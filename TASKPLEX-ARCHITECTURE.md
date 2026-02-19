@@ -49,7 +49,7 @@ taskplex/
 │   ├── prompt.md                     # Instructions for each Claude iteration
 │   ├── knowledge-db.sh              # SQLite knowledge store helpers
 │   ├── decision-call.sh             # 1-shot Opus decision calls
-│   ├── check-deps.sh                # Dependency checker (claude, jq, coreutils)
+│   ├── check-deps.sh                # Dependency checker (claude, jq, sqlite3, coreutils)
 │   ├── check-git.sh                 # Git repo diagnostic (JSON output)
 │   └── check-destructive.sh         # PreToolUse: blocks dangerous git commands
 ├── monitor/
@@ -257,7 +257,7 @@ Blocks: `git push --force`, `git reset --hard`, `git clean -f`, direct pushes to
 ### SubagentStart: Knowledge Injection
 
 ```
-implementer|validator → inject-knowledge.sh
+implementer → inject-knowledge.sh
 ```
 Queries SQLite knowledge store for relevant learnings. Returns `additionalContext` JSON that gets injected into the subagent's system prompt. Replaces manual `generate_context_brief()`.
 
@@ -365,6 +365,14 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 | `commit_story` failure halts pipeline | Must be non-fatal: `commit_story ... \|\| log "WARN" "..."` |
 | Duplicate watcher timers in monitor | Merge watchers, add cleanup in `onUnmounted` |
 | `set -e` + `grep -c` returns exit 1 on zero matches | Use `\|\| true` instead of `\|\| echo 0` to prevent premature script exit |
+| `check-git.sh` `set -e` + `[ ] && action` on lines 55, 93 | Script silently exits on clean repos. Changed to `if/then/fi` |
+| `taskplex.sh` `RUN_ID` exported before defined (line 971 vs 1084) | Hooks got empty `TASKPLEX_RUN_ID`. Moved export after definition |
+| `check-deps.sh` missing `sqlite3` check | Added sqlite3 to dependency validation (required since v2.0) |
+| `validate-result.sh` greedy regex learnings extraction | Replaced with jq-first parsing + non-greedy JSON object fallback |
+| `knowledge-db.sh` process substitution `< <()` | Normalized to here-string `<<<` for project consistency |
+| `send-event.sh` `set -e` contradicts "always exit 0" | Removed `set -e` from async monitor hook |
+| `check-destructive.sh` blocks `--force-with-lease` | Added allowlist for safer `--force-with-lease` operation |
+| `hooks.json` inject-knowledge triggers for validator | Narrowed SubagentStart matcher to `implementer` only |
 
 ---
 

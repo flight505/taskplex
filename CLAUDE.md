@@ -56,9 +56,11 @@ taskplex/
 │   ├── taskplex-orchestration-flow.png    # Architecture diagram
 │   └── taskplex-knowledge-architecture.png # Knowledge layer diagram
 ├── commands/
-│   └── start.md                 # Interactive wizard (7-checkpoint workflow)
+│   └── start.md                 # Interactive wizard (8-checkpoint workflow)
 ├── hooks/
-│   └── hooks.json               # PostToolUse: block destructive git commands
+│   ├── hooks.json               # 7 hooks: monitor events, knowledge injection, inline validation
+│   ├── inject-knowledge.sh      # SubagentStart: SQLite → additionalContext
+│   └── validate-result.sh       # SubagentStop: inline validation + learnings extraction
 ├── skills/
 │   ├── prd-generator/           # PRD creation with clarifying questions
 │   │   └── SKILL.md
@@ -90,9 +92,11 @@ taskplex/
 │   ├── taskplex.sh              # Main bash loop (orchestrator)
 │   ├── parallel.sh              # Parallel execution functions (sourced conditionally)
 │   ├── prompt.md                # Instructions for each Claude iteration
-│   ├── check-deps.sh            # Dependency checker (claude, jq, coreutils)
+│   ├── knowledge-db.sh          # SQLite knowledge store helpers
+│   ├── decision-call.sh         # 1-shot Opus decision calls
+│   ├── check-deps.sh            # Dependency checker (claude, jq, sqlite3, coreutils)
 │   ├── check-git.sh             # Git repo diagnostic (state, dirty files, .gitignore)
-│   ├── check-destructive.sh     # Hook script: blocks destructive git commands
+│   ├── check-destructive.sh     # PreToolUse hook (agent-scoped): blocks destructive git commands
 │   └── prd.json.example         # Reference format
 ├── examples/
 │   ├── prd-simple-feature.md    # Simple PRD example
@@ -132,8 +136,8 @@ taskplex/
 - `taskplex.sh`: Main orchestration loop — runs fresh Claude instances until all stories complete
 - `parallel.sh`: Wave-based parallel execution functions — sourced conditionally when `parallel_mode=parallel`
 - `prompt.md`: Instructions given to each Claude agent (includes "check before implementing" guidance)
-- `check-deps.sh`: Validates `claude` CLI, `jq`, and `coreutils` installation
-- `check-destructive.sh`: PostToolUse hook — blocks dangerous git commands
+- `check-deps.sh`: Validates `claude` CLI, `jq`, `sqlite3`, and `coreutils` installation
+- `check-destructive.sh`: PreToolUse hook (agent-scoped) — blocks dangerous git commands
 
 ### State Files (User's Project)
 
