@@ -1,6 +1,6 @@
 {
   "name": "taskplex",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Resilient autonomous development with Smart Scaffold intelligence: 1-shot decision calls, SubagentStart/Stop hooks, SQLite knowledge store, inline validation with agent self-healing, and model routing. Successor to SDK Bridge.",
   "author": {
     "name": "Jesper Vang",

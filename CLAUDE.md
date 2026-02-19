@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 2.0.3** | Last Updated: 2026-02-19
+**Version 2.0.4** | Last Updated: 2026-02-19
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -525,6 +525,25 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v2.0.4 (2026-02-19)
+
+**Bug Fix Round — Code-Simplifier + Docs Compliance Review:**
+
+**Fixed (HIGH):**
+- `scripts/check-git.sh` — `set -e` + `[ ] && action` pattern silently crashed on clean repos (lines 55, 93). Changed to `if/then/fi`.
+- `scripts/taskplex.sh` — `RUN_ID` exported before defined; hooks received empty `TASKPLEX_RUN_ID`. Moved export after generation.
+- `scripts/check-deps.sh` — Added `sqlite3` dependency check (required since v2.0 knowledge store).
+
+**Fixed (MEDIUM):**
+- `hooks/validate-result.sh` — Fragile greedy-regex learnings extraction replaced with jq-first parsing + non-greedy fallback.
+- `scripts/knowledge-db.sh` — Process substitution `< <()` normalized to here-string `<<<` for project consistency.
+
+**Fixed (LOW):**
+- `monitor/hooks/send-event.sh` — Removed `set -e` that contradicted "always exit 0" design.
+- `scripts/check-destructive.sh` — Added `--force-with-lease` allowlist (safer than `--force`).
+- `hooks/hooks.json` — Narrowed `inject-knowledge.sh` SubagentStart matcher from `implementer|validator` to `implementer` only.
+- `hooks/validate-result.sh`, `scripts/check-destructive.sh` — Added comments documenting intentional `set -e` omission.
 
 ### v2.0.3 (2026-02-19)
 

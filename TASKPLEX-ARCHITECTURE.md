@@ -1,6 +1,6 @@
 # TaskPlex Architecture
 
-**Version 2.0.3** | Last Updated: 2026-02-19
+**Version 2.0.4** | Last Updated: 2026-02-19
 
 Ground truth for TaskPlex's current design, implementation status, known issues, and roadmap. For component-level docs (config schema, agent frontmatter, skill details), see [CLAUDE.md](./CLAUDE.md).
 
@@ -21,7 +21,7 @@ TaskPlex is a resilient autonomous development assistant for Claude Code. A sing
 
 ---
 
-## 2. Current Architecture (v2.0.3)
+## 2. Current Architecture (v2.0.4)
 
 ### Component Structure
 
@@ -343,7 +343,7 @@ A story is marked complete **only when validation passes** — not when the agen
 
 ---
 
-## 9. Known Issues & Fixes (v2.0.3)
+## 9. Known Issues & Fixes (v2.0.4)
 
 These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
@@ -414,6 +414,7 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 2.0.4 | 2026-02-19 | Bug fix round: 9 fixes from code-simplifier + docs compliance review (set -e crashes, RUN_ID export, sqlite3 dep check, learnings extraction, force-with-lease) |
 | 2.0.3 | 2026-02-19 | CLI 2.1.47 adoption (last_assistant_message, agent-scoped hooks, context: fork), git repo bootstrap wizard |
 | 2.0.0 | 2026-02-17 | Smart Scaffold: SQLite knowledge store, decision calls, SubagentStart/Stop hooks, inline validation |
 | 1.2.1 | 2026-02-15 | Execution monitor sidecar (Bun + Vue 3 dashboard) |
