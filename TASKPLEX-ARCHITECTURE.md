@@ -1,6 +1,6 @@
 # TaskPlex Architecture
 
-**Version 2.0.7** | Last Updated: 2026-02-19
+**Version 2.0.8** | Last Updated: 2026-02-20
 
 Ground truth for TaskPlex's current design, implementation status, known issues, and roadmap. For component-level docs (config schema, agent frontmatter, skill details), see [CLAUDE.md](./CLAUDE.md).
 
@@ -21,7 +21,7 @@ TaskPlex is a resilient autonomous development assistant for Claude Code. A sing
 
 ---
 
-## 2. Current Architecture (v2.0.7)
+## 2. Current Architecture (v2.0.8)
 
 ### Component Structure
 
@@ -468,6 +468,7 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 2.0.8 | 2026-02-20 | SOTA audit: permissionMode on all agents, Stop/TaskCompleted hooks, statusMessage/timeout, skill agent routing, $ARGUMENTS fast-start, CLAUDE_ENV_FILE, competitive analysis vs 15+ plugins |
 | 2.0.7 | 2026-02-19 | v2.1 Batch 3: Transcript mining, adaptive PRD rewriting, post-merge regression check, scope drift detection, code review agent, live intervention via dashboard |
 | 2.0.6 | 2026-02-19 | v2.1 Batch 2: PreToolUse per-edit context injection, failure-analyzer preload on implementer, PreCompact hook, checkpoint resume |
 | 2.0.5 | 2026-02-19 | v2.1 Batch 1: maxTurns on agents, disallowedTools enforcement, PostToolUseFailure hook, allowed-tools format fix, memory vs knowledge docs |

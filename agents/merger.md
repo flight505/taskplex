@@ -5,7 +5,12 @@ tools:
   - Bash
   - Read
   - Grep
+disallowedTools:
+  - Write
+  - Edit
+  - Task
 model: haiku
+permissionMode: bypassPermissions
 maxTurns: 50
 ---
 

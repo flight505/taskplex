@@ -11,6 +11,7 @@ disallowedTools:
   - Edit
   - Task
 model: haiku
+permissionMode: dontAsk
 maxTurns: 50
 memory: project
 ---

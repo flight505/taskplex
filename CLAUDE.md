@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 2.0.7** | Last Updated: 2026-02-19
+**Version 2.0.8** | Last Updated: 2026-02-20
 
 Developer instructions for working with the TaskPlex plugin for Claude Code CLI.
 
@@ -35,6 +35,7 @@ TaskPlex is a **resilient autonomous development assistant** — the next-genera
 - **v2.0.3:** Leverages CLI 2.1.47 features: `last_assistant_message`, agent frontmatter hooks, `context: fork` skills
 - **v2.0.5:** Agent hardening: `maxTurns`, `disallowedTools`, `PostToolUseFailure` hook, memory vs knowledge docs
 - **v2.0.6:** Per-edit context injection (`additionalContext`), failure-analyzer skill preload, `PreCompact` hook, checkpoint resume
+- **v2.0.8:** SOTA audit: permissionMode on all agents, Stop/TaskCompleted hooks, statusMessage/timeout on all sync hooks, skill agent routing, fast-start with $ARGUMENTS, CLAUDE_ENV_FILE persistence, competitive analysis against 15+ plugins
 - **v2.0.7:** Transcript mining, adaptive PRD rewriting, post-merge regression check, scope drift detection, code review agent, live dashboard intervention
 
 ---
@@ -201,13 +202,13 @@ Agents receive context from two sources that may overlap:
 
 Each agent has restricted tools and a specific model, replacing the monolithic `claude -p` approach:
 
-| Agent | Model | Tools | Skills | Purpose |
-|-------|-------|-------|--------|---------|
-| implementer | inherit | Bash, Read, Edit, Write, Glob, Grep | failure-analyzer | Code a single story |
-| validator | haiku | Bash, Read, Glob, Grep | — | Verify acceptance criteria |
-| reviewer | sonnet | Read, Glob, Grep | — | Review PRD quality |
-| merger | haiku | Bash, Read, Grep | — | Git branch operations |
-| code-reviewer | sonnet | Read, Grep, Glob, Bash | — | Two-stage code review (opt-in) |
+| Agent | Model | Permission | Tools | Skills | Purpose |
+|-------|-------|------------|-------|--------|---------|
+| implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | failure-analyzer | Code a single story |
+| validator | haiku | dontAsk | Bash, Read, Glob, Grep | — | Verify acceptance criteria |
+| reviewer | sonnet | plan | Read, Glob, Grep | — | Review PRD quality |
+| merger | haiku | bypassPermissions | Bash, Read, Grep | — | Git branch operations |
+| code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | — | Two-stage code review (opt-in) |
 
 ### 2. Error Categorization & Retry
 
@@ -553,6 +554,46 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 ---
 
 ## Version History
+
+### v2.0.8 (2026-02-20)
+
+**SOTA Audit — Complete CLI Feature Coverage + Competitive Intelligence:**
+
+**Added:**
+- `hooks/stop-guard.sh` — Stop hook prevents premature exit when stories are in_progress or pending. Checks `stop_hook_active` to prevent infinite loops.
+- `hooks/task-completed.sh` — TaskCompleted hook runs test suite before allowing task completion. Exit 2 blocks with stderr feedback.
+- `CLAUDE_ENV_FILE` persistence in `monitor/hooks/session-lifecycle.sh` — persists `TASKPLEX_MONITOR_PORT` and `TASKPLEX_RUN_ID` for all subsequent Bash commands.
+- `$ARGUMENTS` fast-start in `commands/start.md` — `/taskplex:start Fix the login bug` skips interview, injects description directly.
+- Dynamic context injection in `commands/start.md` — auto-detects existing `prd.json` and config, offers resume vs start fresh.
+- Competitive analysis PRD (`docs/plans/2026-02-20-sota-upgrade-design.md`) covering 15+ plugins (Superpowers 55k stars, claude-mem 29k, wshobson/agents 29k, etc.)
+
+**Changed:**
+- All 5 agents now have explicit `permissionMode`:
+  - `implementer`: `bypassPermissions` (headless write access)
+  - `validator`: `dontAsk` (auto-deny prompts, read-only + test commands)
+  - `reviewer`: `plan` (read-only exploration enforced at framework level)
+  - `merger`: `bypassPermissions` (headless git operations)
+  - `code-reviewer`: `dontAsk` (auto-deny, read + git diff)
+- `merger` agent now has `disallowedTools: [Write, Edit, Task]` (principle of least privilege)
+- `code-reviewer` agent now has `memory: project` (accumulates codebase patterns)
+- `prd-generator` skill: added `agent: Explore`, `model: sonnet`, `disable-model-invocation: true`, `allowed-tools`
+- `prd-converter` skill: added `agent: Explore`, `model: sonnet`, `disable-model-invocation: true`, `allowed-tools`
+- `failure-analyzer` skill: added `user-invocable: false`, `disable-model-invocation: true`
+- `start.md` command: added `disable-model-invocation: true`, `argument-hint: "[feature-description]"`
+- `hooks.json`: added `statusMessage` on all sync hooks (inject-knowledge, validate-result, pre-compact, stop-guard, task-completed), added `timeout` on all sync hooks, added Stop and TaskCompleted hook entries
+- `plugin.json`: added explicit `"hooks": "./hooks/hooks.json"`, added `author.email`, bumped to 2.0.8
+
+**Leverages:**
+- `Stop` hook with `decision: "block"` and `stop_hook_active` loop prevention (CLI 2.1.0+)
+- `TaskCompleted` hook with exit 2 blocking and stderr feedback (CLI 2.1.47+)
+- `statusMessage` common field on all hook types (CLI 2.1.0+)
+- `timeout` common field for hook execution limits (CLI 2.1.0+)
+- `permissionMode` agent frontmatter: 5 modes (default, acceptEdits, dontAsk, bypassPermissions, plan)
+- `agent` field on `context: fork` skills for subagent type routing (CLI 2.1.0+)
+- `disable-model-invocation: true` on skills and commands (CLI 2.1.0+)
+- `$ARGUMENTS` substitution in skill/command content (CLI 2.1.0+)
+- Dynamic context injection via `` !`command` `` preprocessing (CLI 2.1.0+)
+- `CLAUDE_ENV_FILE` env var persistence from SessionStart hooks (CLI 2.1.47+)
 
 ### v2.0.7 (2026-02-19)
 

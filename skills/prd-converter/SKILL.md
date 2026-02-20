@@ -2,6 +2,10 @@
 name: prd-converter
 description: "Convert PRDs to prd.json format for the TaskPlex autonomous agent system. Use when you have an existing PRD and need to convert it to TaskPlex's JSON format. Triggers on: convert this prd, turn this into taskplex format, create prd.json from this, convert prd to json."
 context: fork
+agent: Explore
+model: sonnet
+disable-model-invocation: true
+allowed-tools: Read, Grep, Glob, Write
 ---
 
 # TaskPlex PRD Converter

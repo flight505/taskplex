@@ -11,7 +11,9 @@ disallowedTools:
   - Write
   - Task
 model: sonnet
+permissionMode: dontAsk
 maxTurns: 40
+memory: project
 ---
 
 # Code Reviewer Agent

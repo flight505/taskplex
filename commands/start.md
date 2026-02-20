@@ -1,10 +1,21 @@
 ---
 description: "Start TaskPlex interactive wizard - generates PRD, converts to JSON, and runs resilient autonomous agent loop with dependency enforcement"
-argument-hint: ""
+argument-hint: "[feature-description]"
+disable-model-invocation: true
 allowed-tools: Bash, Read, Write, Edit, Task, AskUserQuestion, TodoWrite
 ---
 
 # TaskPlex Start
+
+**Active state detection:**
+
+!`if [ -f prd.json ]; then echo "EXISTING_PRD=true"; jq '{project: .project, stories: (.userStories | length), done: [.userStories[] | select(.passes == true)] | length, pending: [.userStories[] | select(.passes == false and .status != "skipped" and .status != "rewritten")] | length}' prd.json 2>/dev/null; else echo "EXISTING_PRD=false"; fi`
+
+!`if [ -f .claude/taskplex.config.json ]; then echo "EXISTING_CONFIG=true"; else echo "EXISTING_CONFIG=false"; fi`
+
+If EXISTING_PRD=true and there are pending stories, inform the user of the existing run status and ask:
+- **Resume**: Skip to Checkpoint 8 (Launch) with existing config
+- **Start fresh**: Archive existing run and start from Checkpoint 3
 
 Interactive wizard that guides you through the complete TaskPlex workflow:
 1. Check dependencies
@@ -162,6 +173,12 @@ export CLAUDE_CODE_SUBAGENT_MODEL=opus
 This makes the PRD generator and converter use Opus 4.6 (the latest, with adaptive reasoning) for superior planning. The planning phase only runs once, so the cost is minimal. Restart your terminal after adding this.
 
 **Checkpoint 3: Project Input**
+
+**Fast-start with arguments:**
+
+If `$ARGUMENTS` is non-empty (user ran `/taskplex:start Fix the login bug` or similar), use it as the project description directly. Set `user_input` to `$ARGUMENTS` and skip the interview below — proceed directly to the file path check.
+
+**Interactive mode (no arguments):**
 
 Ask the user directly for their project description:
 

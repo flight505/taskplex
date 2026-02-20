@@ -1,6 +1,8 @@
 ---
 name: failure-analyzer
 description: "Analyzes failed task output to categorize the error and suggest a retry strategy. Use when a TaskPlex implementation attempt fails."
+user-invocable: false
+disable-model-invocation: true
 ---
 
 # Failure Analyzer

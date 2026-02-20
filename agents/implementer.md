@@ -11,6 +11,7 @@ tools:
 disallowedTools:
   - Task
 model: inherit
+permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:

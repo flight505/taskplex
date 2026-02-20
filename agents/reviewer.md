@@ -11,6 +11,7 @@ disallowedTools:
   - Bash
   - Task
 model: sonnet
+permissionMode: plan
 maxTurns: 30
 ---
 

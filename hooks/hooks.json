@@ -1,5 +1,29 @@
 {
   "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-guard.sh",
+            "statusMessage": "Checking for active TaskPlex stories...",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/task-completed.sh",
+            "statusMessage": "Running tests before completion...",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "hooks": [
@@ -28,7 +52,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-knowledge.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-knowledge.sh",
+            "statusMessage": "Injecting knowledge context...",
+            "timeout": 120
           }
         ]
       },
@@ -48,7 +74,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-result.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-result.sh",
+            "statusMessage": "Validating implementation...",
+            "timeout": 180
           }
         ]
       },
@@ -68,7 +96,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact.sh",
+            "statusMessage": "Saving context before compaction..."
           }
         ]
       }
