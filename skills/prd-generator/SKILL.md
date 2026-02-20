@@ -142,7 +142,7 @@ Apply layer-based decomposition matching your architecture:
 - [ ] Typecheck/lint passes
   - **Must verify:** `pyright --project .` or `npm run typecheck`
   - **Expected:** No errors
-- [ ] **[UI stories only]** Verify in browser using dev-browser skill
+- [ ] **[UI stories only]** Verify in browser (navigate to page and test interaction)
   - **Must verify:** Navigate to page and test interaction
   - **Expected:** Feature works as described
 
@@ -155,7 +155,7 @@ Apply layer-based decomposition matching your architecture:
 - Verification can be: command to run, test to execute, condition to check, browser action
 - "Must verify" makes completion unambiguous for AI agents
 - Avoid vague criteria like "Works correctly" - specify HOW to verify it works
-- **For any story with UI changes:** Always include "Verify in browser using dev-browser skill"
+- **For any story with UI changes:** Always include "Verify in browser (navigate to page and test interaction)"
 
 **Dependency Guidelines:**
 - Add "Depends on: US-XXX" when a story requires another story's completion
@@ -262,7 +262,7 @@ Add priority levels to tasks so users can focus on what matters most. Tasks can 
 - [ ] Typecheck passes
   - **Must verify:** `npm run typecheck`
   - **Expected:** No errors
-- [ ] Verify in browser using dev-browser skill
+- [ ] Verify in browser (navigate to page and test interaction)
   - **Must verify:** Full flow: view badge, edit priority, verify change
   - **Expected:** All interactions work smoothly
 
@@ -285,7 +285,7 @@ Add priority levels to tasks so users can focus on what matters most. Tasks can 
 - [ ] Typecheck passes
   - **Must verify:** `npm run typecheck`
   - **Expected:** No errors
-- [ ] Verify in browser using dev-browser skill
+- [ ] Verify in browser (navigate to page and test interaction)
   - **Must verify:** Test all filter options and URL persistence
   - **Expected:** Filtering works, URL updates correctly
 

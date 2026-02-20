@@ -13,9 +13,17 @@ allowed-tools: Bash, Read, Write, Edit, Task, AskUserQuestion, TodoWrite
 
 !`if [ -f .claude/taskplex.config.json ]; then echo "EXISTING_CONFIG=true"; else echo "EXISTING_CONFIG=false"; fi`
 
-If EXISTING_PRD=true and there are pending stories, inform the user of the existing run status and ask:
-- **Resume**: Skip to Checkpoint 8 (Launch) with existing config
-- **Start fresh**: Archive existing run and start from Checkpoint 3
+If EXISTING_PRD=true and there are pending stories:
+
+1. Display the run status to the user: project name, total stories, done count, pending count
+2. Use AskUserQuestion with these options:
+   - **Resume existing run** — Skip directly to Checkpoint 8 (Launch) using existing prd.json and .claude/taskplex.config.json
+   - **Start fresh** — Archive the current run by moving `prd.json` to `archive/YYYY-MM-DD-{project}/prd.json`, `progress.txt` to same dir, `knowledge.db` to same dir, then start from Checkpoint 3
+   - **Cancel** — Stop the wizard
+3. If "Resume": verify .claude/taskplex.config.json exists. If yes, jump to Checkpoint 8. If not, jump to Checkpoint 7 to configure first.
+4. If "Start fresh": create the archive directory with `mkdir -p archive/$(date +%Y-%m-%d)-$(jq -r .project prd.json | tr ' ' '-')`, move files, then continue to Checkpoint 1.
+
+If EXISTING_PRD=false, continue with the full wizard below.
 
 Interactive wizard that guides you through the complete TaskPlex workflow:
 1. Check dependencies
@@ -174,21 +182,20 @@ This makes the PRD generator and converter use Opus 4.6 (the latest, with adapti
 
 **Checkpoint 3: Project Input**
 
-**Fast-start with arguments:**
+**Step 1: Get user input**
 
-If `$ARGUMENTS` is non-empty (user ran `/taskplex:start Fix the login bug` or similar), use it as the project description directly. Set `user_input` to `$ARGUMENTS` and skip the interview below — proceed directly to the file path check.
+If `$ARGUMENTS` is non-empty (user ran `/taskplex:start Fix the login bug` or similar):
+- Set `user_input` to `$ARGUMENTS`
+- Skip the question below and go directly to Step 2
 
-**Interactive mode (no arguments):**
+If `$ARGUMENTS` is empty (user ran `/taskplex:start` with no arguments):
+- Ask the user: "What would you like to build? Describe your project or provide a file path to an existing spec (e.g., ~/docs/spec.md or ./tasks/plan.md)."
+- Wait for the user's response in the chat
+- Set `user_input` to the user's response
 
-Ask the user directly for their project description:
+**Step 2: Process input**
 
-"What would you like to build? Describe your project or provide a file path to an existing spec (e.g., ~/docs/spec.md or ./tasks/plan.md)."
-
-Then wait for the user's response in the chat.
-
-**After receiving response:**
-- Store the user's message content in variable `user_input`
-- Check if `user_input` looks like a file path:
+Check if `user_input` looks like a file path:
   - Starts with `~/`, `./`, `/`, or `../`
   - OR ends with common extensions: `.md`, `.txt`, `.pdf`
 - If it looks like a file path:
