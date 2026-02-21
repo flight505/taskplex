@@ -1,6 +1,6 @@
 ---
 name: validator
-description: "Validates that a completed story actually works. Runs acceptance criteria verification commands, checks test results, and confirms the commit exists."
+description: "Validates that a completed story actually works by running acceptance criteria verification commands. Read-only — does not modify code. Runs after implementation, before spec-reviewer. Checks test results and confirms the commit exists."
 tools:
   - Bash
   - Read

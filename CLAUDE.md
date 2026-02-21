@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 2.0.8** | Last Updated: 2026-02-21
+**Version 3.0.0** | Last Updated: 2026-02-21
 
 Developer instructions for the TaskPlex plugin. For architecture deep dives, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -8,9 +8,9 @@ Developer instructions for the TaskPlex plugin. For architecture deep dives, see
 
 ## Overview
 
-TaskPlex is a **resilient autonomous development assistant** — a single command (`/taskplex:start`) that generates PRDs, converts to executable JSON, and runs custom subagents with error categorization, retry strategies, and branch lifecycle management.
+TaskPlex is an **always-on autonomous development companion** — proactive PRD generation, TDD enforcement, verification gates, two-stage code review, and resilient autonomous execution. Replaces Superpowers.
 
-**Philosophy:** Precise PRD, sequential execution, fresh context per task, resilient error recovery.
+**Philosophy:** Always-on awareness, discipline before code, precise PRD, sequential execution, fresh context per task, resilient error recovery.
 
 ---
 
@@ -19,9 +19,9 @@ TaskPlex is a **resilient autonomous development assistant** — a single comman
 ```
 taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
-├── agents/                            # 5 subagents (implementer, validator, reviewer, merger, code-reviewer)
-├── commands/start.md                  # 8-checkpoint interactive wizard
-├── skills/                            # prd-generator, prd-converter, failure-analyzer
+├── agents/                            # 6 subagents (implementer, validator, spec-reviewer, reviewer, merger, code-reviewer)
+├── commands/start.md                  # 8-checkpoint interactive wizard (optional — proactive path available)
+├── skills/                            # 6 skills: prd-generator, prd-converter, failure-analyzer, using-taskplex, taskplex-tdd, taskplex-verify
 ├── hooks/
 │   ├── hooks.json                     # 9 hooks across 7 events
 │   ├── stop-guard.sh                  # Stop: prevents premature exit
@@ -44,11 +44,12 @@ taskplex/
 
 | Agent | Model | Permission | Tools | Purpose |
 |-------|-------|------------|-------|---------|
-| implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story |
-| validator | haiku | dontAsk | Bash, Read, Glob, Grep | Verify acceptance criteria |
+| implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify REQUIRED) |
+| validator | haiku | dontAsk | Bash, Read, Glob, Grep | Verify acceptance criteria (read-only) |
+| spec-reviewer | haiku | dontAsk | Read, Grep, Glob, Bash | Spec compliance review — Stage 1 (mandatory) |
 | reviewer | sonnet | plan | Read, Glob, Grep | Review PRD quality |
 | merger | haiku | bypassPermissions | Bash, Read, Grep | Git branch operations |
-| code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | Two-stage code review (opt-in) |
+| code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | Code quality review — Stage 2 (opt-in) |
 
 For detailed data flow, hook system, knowledge architecture, and error handling, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md).
 

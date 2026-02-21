@@ -1,10 +1,10 @@
 ---
 name: prd-generator
-description: "Generate a Product Requirements Document (PRD) for a new feature. Use when planning a feature, starting a new project, or when asked to create a PRD. Triggers on: create a prd, write prd for, plan this feature, requirements for, spec out."
+description: "Generate a Product Requirements Document (PRD) for a new feature. Use when planning a feature, building something new, implementing multi-file changes, or when a bug fix has unclear scope. Triggers on: build X, add Y, implement Z, plan this feature, create a prd, requirements for, spec out."
 context: fork
 agent: Explore
 model: sonnet
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools: Read, Grep, Glob, Write, AskUserQuestion
 ---
 

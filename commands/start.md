@@ -13,6 +13,12 @@ allowed-tools: Bash, Read, Write, Edit, Task, AskUserQuestion, TodoWrite
 
 !`if [ -f .claude/taskplex.config.json ]; then echo "EXISTING_CONFIG=true"; else echo "EXISTING_CONFIG=false"; fi`
 
+**Proactive entry:** TaskPlex skills (prd-generator, prd-converter) can create prd.json
+automatically when Claude detects a feature request. If prd.json already exists when you
+run this command, the wizard skips directly to configuration (Checkpoint 7). The full
+wizard below is a fallback for users who prefer the guided experience or need to start
+from scratch.
+
 If EXISTING_PRD=true and there are pending stories:
 
 1. Display the run status to the user: project name, total stories, done count, pending count

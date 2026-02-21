@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "2.0.8",
-  "description": "Resilient autonomous development with Smart Scaffold intelligence: 1-shot decision calls, SubagentStart/Stop hooks, SQLite knowledge store, inline validation with agent self-healing, and model routing. Successor to SDK Bridge.",
+  "version": "3.0.0",
+  "description": "Always-on autonomous development companion: proactive PRD generation, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, error recovery with retry, and model routing. Replaces Superpowers.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",
@@ -26,11 +26,15 @@
   "skills": [
     "./skills/prd-generator",
     "./skills/prd-converter",
-    "./skills/failure-analyzer"
+    "./skills/failure-analyzer",
+    "./skills/using-taskplex",
+    "./skills/taskplex-tdd",
+    "./skills/taskplex-verify"
   ],
   "agents": [
     "./agents/implementer.md",
     "./agents/validator.md",
+    "./agents/spec-reviewer.md",
     "./agents/reviewer.md",
     "./agents/merger.md",
     "./agents/code-reviewer.md"

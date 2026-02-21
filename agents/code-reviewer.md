@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: "Reviews code changes after story implementation. Two-stage review: spec compliance (nothing more, nothing less) then code quality (architecture, security, style). Returns structured verdict with file:line references."
+description: "Reviews code changes for quality after spec-reviewer approves. Stage 2 of two-stage review: architecture, security, types, tests, performance. Only runs when spec compliance already verified. Returns structured verdict with file:line references."
 tools:
   - Read
   - Grep

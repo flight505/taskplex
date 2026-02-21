@@ -1697,6 +1697,92 @@ Output your result as JSON in this format:
   fi
 }
 
+# Function to run spec compliance review after validation
+# Args: story_id
+# Returns: 0=approved, 1=rejected
+run_spec_review() {
+  local story_id="$1"
+
+  # Spec review is controlled by config (default: true)
+  local SPEC_REVIEW_ENABLED
+  SPEC_REVIEW_ENABLED=$(jq -r 'if .spec_review == false then "false" else "true" end' "$CONFIG_FILE" 2>/dev/null || echo "true")
+
+  if [ "$SPEC_REVIEW_ENABLED" != "true" ]; then
+    return 0
+  fi
+
+  log "SPEC-$story_id" "Starting spec compliance review..."
+  emit_event "spec_review.start" "{}" "$story_id"
+
+  # Get story acceptance criteria
+  local story_criteria
+  story_criteria=$(jq -r --arg id "$story_id" '.userStories[] | select(.id == $id) | .acceptanceCriteria[]' "$PRD_FILE" 2>/dev/null)
+
+  # Get git diff for review
+  local git_diff
+  git_diff=$(git diff HEAD~1 --stat 2>/dev/null || echo "No diff available")
+
+  local spec_prompt="# Spec Compliance Review
+
+Story: $story_id
+
+Acceptance Criteria:
+$(echo "$story_criteria" | sed 's/^/- /')
+
+Files changed:
+$git_diff
+
+Verify every acceptance criterion is implemented — nothing more, nothing less.
+Output your structured JSON verdict as described in your system prompt."
+
+  local spec_timeout=$((ITERATION_TIMEOUT / 4))
+  if [ "$spec_timeout" -lt 60 ]; then
+    spec_timeout=60
+  fi
+
+  local spec_output
+  spec_output=$($TIMEOUT_CMD $spec_timeout env -u CLAUDECODE claude -p "$spec_prompt" \
+    --agent spec-reviewer \
+    --dangerously-skip-permissions 2>&1) || true
+
+  local spec_exit=$?
+
+  if [ $spec_exit -ne 0 ]; then
+    log "SPEC-$story_id" "Spec reviewer failed to run (exit $spec_exit) — approving by default"
+    emit_event "spec_review.complete" "{\"verdict\":\"approve\",\"error\":true}" "$story_id"
+    return 0
+  fi
+
+  local verdict
+  verdict=$(echo "$spec_output" | jq -r '
+    .verdict // .result.verdict //
+    (if .spec_compliance == "pass" then "approve"
+     elif .spec_compliance == "fail" then "reject"
+     else "approve" end)
+  ' 2>/dev/null || echo "approve")
+
+  local issue_count
+  issue_count=$(echo "$spec_output" | jq '(.issues // []) | length' 2>/dev/null || echo "0")
+
+  log "SPEC-$story_id" "Verdict: $verdict ($issue_count issues)"
+  emit_event "spec_review.complete" "{\"verdict\":\"$verdict\",\"issues\":$issue_count}" "$story_id"
+
+  case "$verdict" in
+    approve)
+      log "SPEC-$story_id" "Spec compliance approved"
+      return 0
+      ;;
+    reject)
+      log "SPEC-$story_id" "Spec compliance rejected ($issue_count issues)"
+      return 1
+      ;;
+    *)
+      log "SPEC-$story_id" "Unknown verdict '$verdict' — approving by default"
+      return 0
+      ;;
+  esac
+}
+
 # Function to run code review agent after story validation
 # Args: story_id
 # Returns: 0=approved or no review configured, 1=changes requested, 2=rejected
@@ -2152,7 +2238,22 @@ Please address the issue and try again."
 
   # Only commit and mark complete if validation passed
   if [ "$VALIDATION_PASSED" -eq 1 ]; then
-    # Run code review (optional, config-driven)
+    # Stage 1: Spec compliance review (mandatory, after validation)
+    SPEC_RESULT=0
+    if [ "$CURRENT_STORY" != "unknown" ]; then
+      run_spec_review "$CURRENT_STORY" || SPEC_RESULT=$?
+      if [ $SPEC_RESULT -ne 0 ]; then
+        log "SPEC-$CURRENT_STORY" "Spec review rejected — requirements not met"
+        handle_error $i "$CURRENT_STORY" 1 "Spec review rejected: acceptance criteria not properly implemented"
+        ERROR_HANDLING_RESULT=$?
+        if [ $ERROR_HANDLING_RESULT -eq 0 ]; then continue
+        elif [ $ERROR_HANDLING_RESULT -eq 1 ]; then exit 1
+        elif [ $ERROR_HANDLING_RESULT -eq 2 ]; then continue
+        fi
+      fi
+    fi
+
+    # Stage 2: Code quality review (optional, config-driven)
     REVIEW_RESULT=0
     if [ "$CURRENT_STORY" != "unknown" ]; then
       run_code_review "$CURRENT_STORY" || REVIEW_RESULT=$?

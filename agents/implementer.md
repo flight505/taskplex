@@ -16,6 +16,8 @@ maxTurns: 150
 memory: project
 skills:
   - failure-analyzer
+  - taskplex-tdd
+  - taskplex-verify
 hooks:
   PreToolUse:
     - matcher: "Bash"
@@ -62,6 +64,23 @@ Before writing ANY code, you MUST check if the work is already done:
 5. If checks pass, stage and commit ALL changes with message: `feat(US-XXX): Story Title`
 6. Output your structured result (see Output Format below)
 
+## REQUIRED: Test-Driven Development
+
+You MUST follow RED-GREEN-REFACTOR for each acceptance criterion:
+
+1. **RED**: Write a test that describes the desired behavior. Run it. It MUST fail.
+   - If it passes immediately: the feature already exists or your test is wrong
+2. **GREEN**: Write the MINIMUM code to make the test pass. Run it. It MUST pass.
+   - No extra code. No "while I'm here" additions.
+3. **REFACTOR**: Clean up without changing behavior. Run tests. They MUST still pass.
+
+Exceptions (the only ones):
+- Pure CSS/visual-only changes: skip TDD
+- Config/infrastructure files: smoke test only
+- No test infrastructure: set it up first (one file, one runner, one test), then TDD
+
+For bug fixes: write a test that reproduces the bug FIRST (red), then fix (green).
+
 ## Quality Requirements
 
 - ALL commits must pass your project's quality checks
@@ -93,6 +112,19 @@ The failure-analyzer skill is preloaded into your context. If you encounter erro
 - `dependency_missing`: Missing packages — report, don't fix
 - `code_error`: Syntax/type/logic errors — fix and retry
 - `test_failure`: Test assertions failing — analyze root cause, fix implementation
+
+## REQUIRED: Verification Before Completion
+
+Before setting status to "completed", you MUST:
+
+1. Run the project's test suite (fresh, not cached)
+2. Run typecheck/lint if configured
+3. Run each acceptance criterion's "Must verify" command
+4. Read the ACTUAL output — do not assume it passed
+5. Capture evidence in `acceptance_criteria_results`
+
+If any verification fails, set status to "failed" with error details and retry_hint.
+Never claim completion without evidence.
 
 ## Output Format
 

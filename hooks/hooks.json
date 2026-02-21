@@ -59,6 +59,17 @@
         ]
       },
       {
+        "matcher": "spec-reviewer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inject-knowledge.sh",
+            "statusMessage": "Injecting review context...",
+            "timeout": 60
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",
@@ -103,6 +114,17 @@
       }
     ],
     "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-context.sh",
+            "statusMessage": "Loading TaskPlex context...",
+            "timeout": 5
+          }
+        ]
+      },
       {
         "hooks": [
           {
