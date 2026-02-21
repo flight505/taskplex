@@ -2,7 +2,7 @@
 
 **Version 2.0.8** | Last Updated: 2026-02-20
 
-Ground truth for TaskPlex's current design, implementation status, known issues, and roadmap. For component-level docs (config schema, agent frontmatter, skill details), see [CLAUDE.md](./CLAUDE.md).
+Ground truth for TaskPlex's design, implementation status, known issues, and roadmap. For developer instructions and config schema, see [CLAUDE.md](./CLAUDE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -480,4 +480,4 @@ These bugs were discovered during real-world testing and fixed in v2.0.1-2.0.3:
 | 1.1.0 | 2026-02-14 | Three-layer knowledge architecture |
 | 1.0.0 | 2026-02-11 | Initial release — custom subagents, error categorization, quality gate hooks |
 
-For detailed changelogs, see [CLAUDE.md § Version History](./CLAUDE.md#version-history).
+For detailed changelogs, see [CHANGELOG.md](./CHANGELOG.md).
