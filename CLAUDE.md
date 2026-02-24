@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 3.0.0** | Last Updated: 2026-02-21
+**Version 3.1.0** | Last Updated: 2026-02-24
 
 Developer instructions for the TaskPlex plugin. For architecture deep dives, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -8,7 +8,7 @@ Developer instructions for the TaskPlex plugin. For architecture deep dives, see
 
 ## Overview
 
-TaskPlex is an **always-on autonomous development companion** — proactive PRD generation, TDD enforcement, verification gates, two-stage code review, and resilient autonomous execution. Replaces Superpowers.
+TaskPlex is an **always-on autonomous development companion** — all 15 Superpowers discipline skills (adapted, MIT licensed from Jesse Vincent) + PRD-driven autonomous execution, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, and error recovery. Fully replaces Superpowers.
 
 **Philosophy:** Always-on awareness, discipline before code, precise PRD, sequential execution, fresh context per task, resilient error recovery.
 
@@ -21,7 +21,7 @@ taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
 ├── agents/                            # 6 subagents (implementer, validator, spec-reviewer, reviewer, merger, code-reviewer)
 ├── commands/start.md                  # 8-checkpoint interactive wizard (optional — proactive path available)
-├── skills/                            # 6 skills: prd-generator, prd-converter, failure-analyzer, using-taskplex, taskplex-tdd, taskplex-verify
+├── skills/                            # 16 skills: 14 adapted Superpowers + failure-analyzer + using-taskplex gate
 ├── hooks/
 │   ├── hooks.json                     # 9 hooks across 7 events
 │   ├── stop-guard.sh                  # Stop: prevents premature exit
