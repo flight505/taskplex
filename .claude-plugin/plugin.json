@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "3.0.0",
-  "description": "Always-on autonomous development companion: proactive PRD generation, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, error recovery with retry, and model routing. Replaces Superpowers.",
+  "version": "3.1.0",
+  "description": "Always-on autonomous development companion: all 15 Superpowers discipline skills + PRD-driven execution, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, error recovery, and model routing.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",
@@ -29,7 +29,17 @@
     "./skills/failure-analyzer",
     "./skills/using-taskplex",
     "./skills/taskplex-tdd",
-    "./skills/taskplex-verify"
+    "./skills/taskplex-verify",
+    "./skills/systematic-debugging",
+    "./skills/dispatching-parallel-agents",
+    "./skills/using-git-worktrees",
+    "./skills/finishing-a-development-branch",
+    "./skills/requesting-code-review",
+    "./skills/receiving-code-review",
+    "./skills/subagent-driven-development",
+    "./skills/writing-skills",
+    "./skills/executing-plans",
+    "./skills/writing-plans"
   ],
   "agents": [
     "./agents/implementer.md",
