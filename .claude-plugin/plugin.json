@@ -38,6 +38,5 @@
     "./agents/reviewer.md",
     "./agents/merger.md",
     "./agents/code-reviewer.md"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }
