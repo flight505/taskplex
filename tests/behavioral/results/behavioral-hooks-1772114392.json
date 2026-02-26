@@ -1,0 +1,13 @@
+{
+  "suite": "hooks",
+  "version": "3.1.0",
+  "git_sha": "99bcc46",
+  "timestamp": 1772114392,
+  "hook_filter": "all",
+  "summary": {
+    "total": 23,
+    "passed": 23,
+    "failed": 0,
+    "cost_usd": 0
+  }
+}
