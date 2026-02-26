@@ -41,6 +41,7 @@ archive/
 # Test databases
 *.db
 *.sqlite
+tests/benchmark.db
 
 # Python virtual environments
 .venv/
