@@ -1,0 +1,60 @@
+{
+  "description": "Agent completion test fixtures for TaskPlex v3.1.0",
+  "notes": "Minimal controlled tasks for each agent. Uses tests/benchmark/projects/sample-ts-api/ as test target. Run cheapest agents first (haiku: validator, spec-reviewer, merger). All require external execution (outside Claude Code session).",
+  "agents": [
+    {
+      "name": "validator",
+      "model": "haiku",
+      "permissionMode": "dontAsk",
+      "maxTurns": 50,
+      "task_prompt": "In the project at the current directory, run 'npm test' and verify it passes. Report the test results as: {tests_passed: N, tests_failed: N, completed: true/false}",
+      "expected_outcome": "Reports test results; completed=true",
+      "target_project": "tests/benchmark/projects/sample-ts-api"
+    },
+    {
+      "name": "spec-reviewer",
+      "model": "haiku",
+      "permissionMode": "dontAsk",
+      "maxTurns": 30,
+      "task_prompt": "Review this acceptance criterion for spec compliance: 'getPage(items, page, pageSize) returns the correct slice of items for the given page'. Check if this is implemented in the codebase. Reply with: {criterion_met: true/false, evidence: 'one sentence'}",
+      "expected_outcome": "Reports criterion_met with evidence; completes without permission blocks",
+      "target_project": "tests/benchmark/projects/sample-ts-api"
+    },
+    {
+      "name": "merger",
+      "model": "haiku",
+      "permissionMode": "bypassPermissions",
+      "maxTurns": 50,
+      "task_prompt": "Create a new git branch named 'test-merger-verify', immediately check it out, then switch back to main. Report: {branch_created: true/false, cleanup_done: true/false}",
+      "expected_outcome": "Creates branch and returns to main; completed=true",
+      "target_project": "tests/benchmark/projects/sample-ts-api"
+    },
+    {
+      "name": "reviewer",
+      "model": "sonnet",
+      "permissionMode": "plan",
+      "maxTurns": 30,
+      "task_prompt": "Review this 1-story PRD for completeness: 'US-001: Add getPage function. As a developer I need pagination. AC: getPage(items,page,size) returns correct slice. Typecheck passes.' Reply with: {complete: true/false, issues: ['list any issues']}",
+      "expected_outcome": "Returns structured review; completes without permission blocks",
+      "target_project": "tests/benchmark/projects/sample-ts-api"
+    },
+    {
+      "name": "code-reviewer",
+      "model": "sonnet",
+      "permissionMode": "dontAsk",
+      "maxTurns": 40,
+      "task_prompt": "Review src/utils/pagination.ts for code quality issues. Reply with: {verdict: 'approve'|'request_changes', issues: ['list any issues, or empty list if approved']}",
+      "expected_outcome": "Returns structured review; verdict is approve or request_changes",
+      "target_project": "tests/benchmark/projects/sample-ts-api"
+    },
+    {
+      "name": "implementer",
+      "model": "haiku",
+      "permissionMode": "bypassPermissions",
+      "maxTurns": 30,
+      "task_prompt": "Add a JSDoc comment to the getPage function in src/utils/pagination.ts. The comment should describe what the function does, its parameters, and return value. Run the tests to verify nothing is broken. Commit the change.",
+      "expected_outcome": "Adds JSDoc comment, tests pass, change committed",
+      "target_project": "tests/benchmark/projects/sample-ts-api"
+    }
+  ]
+}
