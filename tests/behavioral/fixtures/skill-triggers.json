@@ -1,0 +1,123 @@
+{
+  "description": "Skill trigger test fixtures for TaskPlex v3.1.0",
+  "notes": "Short prompts (~1-2 sentences) to minimize token cost (~$0.15/prompt). Each skill has 1-2 should_trigger and 1 should_not_trigger prompt.",
+  "skills": [
+    {
+      "name": "prd-generator",
+      "should_trigger": [
+        "Build a new notification system for our app",
+        "Add user authentication to the project with OAuth"
+      ],
+      "should_not_trigger": "What does the Read tool do?"
+    },
+    {
+      "name": "prd-converter",
+      "should_trigger": [
+        "Convert this PRD to prd.json format so TaskPlex can execute it"
+      ],
+      "should_not_trigger": "Show me the git log"
+    },
+    {
+      "name": "writing-plans",
+      "should_trigger": [
+        "Write an implementation plan for adding search functionality to the API"
+      ],
+      "should_not_trigger": "Fix the typo on line 12"
+    },
+    {
+      "name": "taskplex-tdd",
+      "should_trigger": [
+        "Implement the new priority field on the tasks model",
+        "Add a caching layer to the user service"
+      ],
+      "should_not_trigger": "Explain what a JWT token is"
+    },
+    {
+      "name": "taskplex-verify",
+      "should_trigger": [
+        "I've fixed the failing tests, everything is passing now",
+        "The feature is done and working correctly"
+      ],
+      "should_not_trigger": "What files are in the src directory?"
+    },
+    {
+      "name": "systematic-debugging",
+      "should_trigger": [
+        "The tests keep failing with a TypeError but I don't understand why",
+        "Something is broken in the auth flow after my last change"
+      ],
+      "should_not_trigger": "Add a comment to explain this function"
+    },
+    {
+      "name": "dispatching-parallel-agents",
+      "should_trigger": [
+        "Fix the broken auth tests and the failing payment tests simultaneously"
+      ],
+      "should_not_trigger": "Format this JSON for me"
+    },
+    {
+      "name": "using-git-worktrees",
+      "should_trigger": [
+        "Start implementing the feature branch for the new dashboard"
+      ],
+      "should_not_trigger": "Show me the current git status"
+    },
+    {
+      "name": "finishing-a-development-branch",
+      "should_trigger": [
+        "All tests pass and the feature is complete, ready to merge"
+      ],
+      "should_not_trigger": "Run the test suite"
+    },
+    {
+      "name": "requesting-code-review",
+      "should_trigger": [
+        "I've finished implementing the payment feature, can you review the code?"
+      ],
+      "should_not_trigger": "List the agents in the agents/ directory"
+    },
+    {
+      "name": "receiving-code-review",
+      "should_trigger": [
+        "The reviewer says my error handling is wrong and I should use Result types"
+      ],
+      "should_not_trigger": "Write a hello world function"
+    },
+    {
+      "name": "subagent-driven-development",
+      "should_trigger": [
+        "Execute this implementation plan using subagents: docs/plans/feature-plan.md"
+      ],
+      "should_not_trigger": "What is the current version in package.json?"
+    },
+    {
+      "name": "executing-plans",
+      "should_trigger": [
+        "Run the implementation plan in a parallel session with the TaskPlex orchestrator"
+      ],
+      "should_not_trigger": "Show me the README"
+    },
+    {
+      "name": "writing-skills",
+      "should_trigger": [
+        "Create a new skill for validating database migrations"
+      ],
+      "should_not_trigger": "What does the Glob tool do?"
+    },
+    {
+      "name": "failure-analyzer",
+      "should_trigger": [
+        "The implementer subagent failed with: ModuleNotFoundError: cannot import name 'BaseModel'"
+      ],
+      "should_not_trigger": "Add a type annotation to this variable"
+    },
+    {
+      "name": "using-taskplex",
+      "should_trigger": [
+        "What should I use TaskPlex for?",
+        "Help me understand the TaskPlex workflow"
+      ],
+      "should_not_trigger": "List files in the current directory"
+    }
+  ]
+}
