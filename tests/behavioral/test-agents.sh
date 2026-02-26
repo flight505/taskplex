@@ -140,13 +140,12 @@ test_agent() {
   # Build permission flags
   local perm_flags="--dangerously-skip-permissions"
 
-  env -u CLAUDECODE timeout "$TIMEOUT" claude -p "$task_prompt" \
-    --cwd "$project_path" \
+  (cd "$project_path" && env -u CLAUDECODE timeout "$TIMEOUT" claude -p "$task_prompt" \
     --plugin-dir "$PLUGIN_ROOT" \
     --model "$resolved_model" \
     "$perm_flags" \
     --output-format json \
-    2>"$tmp_stderr" > "$tmp_output" || exit_code=$?
+    2>"$tmp_stderr" > "$tmp_output") || exit_code=$?
 
   # Show stderr on failure for diagnostics
   if [ "$exit_code" -ne 0 ] && [ -s "$tmp_stderr" ]; then
