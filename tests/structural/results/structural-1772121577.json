@@ -1,0 +1,28 @@
+{
+  "suite": "structural",
+  "version": "3.1.0",
+  "git_sha": "a8596ec",
+  "timestamp": 1772121577,
+  "tests": [
+    {
+      "name": "manifests",
+      "status": "pass",
+      "failures": []
+    },
+    {
+      "name": "scripts",
+      "status": "pass",
+      "failures": []
+    },
+    {
+      "name": "cross-refs",
+      "status": "pass",
+      "failures": []
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}
