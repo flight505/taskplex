@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# TaskPlex Test Suite — cross-refs validation + behavioral + regression
+# TaskPlex Test Suite — behavioral tests + regression tracking
+# Cross-ref validation is now a marketplace PostToolUse hook (auto-runs on edits).
 # Usage: bash tests/run-suite.sh [--full] [--ci] [--estimate]
 # Exit 0: PASS | Exit 1: FAIL/WARN
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-RESULTS_DIR="${SCRIPT_DIR}/structural/results"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 RESET='\033[0m'
 
 # Parse args
-MODE="structural"  # default: structural only
+MODE="summary"  # default: just regression summary
 CI=0
 ESTIMATE=0
 while [ $# -gt 0 ]; do
@@ -26,13 +26,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# In CI mode: suppress color, no prompts
 if [ "$CI" -eq 1 ]; then
-  GREEN=""
-  RED=""
-  YELLOW=""
-  RESET=""
-  MODE="structural"  # CI never runs behavioral
+  GREEN=""; RED=""; YELLOW=""; RESET=""
 fi
 
 # Cost estimate mode
@@ -43,9 +38,6 @@ fi
 
 VERSION=$(jq -r '.version // empty' "${PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null)
 GIT_SHA=$(git -C "$PLUGIN_ROOT" rev-parse --short HEAD 2>/dev/null)
-TIMESTAMP=$(date +%s)
-
-# ── Phase 1: Cross-Reference Validation ──────────────────
 
 if [ "$CI" -eq 0 ]; then
   echo "╔═══════════════════════════════════════════╗"
@@ -54,45 +46,11 @@ if [ "$CI" -eq 0 ]; then
   echo ""
 fi
 
-struct_output=$(bash "${SCRIPT_DIR}/structural/test-cross-refs.sh" 2>&1) && struct_exit=0 || struct_exit=$?
-
-if [ "$CI" -eq 0 ]; then
-  echo "$struct_output"
-  echo ""
-fi
-
-# Write JSON report for regression tracking
-mkdir -p "$RESULTS_DIR"
-struct_pass=0; struct_fail=0
-if [ "$struct_exit" -eq 0 ]; then
-  struct_pass=1; struct_total=1
-else
-  struct_fail=1; struct_total=1
-fi
-struct_results="${RESULTS_DIR}/structural-${TIMESTAMP}.json"
-jq -n \
-  --arg version "$VERSION" \
-  --arg git_sha "$GIT_SHA" \
-  --argjson timestamp "$TIMESTAMP" \
-  --arg suite "structural" \
-  --argjson passed "$struct_pass" \
-  --argjson failed "$struct_fail" \
-  --argjson total "$struct_total" \
-  '{
-    suite: $suite, version: $version, git_sha: $git_sha, timestamp: $timestamp,
-    tests: [{name: "cross-refs", status: (if $failed > 0 then "fail" else "pass" end), failures: []}],
-    summary: {total: $total, passed: $passed, failed: $failed}
-  }' > "$struct_results"
-
-# Record to benchmark.db
-bash "${SCRIPT_DIR}/regression/record-results.sh" "$struct_results" > /dev/null 2>&1 || true
-
-# ── Phase 2: Behavioral Tests (--full only) ─────────────
+# ── Behavioral Tests (--full only) ─────────────────────
 
 behav_exit=0
 if [ "$MODE" = "full" ]; then
   if [ "$CI" -eq 0 ]; then
-    echo ""
     echo "=== Behavioral Tests ==="
     echo ""
     echo "  Behavioral suites make real Claude API calls."
@@ -116,66 +74,43 @@ if [ "$MODE" = "full" ]; then
   fi
 fi
 
-# ── Phase 3: Regression Report ──────────────────────────
+# ── Regression Report ──────────────────────────────────
 
+reg_verdict="N/A"
 if [ -f "${SCRIPT_DIR}/benchmark.db" ]; then
-  # Check if there's a baseline to compare against
   version_count=$(sqlite3 "${SCRIPT_DIR}/benchmark.db" "SELECT COUNT(DISTINCT version) FROM versions;" 2>/dev/null)
   if [ "$version_count" -le 1 ]; then
     if [ "$CI" -eq 0 ]; then
-      echo ""
-      echo "No baseline found — recording current version as baseline."
+      echo "No baseline found — current version is the baseline."
     fi
     reg_verdict="PASS"
-    reg_exit=0
   else
     reg_output=$(bash "${SCRIPT_DIR}/regression/regression-report.sh" 2>&1) && reg_exit=0 || reg_exit=$?
     reg_verdict=$(echo "$reg_output" | grep '"verdict"' | head -1 | sed 's/.*"verdict": *"\([^"]*\)".*/\1/')
     if [ "$CI" -eq 0 ]; then
-      echo ""
       echo "$reg_output"
     fi
   fi
 else
   if [ "$CI" -eq 0 ]; then
-    echo ""
-    echo "No baseline found — recording current version as baseline."
+    echo "No benchmark database — nothing to compare."
   fi
-  reg_verdict="N/A"
-  reg_exit=0
 fi
 
-# ── Summary ─────────────────────────────────────────────
+# ── Summary ────────────────────────────────────────────
 
 if [ "$CI" -eq 1 ]; then
-  # CI: JSON-only output
   jq -n \
     --arg version "$VERSION" \
     --arg git_sha "$GIT_SHA" \
-    --argjson struct_pass "$struct_pass" \
-    --argjson struct_fail "$struct_fail" \
-    --argjson struct_total "$struct_total" \
     --arg regression "$reg_verdict" \
     --arg mode "$MODE" \
-    '{
-      summary: {
-        version: $version,
-        git_sha: $git_sha,
-        mode: $mode,
-        structural: {passed: $struct_pass, failed: $struct_fail, total: $struct_total},
-        regression_verdict: $regression
-      }
-    }'
+    '{summary: {version: $version, git_sha: $git_sha, mode: $mode, regression_verdict: $regression}}'
 else
   echo ""
   echo "┌──────────────────────────────────────┐"
   echo "│           Suite Summary              │"
   echo "├──────────────────────────────────────┤"
-  printf "│  Structural:  %d/%d passed" "$struct_pass" "$struct_total"
-  if [ "$struct_fail" -gt 0 ]; then
-    printf "  ${RED}(%d failed)${RESET}" "$struct_fail"
-  fi
-  echo "          │"
   if [ "$MODE" = "full" ]; then
     printf "│  Behavioral:  (see above)            │\n"
   fi
@@ -186,11 +121,8 @@ else
     FAIL) printf "  ${RED}✗${RESET}" ;;
   esac
   echo "                        │"
+  echo "│  Cross-refs: marketplace hook        │"
   echo "└──────────────────────────────────────┘"
 fi
 
-# Exit code: structural failures → fail
-if [ "$struct_exit" -ne 0 ]; then
-  exit 1
-fi
 exit 0
