@@ -185,16 +185,6 @@ query_file_patterns() {
   " 2>/dev/null
 }
 
-# Insert a file pattern
-# Args: $1=db, $2=path_glob, $3=pattern_type, $4=description, $5=source_story
-insert_file_pattern() {
-  local db="$1" path_glob="$2" pattern_type="$3" description="$4" source_story="${5:-}"
-  local escaped_desc
-  escaped_desc=$(echo "$description" | sed "s/'/''/g")
-
-  sqlite3 "$db" "INSERT INTO file_patterns (path_glob, pattern_type, description, source_story) VALUES ('$path_glob', '$pattern_type', '$escaped_desc', '$source_story');"
-}
-
 # Save a compaction snapshot (pre-compact state preservation)
 # Args: $1=db, $2=story_id, $3=context_summary
 save_compaction_snapshot() {
@@ -353,7 +343,7 @@ query_errors() {
   " 2>/dev/null
 }
 
-# Get decision history for a story
+# Get decision history for a story (used by tests/test-knowledge-db.sh)
 # Args: $1=db, $2=story_id
 query_decisions() {
   local db="$1" story_id="$2"
@@ -456,38 +446,3 @@ update_decision_outcome() {
   " 2>/dev/null || true
 }
 
-# Get summary statistics for report
-# Args: $1=db, $2=run_id (optional, all runs if empty)
-query_stats() {
-  local db="$1" run_id="${2:-}"
-
-  local run_filter=""
-  if [ -n "$run_id" ]; then
-    run_filter="WHERE run_id = '$run_id'"
-  fi
-
-  echo "=== Knowledge Store Statistics ==="
-  echo "Total learnings: $(sqlite3 "$db" "SELECT COUNT(*) FROM learnings $run_filter;")"
-  echo "Active learnings (confidence > 0.3): $(sqlite3 "$db" "SELECT COUNT(*) FROM learnings WHERE ROUND(confidence * POWER(0.95, julianday('now') - julianday(created_at)), 3) > 0.3;")"
-  echo "Total errors recorded: $(sqlite3 "$db" "SELECT COUNT(*) FROM error_history $run_filter;")"
-  echo "Resolved errors: $(sqlite3 "$db" "SELECT COUNT(*) FROM error_history WHERE resolved = 1 $( [ -n "$run_id" ] && echo "AND run_id = '$run_id'" );")"
-  echo "Decisions made: $(sqlite3 "$db" "SELECT COUNT(*) FROM decisions $run_filter;")"
-
-  if [ -n "$run_id" ]; then
-    echo ""
-    echo "=== Error Breakdown (this run) ==="
-    sqlite3 -column -header "$db" "
-      SELECT category, COUNT(*) as count, SUM(resolved) as resolved
-      FROM error_history WHERE run_id = '$run_id'
-      GROUP BY category ORDER BY count DESC;
-    "
-
-    echo ""
-    echo "=== Decision Breakdown (this run) ==="
-    sqlite3 -column -header "$db" "
-      SELECT action, model, COUNT(*) as count
-      FROM decisions WHERE run_id = '$run_id'
-      GROUP BY action, model ORDER BY count DESC;
-    "
-  fi
-}

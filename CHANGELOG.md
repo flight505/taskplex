@@ -4,6 +4,58 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v4.0.0 (2026-02-26)
+
+**SOTA Transformation — Brainstorming, Lean Skills, Routing, Safety:**
+
+**Added:**
+- `agents/architect.md` — Read-only codebase explorer for brainstorm phase (model: sonnet, permissionMode: dontAsk)
+- `agents/spec-reviewer.md` — Spec compliance review Stage 1 (model: haiku, permissionMode: dontAsk)
+- `skills/brainstorm/SKILL.md` — Challenge assumptions before jumping to PRD
+- 14 adapted Superpowers discipline skills (MIT licensed from Jesse Vincent): `taskplex-tdd`, `taskplex-verify`, `systematic-debugging`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch`, `requesting-code-review`, `receiving-code-review`, `subagent-driven-development`, `writing-skills`, `executing-plans`, `writing-plans`
+- `scripts/teams.sh` — Agent Teams orchestrator (opt-in via `parallel_mode: "teams"`)
+- `hooks/session-context.sh` — SessionStart hook for proactive context injection
+- `hooks/teammate-idle.sh` — TeammateIdle hook for Agent Teams story assignment
+- Rule-based fast path in `decision-call.sh` — eliminates ~40% of Opus decision calls
+- Test file integrity checksums (reward hacking prevention)
+- Configurable scope drift detection (`scope_drift_action`: warn/block/review)
+- `patterns` table in SQLite knowledge store (promoted from 3+ story occurrences)
+- Execution modes: interactive (new), teams (new)
+- Effort auto-tuning on retries (escalates model/effort for failed stories)
+- Rationalization prevention tables in discipline skills
+
+**Changed:**
+- Skills trimmed 71%: using-taskplex 67 lines, writing-skills 128, prd-converter 165, prd-generator 118
+- Confidence decay extended from 30-day to 60-day cutoff
+- Enhanced implicit mining (5 pattern types, was 3)
+- `--agent implementer` now correctly passed to headless `claude -p` calls
+- `hooks.json`: 12 hooks across 10 events (added SessionStart, TeammateIdle)
+- Total: 7 agents, 17 skills, 1 command
+
+### v3.1.0 (2026-02-25)
+
+**Benchmark Infrastructure:**
+
+**Added:**
+- `tests/run-suite.sh` — Pure bash test suite (no API calls)
+- `tests/behavioral/test-hooks.sh` — Hook contract tests (5 hooks, ~20 assertions)
+- Script unit tests for knowledge-db, decision-call, validate-result, inject-knowledge, integration
+- `.github/workflows/benchmark.yml` — CI workflow
+
+### v3.0.0 (2026-02-24)
+
+**Proactive Architecture — Always-On Awareness:**
+
+**Added:**
+- `hooks/session-context.sh` — SessionStart hook detects active `prd.json` and injects context at session start
+- `skills/using-taskplex/SKILL.md` — Always-on gate skill (1% trigger threshold)
+- Proactive path: skills auto-trigger without requiring `/taskplex:start`
+
+**Changed:**
+- Architecture shifted from command-driven to proactive: SessionStart hook + skill gate replace manual wizard invocation
+- `hooks.json`: added SessionStart event (10 hooks across 8 events)
+- Upgraded from 5 to 6 agents (added spec-reviewer)
+
 ### v2.0.8 (2026-02-20)
 
 **SOTA Audit — Complete CLI Feature Coverage + Competitive Intelligence:**

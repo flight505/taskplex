@@ -39,7 +39,10 @@ taskplex/
 │   └── check-*.sh                     # Dependency, git, and destructive command checks
 ├── monitor/                           # Optional Bun + Vue 3 dashboard sidecar
 └── tests/
+    └── run-suite.sh                   # Thin wrapper → delegates to marketplace test suite
 ```
+
+> **Note:** The comprehensive 8-section test suite (~320 tests) lives at `test-results/taskplex/run-tests.sh` in the marketplace root. `tests/run-suite.sh` delegates to it when running in submodule context, falling back to basic structural checks standalone. No API-calling tests — all tests are pure bash.
 
 ### Subagents
 
@@ -103,6 +106,17 @@ For detailed data flow, hook system, knowledge architecture, and error handling,
 ### Testing Changes
 
 ```bash
+# Full test suite (8 sections, ~320 tests, from marketplace root)
+bash test-results/taskplex/run-tests.sh   # File structure, manifest, hooks, unit tests, agents, skills, cross-refs
+
+# Or via thin wrapper (auto-delegates to marketplace suite)
+bash tests/run-suite.sh                   # Standalone fallback if not in marketplace context
+
+# Structural validation (from marketplace root)
+cd /path/to/flight505-marketplace
+./scripts/validate-plugin-manifests.sh    # Manifests, hooks, frontmatter, cross-refs, shell syntax
+./scripts/plugin-doctor.sh                # CLI validation + cache drift + offline sanity
+
 # Reinstall and test
 /plugin uninstall taskplex@flight505-marketplace
 /plugin install taskplex@flight505-marketplace

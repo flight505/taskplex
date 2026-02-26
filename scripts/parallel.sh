@@ -525,9 +525,14 @@ run_wave_parallel() {
       # Setup worktree (npm install, etc.)
       setup_worktree "$worktree_dir"
 
-      # Generate context brief
-      local context_brief
-      context_brief=$(generate_context_brief "$story_id")
+      # Build story context (knowledge injection handled by SubagentStart hook)
+      local context_brief="/tmp/taskplex-context-$$-${story_id}.md"
+      {
+        echo "# Story: $story_id"
+        echo '```json'
+        jq --arg id "$story_id" '.userStories[] | select(.id == $id)' "$PRD_FILE" 2>/dev/null
+        echo '```'
+      } > "$context_brief"
 
       # Build full prompt
       local prompt_file="/tmp/taskplex-prompt-$$-${story_id}.md"
@@ -597,7 +602,6 @@ run_wave_parallel() {
         local category
         category=$(categorize_error "$agent_exit" "$output")
         update_story_status "$story_id" "skipped" "Failed in parallel wave" "$category"
-        add_knowledge_warning "$story_id" "$category" "$(echo "$output" | head -c 150 | tr '\n' ' ')"
         wave_has_errors=1
       else
         # Agent succeeded — extract learnings
@@ -673,9 +677,6 @@ run_wave_parallel() {
 
     batch_idx=$((batch_idx + 1))
   done
-
-  # Trim knowledge after wave
-  trim_knowledge
 
   if [ "$wave_has_errors" -ne 0 ]; then
     return 1

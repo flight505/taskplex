@@ -30,11 +30,3 @@ jobs:
 
       - name: Run structural tests (CI mode)
         run: bash tests/run-suite.sh --ci
-
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: structural-results
-          path: tests/structural/results/structural-*.json
-          retention-days: 30
