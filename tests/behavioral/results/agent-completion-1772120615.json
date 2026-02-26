@@ -1,0 +1,23 @@
+{
+  "suite": "agent-completion",
+  "version": "3.1.0",
+  "git_sha": "4d60509",
+  "timestamp": 1772120615,
+  "results": [
+    {
+      "agent": "validator",
+      "task_completed": true,
+      "turns_used": 0,
+      "max_turns": 50,
+      "within_budget": true,
+      "permission_blocks": [],
+      "duration_seconds": 13,
+      "cost_usd": 0.08554790000000001
+    }
+  ],
+  "summary": {
+    "total_agents": 1,
+    "completed": 1,
+    "completion_rate": 1.00
+  }
+}
