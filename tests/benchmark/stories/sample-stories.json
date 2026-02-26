@@ -1,0 +1,151 @@
+{
+  "version": "1.0.0",
+  "description": "Sample stories for benchmark validation — 5 stories, 1 per tier",
+  "stories": [
+    {
+      "id": "S001",
+      "tier": "T1",
+      "title": "Fix incorrect export in utility module",
+      "description": "The `utils/format.ts` module exports `formatDate` as a named export, but it should also be the default export. Some imports use `import formatDate from './format'` and fail at runtime.",
+      "acceptance_criteria": [
+        "formatDate is exported as both named and default export",
+        "Existing named imports still work",
+        "No TypeScript errors"
+      ],
+      "target_project": "sample-ts-app",
+      "test_command": "npm test",
+      "build_command": "npm run build",
+      "typecheck_command": "tsc --noEmit",
+      "files_affected": ["src/utils/format.ts"],
+      "complexity_notes": "Single-line fix, trivial scope",
+      "expected_skills": ["taskplex-verify"],
+      "tags": ["bugfix", "trivial"]
+    },
+    {
+      "id": "S002",
+      "tier": "T2",
+      "title": "Add input validation to config parser",
+      "description": "The config parser in `src/config.ts` uses `JSON.parse()` directly without validation. Invalid JSON causes an unhandled exception that crashes the server. Add proper error handling with descriptive error messages including line numbers when possible.",
+      "acceptance_criteria": [
+        "Invalid JSON throws ConfigParseError with descriptive message",
+        "Missing required fields (name, version) throw ConfigValidationError",
+        "Valid configs parse correctly (no regression)",
+        "Unit tests cover: invalid JSON, missing fields, valid input"
+      ],
+      "target_project": "sample-ts-app",
+      "test_command": "npm test",
+      "build_command": "npm run build",
+      "typecheck_command": "tsc --noEmit",
+      "files_affected": ["src/config.ts", "src/errors.ts", "tests/config.test.ts"],
+      "complexity_notes": "Multi-file but focused scope. Requires new error classes.",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "error-handling", "tdd"]
+    },
+    {
+      "id": "S003",
+      "tier": "T3",
+      "title": "Add rate limiting middleware with Redis backend",
+      "description": "Implement a rate limiting middleware for the Express API. Should use a sliding window algorithm backed by Redis. Must support per-route and per-user configuration. Include a `/health` endpoint bypass.",
+      "acceptance_criteria": [
+        "RateLimiter middleware accepts config: windowMs, maxRequests, keyGenerator",
+        "Sliding window algorithm (not fixed window) tracks requests in Redis",
+        "Returns 429 with Retry-After header when limit exceeded",
+        "Health endpoint is excluded from rate limiting",
+        "Per-user rate limiting uses authenticated user ID as key",
+        "Integration tests with Redis mock verify window sliding behavior",
+        "Unit tests cover edge cases: Redis down (graceful degradation), concurrent requests"
+      ],
+      "target_project": "sample-ts-app",
+      "test_command": "npm test",
+      "build_command": "npm run build",
+      "typecheck_command": "tsc --noEmit",
+      "files_affected": [
+        "src/middleware/rate-limiter.ts",
+        "src/middleware/index.ts",
+        "tests/rate-limiter.test.ts",
+        "tests/rate-limiter.integration.test.ts"
+      ],
+      "complexity_notes": "Multi-file feature with external dependency (Redis), algorithm implementation, error handling, and integration testing",
+      "expected_skills": ["taskplex-tdd", "systematic-debugging", "taskplex-verify"],
+      "tags": ["feature", "middleware", "redis", "tdd"]
+    },
+    {
+      "id": "S004",
+      "tier": "T4",
+      "title": "Implement event sourcing for order management",
+      "description": "Refactor the order management module from CRUD to event sourcing. Orders should be built from a sequence of domain events (OrderCreated, ItemAdded, ItemRemoved, OrderSubmitted, OrderCancelled). Add event store, aggregate root, and projection for read model.",
+      "acceptance_criteria": [
+        "EventStore interface with append() and getEvents() methods",
+        "InMemoryEventStore implementation for testing",
+        "Order aggregate root rebuilds state from events",
+        "All mutations go through events (no direct state modification)",
+        "OrderProjection builds read-optimized view from events",
+        "Existing API endpoints work unchanged (backward compatible)",
+        "Event schema validated before storage",
+        "Full test coverage: aggregate rebuilding, projection, concurrent events",
+        "Integration test verifies end-to-end order lifecycle"
+      ],
+      "target_project": "sample-ts-app",
+      "test_command": "npm test",
+      "build_command": "npm run build",
+      "typecheck_command": "tsc --noEmit",
+      "files_affected": [
+        "src/events/event-store.ts",
+        "src/events/in-memory-store.ts",
+        "src/orders/order-aggregate.ts",
+        "src/orders/order-events.ts",
+        "src/orders/order-projection.ts",
+        "src/orders/order-service.ts",
+        "tests/events/event-store.test.ts",
+        "tests/orders/order-aggregate.test.ts",
+        "tests/orders/order-lifecycle.integration.test.ts"
+      ],
+      "complexity_notes": "Architectural refactor touching 9+ files. Requires understanding of event sourcing pattern, aggregate roots, and CQRS. Must maintain backward compatibility.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
+      "tags": ["refactor", "architecture", "event-sourcing", "complex"]
+    },
+    {
+      "id": "S005",
+      "tier": "T5",
+      "title": "Build plugin system with hot-reload and dependency resolution",
+      "description": "Design and implement a plugin system that allows third-party extensions to register commands, hooks, and middleware. Plugins must declare dependencies on other plugins. Support hot-reload during development. Include a plugin registry, dependency resolver, lifecycle manager, and sandboxed execution environment.",
+      "acceptance_criteria": [
+        "Plugin manifest schema (name, version, dependencies, exports)",
+        "PluginRegistry with register(), unregister(), and query methods",
+        "DependencyResolver detects cycles and resolves load order",
+        "PluginLifecycle manages init/start/stop/destroy transitions",
+        "Hot-reload detects file changes and reloads affected plugins",
+        "Plugins can register commands via declarative API",
+        "Plugins can register hooks for pre/post lifecycle events",
+        "Plugins can add Express middleware to specific routes",
+        "Sandboxed execution prevents plugins from accessing host internals",
+        "Plugin errors don't crash the host application",
+        "Full test suite: registry, dependency resolution, lifecycle, hot-reload",
+        "Example plugin demonstrating all extension points",
+        "Architecture documentation with component diagram"
+      ],
+      "target_project": "sample-ts-app",
+      "test_command": "npm test",
+      "build_command": "npm run build",
+      "typecheck_command": "tsc --noEmit",
+      "files_affected": [
+        "src/plugins/registry.ts",
+        "src/plugins/resolver.ts",
+        "src/plugins/lifecycle.ts",
+        "src/plugins/sandbox.ts",
+        "src/plugins/hot-reload.ts",
+        "src/plugins/types.ts",
+        "src/plugins/index.ts",
+        "tests/plugins/registry.test.ts",
+        "tests/plugins/resolver.test.ts",
+        "tests/plugins/lifecycle.test.ts",
+        "tests/plugins/hot-reload.test.ts",
+        "tests/plugins/integration.test.ts",
+        "examples/sample-plugin/"
+      ],
+      "complexity_notes": "Full system design with 13+ files. Requires architectural decisions on sandbox strategy, dependency graph algorithm, file watcher integration. Must handle edge cases like circular deps, crash isolation, and partial reload.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "dispatching-parallel-agents", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
+      "tags": ["feature", "architecture", "plugin-system", "ambitious"]
+    }
+  ]
+}

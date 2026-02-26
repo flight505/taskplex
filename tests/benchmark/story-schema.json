@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Benchmark Story",
+  "description": "A single test story for plugin benchmark evaluation",
+  "type": "object",
+  "required": ["id", "tier", "title", "description", "acceptance_criteria", "target_project"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3}$",
+      "description": "Story ID (S001-S999)"
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["T1", "T2", "T3", "T4", "T5"],
+      "description": "Complexity tier (T1=trivial, T5=ambitious)"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 120,
+      "description": "Short descriptive title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full problem description as a developer would write it"
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "List of verifiable acceptance criteria"
+    },
+    "target_project": {
+      "type": "string",
+      "description": "Name of the sample project to run against"
+    },
+    "test_command": {
+      "type": "string",
+      "default": "",
+      "description": "Command to run tests (e.g., npm test)"
+    },
+    "build_command": {
+      "type": "string",
+      "default": "",
+      "description": "Command to run build (e.g., npm run build)"
+    },
+    "typecheck_command": {
+      "type": "string",
+      "default": "",
+      "description": "Command to run typecheck (e.g., tsc --noEmit)"
+    },
+    "files_affected": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Expected files to be modified (for validation)"
+    },
+    "setup_commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Commands to run before story execution (e.g., seed data)"
+    },
+    "complexity_notes": {
+      "type": "string",
+      "default": "",
+      "description": "Notes on what makes this story this tier"
+    },
+    "expected_skills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Skills expected to fire during this story (for discipline scoring)"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Tags for filtering (e.g., tdd, bugfix, feature, refactor)"
+    }
+  },
+  "additionalProperties": false
+}

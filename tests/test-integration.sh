@@ -142,14 +142,14 @@ assert_contains "knowledge_db default" 'KNOWLEDGE_DB_PATH="knowledge.db"' "$SCRI
 assert_contains "validate_on_stop default" "VALIDATE_ON_STOP=true" "$SCRIPT_DIR/scripts/taskplex.sh"
 assert_contains "model_routing default" 'MODEL_ROUTING="auto"' "$SCRIPT_DIR/scripts/taskplex.sh"
 
-# Test 7: Plugin manifest version
+# Test 7: Plugin manifest version (semver format, not hardcoded)
 echo "Test 7: Plugin manifest"
 PLUGIN_VERSION=$(jq -r '.version' "$SCRIPT_DIR/.claude-plugin/plugin.json")
-if [ "$PLUGIN_VERSION" = "2.0.0" ]; then
-  echo "  PASS: Plugin version is 2.0.0"
+if echo "$PLUGIN_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "  PASS: Plugin version is valid semver ($PLUGIN_VERSION)"
   PASSED=$((PASSED + 1))
 else
-  echo "  FAIL: Plugin version is $PLUGIN_VERSION (expected 2.0.0)"
+  echo "  FAIL: Plugin version '$PLUGIN_VERSION' is not valid semver"
   FAILED=$((FAILED + 1))
 fi
 
