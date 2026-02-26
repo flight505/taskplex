@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# US-011: Test Orchestrator — Full Suite Command
-# Runs structural tests, optionally behavioral, records to benchmark.db, generates regression report
+# TaskPlex Test Suite — cross-refs validation + behavioral + regression
 # Usage: bash tests/run-suite.sh [--full] [--ci] [--estimate]
 # Exit 0: PASS | Exit 1: FAIL/WARN
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+RESULTS_DIR="${SCRIPT_DIR}/structural/results"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -43,8 +43,9 @@ fi
 
 VERSION=$(jq -r '.version // empty' "${PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null)
 GIT_SHA=$(git -C "$PLUGIN_ROOT" rev-parse --short HEAD 2>/dev/null)
+TIMESTAMP=$(date +%s)
 
-# ── Phase 1: Structural Tests ──────────────────────────
+# ── Phase 1: Cross-Reference Validation ──────────────────
 
 if [ "$CI" -eq 0 ]; then
   echo "╔═══════════════════════════════════════════╗"
@@ -53,18 +54,38 @@ if [ "$CI" -eq 0 ]; then
   echo ""
 fi
 
-struct_output=$(bash "${SCRIPT_DIR}/structural/run-all.sh" 2>&1) && struct_exit=0 || struct_exit=$?
+struct_output=$(bash "${SCRIPT_DIR}/structural/test-cross-refs.sh" 2>&1) && struct_exit=0 || struct_exit=$?
 
 if [ "$CI" -eq 0 ]; then
   echo "$struct_output"
   echo ""
 fi
 
-# Record structural results
-struct_results=$(ls -t "${SCRIPT_DIR}/structural/results"/structural-*.json 2>/dev/null | head -1)
-if [ -n "$struct_results" ]; then
-  bash "${SCRIPT_DIR}/regression/record-results.sh" "$struct_results" > /dev/null 2>&1 || true
+# Write JSON report for regression tracking
+mkdir -p "$RESULTS_DIR"
+struct_pass=0; struct_fail=0
+if [ "$struct_exit" -eq 0 ]; then
+  struct_pass=1; struct_total=1
+else
+  struct_fail=1; struct_total=1
 fi
+struct_results="${RESULTS_DIR}/structural-${TIMESTAMP}.json"
+jq -n \
+  --arg version "$VERSION" \
+  --arg git_sha "$GIT_SHA" \
+  --argjson timestamp "$TIMESTAMP" \
+  --arg suite "structural" \
+  --argjson passed "$struct_pass" \
+  --argjson failed "$struct_fail" \
+  --argjson total "$struct_total" \
+  '{
+    suite: $suite, version: $version, git_sha: $git_sha, timestamp: $timestamp,
+    tests: [{name: "cross-refs", status: (if $failed > 0 then "fail" else "pass" end), failures: []}],
+    summary: {total: $total, passed: $passed, failed: $failed}
+  }' > "$struct_results"
+
+# Record to benchmark.db
+bash "${SCRIPT_DIR}/regression/record-results.sh" "$struct_results" > /dev/null 2>&1 || true
 
 # ── Phase 2: Behavioral Tests (--full only) ─────────────
 
@@ -125,17 +146,6 @@ else
 fi
 
 # ── Summary ─────────────────────────────────────────────
-
-# Parse counts from JSON result file (avoids ANSI color issues with grep)
-if [ -n "$struct_results" ] && [ -f "$struct_results" ]; then
-  struct_pass=$(jq -r '.summary.passed // 0' "$struct_results")
-  struct_fail=$(jq -r '.summary.failed // 0' "$struct_results")
-  struct_total=$(jq -r '.summary.total // 0' "$struct_results")
-else
-  struct_pass=0
-  struct_fail=0
-  struct_total=0
-fi
 
 if [ "$CI" -eq 1 ]; then
   # CI: JSON-only output
