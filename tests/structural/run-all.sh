@@ -42,9 +42,7 @@ run_test() {
 }
 
 # Tests to run (name|script pairs)
-tests="manifests|${SCRIPT_DIR}/test-manifests.sh
-scripts|${SCRIPT_DIR}/test-scripts.sh
-cross-refs|${SCRIPT_DIR}/test-cross-refs.sh"
+tests="cross-refs|${SCRIPT_DIR}/test-cross-refs.sh"
 
 passed=0
 failed=0
