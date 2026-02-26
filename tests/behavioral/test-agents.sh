@@ -91,6 +91,17 @@ fi
 validate_fixture
 
 # ─────────────────────────────────────────────
+# Ensure sample project has dependencies installed
+# ─────────────────────────────────────────────
+SAMPLE_PROJECT="${PLUGIN_ROOT}/tests/benchmark/projects/sample-ts-api"
+if [ -d "$SAMPLE_PROJECT" ] && [ ! -d "${SAMPLE_PROJECT}/node_modules" ]; then
+  echo "Installing sample project dependencies..." >&2
+  (cd "$SAMPLE_PROJECT" && npm install --silent 2>/dev/null) || {
+    echo "WARNING: Failed to install sample project deps — some agent tests may fail" >&2
+  }
+fi
+
+# ─────────────────────────────────────────────
 # Run a single agent test
 # ─────────────────────────────────────────────
 test_agent() {
@@ -227,7 +238,7 @@ while IFS= read -r agent_name; do
   echo "Testing agent: ${agent_name}" >&2
 
   result=$(test_agent "$agent_name" || echo '{"error":"test_failed"}')
-  all_results=$(echo "[$all_results, $result]" | jq 'add // []')
+  all_results=$(echo "$all_results" | jq --argjson r "$result" '. + [$r]')
   total=$((total + 1))
 
   if echo "$result" | jq -e '.task_completed == true' > /dev/null 2>&1; then
