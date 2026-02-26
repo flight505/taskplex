@@ -80,9 +80,9 @@ bash tests/regression/regression-report.sh --baseline 3.1.0
 ```
 sqlite3 tests/benchmark.db "SELECT version, COUNT(*) FROM structural_results GROUP BY version;"
 ```
-Expected: `3.1.0|2` (2 structural suite runs recorded)
+Expected: `3.1.0|1` (1 structural suite run recorded)
 
 ```
 sqlite3 tests/benchmark.db "SELECT COUNT(*) FROM behavioral_results WHERE version='3.1.0';"
 ```
-Expected: `7` (multiple behavioral runs recorded)
+Expected: `1` (1 behavioral hooks run recorded)

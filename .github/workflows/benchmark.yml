@@ -1,0 +1,40 @@
+name: Benchmark — Structural Tests
+
+# Runs structural validation only (no Claude API calls, no cost)
+# Expected completion: <30 seconds on ubuntu-latest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  structural:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          # jq is pre-installed on ubuntu-latest but ensure it exists
+          which jq || sudo apt-get install -y jq
+
+      - name: Install sqlite3
+        run: |
+          # sqlite3 is pre-installed on ubuntu-latest but ensure it exists
+          which sqlite3 || sudo apt-get install -y sqlite3
+
+      - name: Run structural tests (CI mode)
+        run: bash tests/run-suite.sh --ci
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: structural-results
+          path: tests/structural/results/structural-*.json
+          retention-days: 30

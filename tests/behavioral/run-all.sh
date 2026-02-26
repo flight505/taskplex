@@ -87,38 +87,52 @@ run_suite_hooks() {
 }
 
 run_suite_skills() {
-  if [ -f "${SCRIPT_DIR}/test-skill-triggers.sh" ]; then
-    local output exit_code
-    output=$(bash "${SCRIPT_DIR}/test-skill-triggers.sh" 2>&1) && exit_code=0 || exit_code=$?
-    if [ "$exit_code" -eq 0 ]; then
-      printf "  ${GREEN}✓${RESET} skills\n"
-      passed=$((passed + 1))
-    else
-      printf "  ${RED}✗${RESET} skills\n"
-      echo "$output" | grep '✗\|→' | sed 's/^/    /' | head -10
-      failed=$((failed + 1))
-    fi
-  else
-    printf "  ${YELLOW}⊘${RESET} skills (not yet implemented — run US-005 first)\n"
+  if [ ! -f "${SCRIPT_DIR}/test-skill-triggers.sh" ]; then
+    printf "  ${YELLOW}⊘${RESET} skills (test-skill-triggers.sh not found)\n"
     suite_results=$(echo "$suite_results" | jq '. + {"skills": {"status": "not_implemented"}}')
+    return
+  fi
+
+  local output exit_code
+  output=$(bash "${SCRIPT_DIR}/test-skill-triggers.sh" --all 2>&1) && exit_code=0 || exit_code=$?
+  if [ "$exit_code" -eq 0 ]; then
+    printf "  ${GREEN}✓${RESET} skills\n"
+    passed=$((passed + 1))
+  else
+    printf "  ${RED}✗${RESET} skills\n"
+    echo "$output" | grep '✗\|→' | sed 's/^/    /' | head -10
+    failed=$((failed + 1))
+  fi
+  latest=$(ls -t "${RESULTS_DIR}"/skill-triggers-*.json 2>/dev/null | head -1)
+  if [ -n "$latest" ]; then
+    skill_summary=$(jq '.summary' "$latest" 2>/dev/null)
+    suite_results=$(echo "$suite_results" | jq ". + {\"skills\": ${skill_summary}}")
   fi
 }
 
 run_suite_agents() {
-  if [ -f "${SCRIPT_DIR}/test-agents.sh" ]; then
-    local output exit_code
-    output=$(bash "${SCRIPT_DIR}/test-agents.sh" 2>&1) && exit_code=0 || exit_code=$?
-    if [ "$exit_code" -eq 0 ]; then
-      printf "  ${GREEN}✓${RESET} agents\n"
-      passed=$((passed + 1))
-    else
-      printf "  ${RED}✗${RESET} agents\n"
-      echo "$output" | grep '✗\|→' | sed 's/^/    /' | head -10
-      failed=$((failed + 1))
-    fi
-  else
-    printf "  ${YELLOW}⊘${RESET} agents (not yet implemented — run US-007 first)\n"
+  if [ ! -f "${SCRIPT_DIR}/test-agents.sh" ]; then
+    printf "  ${YELLOW}⊘${RESET} agents (test-agents.sh not found)\n"
     suite_results=$(echo "$suite_results" | jq '. + {"agents": {"status": "not_implemented"}}')
+    return
+  fi
+
+  local output exit_code
+  output=$(bash "${SCRIPT_DIR}/test-agents.sh" --all 2>&1) && exit_code=0 || exit_code=$?
+  if [ "$exit_code" -eq 0 ]; then
+    printf "  ${GREEN}✓${RESET} agents\n"
+    passed=$((passed + 1))
+  else
+    printf "  ${RED}✗${RESET} agents\n"
+    echo "$output" | grep '✗\|→' | sed 's/^/    /' | head -10
+    failed=$((failed + 1))
+  fi
+  latest=$(ls -t "${RESULTS_DIR}"/agent-completion-*.json 2>/dev/null | head -1)
+  if [ -n "$latest" ]; then
+    agent_summary=$(jq '.summary' "$latest" 2>/dev/null)
+    suite_results=$(echo "$suite_results" | jq ". + {\"agents\": ${agent_summary}}")
+    a_cost=$(jq -r '[.results[].cost_usd] | add // 0' "$latest" 2>/dev/null)
+    total_cost=$(echo "$total_cost $a_cost" | awk '{printf "%.4f", $1+$2}')
   fi
 }
 
