@@ -130,8 +130,9 @@ test_agent() {
   local resolved_model="$model"
   [ "$resolved_model" = "inherit" ] && resolved_model="haiku"
 
-  local tmp_output
+  local tmp_output tmp_stderr
   tmp_output=$(mktemp /tmp/agent-test-XXXXXX.json)
+  tmp_stderr=$(mktemp /tmp/agent-test-XXXXXX.err)
   local start_time
   start_time=$(date +%s)
   local exit_code=0
@@ -145,7 +146,12 @@ test_agent() {
     --model "$resolved_model" \
     "$perm_flags" \
     --output-format json \
-    2>/dev/null > "$tmp_output" || exit_code=$?
+    2>"$tmp_stderr" > "$tmp_output" || exit_code=$?
+
+  # Show stderr on failure for diagnostics
+  if [ "$exit_code" -ne 0 ] && [ -s "$tmp_stderr" ]; then
+    printf "    stderr: %s\n" "$(head -3 "$tmp_stderr" | tr '\n' ' ')" >&2
+  fi
 
   local end_time
   end_time=$(date +%s)
@@ -178,7 +184,7 @@ test_agent() {
   local within_budget=false
   [ "$turns_used" -le "$max_turns" ] && within_budget=true
 
-  rm -f "$tmp_output"
+  rm -f "$tmp_output" "$tmp_stderr"
 
   local result
   result=$(jq -n \
