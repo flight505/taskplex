@@ -108,7 +108,8 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact.sh",
-            "statusMessage": "Saving context before compaction..."
+            "statusMessage": "Saving context before compaction...",
+            "timeout": 30
           }
         ]
       }
