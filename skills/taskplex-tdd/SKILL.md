@@ -61,6 +61,20 @@ After each GREEN phase, verify:
 - [ ] All existing tests still pass
 - [ ] No production code was written without a failing test
 
+## Red Flags — STOP, You're Rationalizing
+
+| Thought | Reality |
+|---------|---------|
+| "Too simple to test" | Simple code breaks. The test takes 30 seconds. |
+| "I'll write tests after" | Tests-after prove nothing about design intent. Tests-first prove behavior. |
+| "Tests after achieve the same goals" | They don't. Tests-after = "what does this do?" Tests-first = "what should this do?" |
+| "This is about spirit not ritual" | Violating the letter IS violating the spirit. No exceptions. |
+| "I already manually tested it" | Manual testing is not TDD. Delete code. Write test. |
+| "The existing tests cover this" | If no NEW test fails, you don't know if your code is needed. |
+| "It's just a config change" | Smoke test that config loads correctly. |
+
+**If any of these thoughts cross your mind: STOP. Delete any code written without a failing test. Start over.**
+
 ## Integration with TaskPlex
 
 When running inside the TaskPlex execution loop:

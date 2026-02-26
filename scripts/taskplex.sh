@@ -1,6 +1,6 @@
 #!/bin/bash
 # TaskPlex - Long-running AI agent loop with process management
-# Usage: ./taskplex.sh [max_iterations]
+# Usage: ./taskplex.sh [max_iterations] [segment_name]
 
 set -e
 
@@ -421,6 +421,7 @@ fi
 # ============================================================================
 
 MAX_ITERATIONS=${1:-10}
+SEGMENT_FILTER="${2:-}"  # Optional: only run stories in this segment
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Plugin root is parent of scripts directory
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -491,6 +492,7 @@ load_config() {
   KNOWLEDGE_DB_PATH="knowledge.db"
   VALIDATE_ON_STOP=true
   MODEL_ROUTING="auto"
+  INTERACTIVE_MODE=false
 
   # Load from config file if it exists
   if [ -f "$CONFIG_FILE" ]; then
@@ -517,6 +519,7 @@ load_config() {
     KNOWLEDGE_DB_PATH=$(jq -r '.knowledge_db // "knowledge.db"' "$CONFIG_FILE")
     VALIDATE_ON_STOP=$(jq -r 'if .validate_on_stop == false then "false" elif .validate_on_stop == true then "true" else "true" end' "$CONFIG_FILE")
     MODEL_ROUTING=$(jq -r '.model_routing // "auto"' "$CONFIG_FILE")
+    INTERACTIVE_MODE=$(jq -r 'if .interactive_mode == true then "true" else "false" end' "$CONFIG_FILE")
 
     log "INIT" "Configuration loaded from $CONFIG_FILE"
   else
@@ -603,16 +606,38 @@ get_next_task() {
     return 1
   fi
 
+  # Build segment story filter (if segment is specified)
+  local segment_ids=""
+  if [ -n "$SEGMENT_FILTER" ]; then
+    segment_ids=$(jq -r --arg seg "$SEGMENT_FILTER" \
+      '.segments // [] | .[] | select(.name == $seg) | .stories | .[]' \
+      "$PRD_FILE" 2>/dev/null)
+    if [ -z "$segment_ids" ]; then
+      log "WARN" "Segment '$SEGMENT_FILTER' not found or empty — running all stories"
+    fi
+  fi
+
   # Use jq to find the first incomplete story with all dependencies satisfied
   # sorted by priority (lowest number = highest priority)
+  local segment_filter_jq=""
+  if [ -n "$segment_ids" ]; then
+    # Build jq array from segment IDs
+    local seg_array
+    seg_array=$(echo "$segment_ids" | jq -R '.' | jq -s '.')
+    segment_filter_jq="select(.id as \$sid | $seg_array | index(\$sid)) |"
+  fi
+
   local next_task
-  next_task=$(jq -r '
+  next_task=$(jq -r --argjson seg_filter "${seg_array:-null}" '
     # First, get all stories for dependency checking
     .userStories as $all_stories |
 
     # Filter to incomplete, non-skipped stories
     .userStories[] |
     select(.passes == false and .status != "skipped") |
+
+    # Apply segment filter if provided
+    (if $seg_filter != null then select(.id as $sid | $seg_filter | index($sid)) else . end) |
 
     # Check if all dependencies are satisfied
     select(
@@ -1257,9 +1282,10 @@ emit_run_end() {
       \"skipped\": ${skipped}
     }" > /dev/null 2>&1 &
 
-  # Update run in SQLite
+  # Update run in SQLite and promote learnings to patterns
   if [ -f "$KNOWLEDGE_DB" ]; then
     update_run "$KNOWLEDGE_DB" "$RUN_ID" "$completed" "$skipped" 2>/dev/null || true
+    promote_learnings_to_patterns "$KNOWLEDGE_DB" 2>/dev/null || true
   fi
 
   emit_event "run.end" "{\"completed\":${completed},\"skipped\":${skipped},\"elapsed_s\":${elapsed}}"
@@ -1272,6 +1298,9 @@ emit_run_end() {
 if [ "$PARALLEL_MODE" = "parallel" ]; then
   log "INIT" "Sourcing parallel execution module"
   source "$SCRIPT_DIR/parallel.sh"
+elif [ "$PARALLEL_MODE" = "teams" ]; then
+  log "INIT" "Delegating to teams execution mode"
+  exec "$SCRIPT_DIR/teams.sh" "$MAX_ITERATIONS"
 fi
 
 # ============================================================================
@@ -1722,9 +1751,20 @@ run_spec_review() {
   local git_diff
   git_diff=$(git diff HEAD~1 --stat 2>/dev/null || echo "No diff available")
 
+  # Include integrity warning if present
+  local integrity_note=""
+  if [ -n "${TASKPLEX_INTEGRITY_WARNING:-}" ]; then
+    integrity_note="
+
+## INTEGRITY ALERT
+${TASKPLEX_INTEGRITY_WARNING}
+Pay special attention to test file modifications. Verify they test REAL behavior, not just make tests pass."
+  fi
+
   local spec_prompt="# Spec Compliance Review
 
 Story: $story_id
+${integrity_note}
 
 Acceptance Criteria:
 $(echo "$story_criteria" | sed 's/^/- /')
@@ -2047,6 +2087,16 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     STORY_EFFORT="$DECISION_EFFORT"
   fi
 
+  # Effort auto-tuning on retries: escalate model/effort for failed stories
+  if [ "$STORY_ATTEMPTS" -ge 2 ] && [ "$STORY_MODEL" != "opus" ]; then
+    STORY_MODEL="opus"
+    STORY_EFFORT="medium"
+    log "ROUTING-$CURRENT_STORY" "Auto-tuning: retry $STORY_ATTEMPTS → opus/medium"
+  elif [ "$STORY_ATTEMPTS" -ge 3 ] && [ "$STORY_MODEL" = "opus" ]; then
+    STORY_EFFORT="high"
+    log "ROUTING-$CURRENT_STORY" "Auto-tuning: retry $STORY_ATTEMPTS → opus/high"
+  fi
+
   # Set effort env var for this story (Opus 4.6 only)
   if [ -n "$STORY_EFFORT" ] && [ "$STORY_MODEL" = "opus" ]; then
     export CLAUDE_CODE_EFFORT_LEVEL="$STORY_EFFORT"
@@ -2062,6 +2112,13 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   HAS_DEPS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | if (.depends_on // [] | length) > 0 then "true" else "false" end' "$PRD_FILE" 2>/dev/null)
   HAS_CHECKS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | if (.check_before_implementing // [] | length) > 0 then "true" else "false" end' "$PRD_FILE" 2>/dev/null)
   emit_event "context.generated" "{\"has_deps\":$HAS_DEPS,\"has_checks\":$HAS_CHECKS,\"has_retry_context\":false}" "$CURRENT_STORY"
+
+  # Snapshot test file checksums before implementer runs (reward hacking prevention)
+  TEST_CHECKSUMS_BEFORE=""
+  if [ -n "$TEST_COMMAND" ]; then
+    TEST_CHECKSUMS_BEFORE=$(find . -type f \( -name "*test*" -o -name "*spec*" -o -name "*.test.*" -o -name "*.spec.*" \) \
+      -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort | xargs shasum 2>/dev/null || true)
+  fi
 
   # Build the full prompt: context brief + agent instructions
   FULL_PROMPT_FILE=$(mktemp)
@@ -2081,6 +2138,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
 
   # Run with timeout
   env -u CLAUDECODE $TIMEOUT_CMD $ITERATION_TIMEOUT claude -p "$(cat "$FULL_PROMPT_FILE")" \
+    --agent implementer \
     --output-format json \
     --no-session-persistence \
     --dangerously-skip-permissions \
@@ -2163,6 +2221,7 @@ Please address the issue and try again."
 
       TEMP_OUTPUT="/tmp/taskplex-$$-$i-retry.txt"
       env -u CLAUDECODE $TIMEOUT_CMD $RETRY_TIMEOUT claude -p "$(cat "$RETRY_PROMPT_FILE")" \
+        --agent implementer \
         --output-format json \
         --no-session-persistence \
         --dangerously-skip-permissions \
@@ -2203,6 +2262,21 @@ Please address the issue and try again."
   KNOWLEDGE_SIZE=$(wc -l < "$KNOWLEDGE_FILE" 2>/dev/null || echo "0")
   emit_event "knowledge.update" "{\"learnings_count\":0,\"knowledge_size\":$KNOWLEDGE_SIZE}" "$CURRENT_STORY"
 
+  # Test file integrity check (reward hacking prevention)
+  # If test files were modified AND tests now pass, flag for spec-reviewer
+  TEST_INTEGRITY_WARNING=""
+  if [ -n "$TEST_CHECKSUMS_BEFORE" ] && [ -n "$TEST_COMMAND" ]; then
+    TEST_CHECKSUMS_AFTER=$(find . -type f \( -name "*test*" -o -name "*spec*" -o -name "*.test.*" -o -name "*.spec.*" \) \
+      -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort | xargs shasum 2>/dev/null || true)
+    if [ "$TEST_CHECKSUMS_BEFORE" != "$TEST_CHECKSUMS_AFTER" ]; then
+      # Tests were modified — check if they pass now
+      if eval "$TEST_COMMAND" >/dev/null 2>&1; then
+        TEST_INTEGRITY_WARNING="[INTEGRITY WARNING] Test files were modified by implementer AND tests now pass. Possible reward hacking — spec-reviewer should verify test modifications are legitimate."
+        log "SAFETY-$CURRENT_STORY" "$TEST_INTEGRITY_WARNING"
+      fi
+    fi
+  fi
+
   # Run validator agent to verify acceptance criteria (US-007)
   VALIDATION_PASSED=0
   if [ "$CURRENT_STORY" != "unknown" ]; then
@@ -2241,7 +2315,12 @@ Please address the issue and try again."
     # Stage 1: Spec compliance review (mandatory, after validation)
     SPEC_RESULT=0
     if [ "$CURRENT_STORY" != "unknown" ]; then
+      # Pass test integrity warning to spec-reviewer if detected
+      if [ -n "$TEST_INTEGRITY_WARNING" ]; then
+        export TASKPLEX_INTEGRITY_WARNING="$TEST_INTEGRITY_WARNING"
+      fi
       run_spec_review "$CURRENT_STORY" || SPEC_RESULT=$?
+      unset TASKPLEX_INTEGRITY_WARNING 2>/dev/null || true
       if [ $SPEC_RESULT -ne 0 ]; then
         log "SPEC-$CURRENT_STORY" "Spec review rejected — requirements not met"
         handle_error $i "$CURRENT_STORY" 1 "Spec review rejected: acceptance criteria not properly implemented"
@@ -2286,9 +2365,10 @@ Please address the issue and try again."
       update_story_status "$CURRENT_STORY" "completed"
       write_checkpoint "$CURRENT_STORY" "completed" "$STORY_ATTEMPTS"
 
-      # Mark errors as resolved in SQLite
+      # Mark errors as resolved and record successful decision outcome
       if [ -f "$KNOWLEDGE_DB" ]; then
         resolve_errors "$KNOWLEDGE_DB" "$CURRENT_STORY" 2>/dev/null || true
+        update_decision_outcome "$KNOWLEDGE_DB" "$CURRENT_STORY" "$RUN_ID" "success" 2>/dev/null || true
       fi
 
       # Log completion with duration (Layer 1: operational log)
@@ -2304,12 +2384,14 @@ Please address the issue and try again."
   # Check for completion signal (also handles legacy behavior)
   if echo "$RESULT" | grep -q "<promise>COMPLETE</promise>"; then
     if [ "$CURRENT_STORY" != "unknown" ] && [ "$VALIDATION_PASSED" -ne 1 ]; then
-      # COMPLETE signal received but validation didn't pass (or was skipped) — mark complete anyway
-      update_story_status "$CURRENT_STORY" "completed"
-      STORY_ELAPSED=$(($(date +%s) - STORY_START_TIME))
-      STORY_ATTEMPTS=$(jq -r --arg id "$CURRENT_STORY" '.userStories[] | select(.id == $id) | .attempts // 1' "$PRD_FILE" 2>/dev/null)
-      log_progress "$CURRENT_STORY" "COMPLETED" "${STORY_ATTEMPTS} attempt(s), ${STORY_ELAPSED}s (COMPLETE signal)"
-      emit_event "story.complete" "{\"attempts\":$STORY_ATTEMPTS,\"elapsed_s\":$STORY_ELAPSED}" "$CURRENT_STORY"
+      # COMPLETE signal received but validation didn't pass — treat as error (reward hacking prevention)
+      log "SAFETY-$CURRENT_STORY" "COMPLETE signal received without validation pass — routing to error handler"
+      handle_error $i "$CURRENT_STORY" 1 "Agent claimed COMPLETE but validation did not pass. Implementation must satisfy acceptance criteria before completion."
+      ERROR_HANDLING_RESULT=$?
+      if [ $ERROR_HANDLING_RESULT -eq 0 ]; then continue
+      elif [ $ERROR_HANDLING_RESULT -eq 1 ]; then exit 1
+      elif [ $ERROR_HANDLING_RESULT -eq 2 ]; then continue
+      fi
     fi
 
     # Check if ALL stories are complete
@@ -2343,7 +2425,22 @@ Please address the issue and try again."
   fi
 
   echo "Iteration $i complete. Continuing..."
-  sleep 2
+
+  # Interactive mode: pause between stories for user review
+  if [ "$INTERACTIVE_MODE" = "true" ] && [ "$VALIDATION_PASSED" -eq 1 ]; then
+    echo ""
+    echo "--- Interactive Mode: Story $CURRENT_STORY completed ---"
+    echo "Press Enter to continue to next story, or type 'abort' to stop: "
+    read -r INTERACTIVE_INPUT </dev/tty 2>/dev/null || INTERACTIVE_INPUT=""
+    if [ "$INTERACTIVE_INPUT" = "abort" ]; then
+      echo "User requested abort in interactive mode."
+      generate_report
+      emit_run_end
+      exit 0
+    fi
+  else
+    sleep 2
+  fi
 done
 
 echo ""

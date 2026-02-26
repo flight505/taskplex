@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 3.1.0** | Last Updated: 2026-02-24
+**Version 4.0.0** | Last Updated: 2026-02-26
 
 Developer instructions for the TaskPlex plugin. For architecture deep dives, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -8,9 +8,9 @@ Developer instructions for the TaskPlex plugin. For architecture deep dives, see
 
 ## Overview
 
-TaskPlex is an **always-on autonomous development companion** — all 15 Superpowers discipline skills (adapted, MIT licensed from Jesse Vincent) + PRD-driven autonomous execution, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, and error recovery. Fully replaces Superpowers.
+TaskPlex is an **always-on autonomous development companion** — brainstorming + all 15 Superpowers discipline skills (adapted, MIT licensed from Jesse Vincent) + PRD-driven autonomous execution, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, experience-based learning, difficulty-aware routing, reward hacking prevention, Agent Teams support, and error recovery. Fully replaces Superpowers.
 
-**Philosophy:** Always-on awareness, discipline before code, precise PRD, sequential execution, fresh context per task, resilient error recovery.
+**Philosophy:** Always-on awareness, challenge assumptions first, discipline before code, precise PRD, lean context, fresh context per task, resilient error recovery.
 
 ---
 
@@ -19,11 +19,11 @@ TaskPlex is an **always-on autonomous development companion** — all 15 Superpo
 ```
 taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
-├── agents/                            # 6 subagents (implementer, validator, spec-reviewer, reviewer, merger, code-reviewer)
+├── agents/                            # 7 subagents (architect, implementer, validator, spec-reviewer, reviewer, merger, code-reviewer)
 ├── commands/start.md                  # 8-checkpoint interactive wizard (optional — proactive path available)
-├── skills/                            # 16 skills: 14 adapted Superpowers + failure-analyzer + using-taskplex gate
+├── skills/                            # 17 skills: brainstorm + 14 adapted Superpowers + failure-analyzer + using-taskplex gate
 ├── hooks/
-│   ├── hooks.json                     # 9 hooks across 7 events
+│   ├── hooks.json                     # 13 hooks across 10 events
 │   ├── stop-guard.sh                  # Stop: prevents premature exit
 │   ├── task-completed.sh              # TaskCompleted: gates on test pass
 │   ├── inject-knowledge.sh            # SubagentStart: SQLite → additionalContext
@@ -34,7 +34,8 @@ taskplex/
 │   ├── taskplex.sh                    # Main orchestration loop
 │   ├── parallel.sh                    # Wave-based parallel execution (opt-in)
 │   ├── knowledge-db.sh                # SQLite knowledge store helpers
-│   ├── decision-call.sh               # 1-shot Opus decision calls
+│   ├── decision-call.sh               # Rule-based fast path + 1-shot Opus decision calls
+│   ├── teams.sh                       # Agent Teams orchestrator (opt-in)
 │   └── check-*.sh                     # Dependency, git, and destructive command checks
 ├── monitor/                           # Optional Bun + Vue 3 dashboard sidecar
 └── tests/
@@ -44,6 +45,7 @@ taskplex/
 
 | Agent | Model | Permission | Tools | Purpose |
 |-------|-------|------------|-------|---------|
+| architect | sonnet | dontAsk | Read, Grep, Glob, Bash | Read-only codebase explorer (brainstorm phase) |
 | implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify REQUIRED) |
 | validator | haiku | dontAsk | Bash, Read, Glob, Grep | Verify acceptance criteria (read-only) |
 | spec-reviewer | haiku | dontAsk | Read, Grep, Glob, Bash | Spec compliance review — Stage 1 (mandatory) |
@@ -73,7 +75,9 @@ For detailed data flow, hook system, knowledge architecture, and error handling,
 | `test_command` | string | "" | e.g. "npm test" |
 | `build_command` | string | "" | e.g. "npm run build" |
 | `typecheck_command` | string | "" | e.g. "tsc --noEmit" |
-| `parallel_mode` | string | "sequential" | "sequential" or "parallel" (worktree-based) |
+| `parallel_mode` | string | "sequential" | "sequential", "parallel" (worktree), or "teams" (Agent Teams) |
+| `interactive_mode` | bool | false | Pause between stories for user approval |
+| `scope_drift_action` | string | "warn" | "warn", "block", or "review" for scope drift |
 | `max_parallel` | int | 3 | Max concurrent agents per wave |
 | `worktree_dir` | string | "" | Custom worktree base dir |
 | `worktree_setup_command` | string | "" | e.g. "npm install" |

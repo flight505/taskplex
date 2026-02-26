@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "3.1.0",
-  "description": "Always-on autonomous development companion: all 15 Superpowers discipline skills + PRD-driven execution, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, error recovery, and model routing.",
+  "version": "4.0.0",
+  "description": "Always-on autonomous development companion: brainstorming, lean skills, difficulty-aware routing, reward hacking prevention, Agent Teams, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence with experience-based learning, and error recovery.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",
@@ -24,6 +24,7 @@
     "./commands/start.md"
   ],
   "skills": [
+    "./skills/brainstorm",
     "./skills/prd-generator",
     "./skills/prd-converter",
     "./skills/failure-analyzer",
@@ -42,6 +43,7 @@
     "./skills/writing-plans"
   ],
   "agents": [
+    "./agents/architect.md",
     "./agents/implementer.md",
     "./agents/validator.md",
     "./agents/spec-reviewer.md",

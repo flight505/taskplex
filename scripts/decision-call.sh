@@ -28,12 +28,38 @@ decision_call() {
   fi
 
   # Gather context for decision
-  local attempts last_error last_category retry_hint criteria_count
+  local attempts last_error last_category retry_hint criteria_count deps_count
   attempts=$(echo "$story_json" | jq -r '.attempts // 0')
   last_error=$(echo "$story_json" | jq -r '.last_error // "none"')
   last_category=$(echo "$story_json" | jq -r '.last_error_category // "none"')
   retry_hint=$(echo "$story_json" | jq -r '.retry_hint // "none"')
   criteria_count=$(echo "$story_json" | jq -r '.acceptanceCriteria | length')
+  deps_count=$(echo "$story_json" | jq -r '.depends_on // [] | length')
+
+  # === Rule-based fast path (eliminates ~40% of API calls) ===
+
+  # Environment/dependency missing → always skip (no API call needed)
+  if [ "$last_category" = "env_missing" ] || [ "$last_category" = "dependency_missing" ]; then
+    log "DECISION" "$story_id: FAST-PATH skip (env/dep missing)"
+    echo "skip||"
+    return 0
+  fi
+
+  # First attempt, simple story (1-2 criteria, no deps) → haiku
+  if [ "$attempts" -eq 0 ] && [ "$criteria_count" -le 2 ] && [ "$deps_count" -eq 0 ]; then
+    log "DECISION" "$story_id: FAST-PATH implement|haiku (simple, first attempt)"
+    echo "implement|haiku|"
+    return 0
+  fi
+
+  # First attempt, standard story (3-5 criteria, 0-1 deps) → sonnet
+  if [ "$attempts" -eq 0 ] && [ "$criteria_count" -le 5 ] && [ "$deps_count" -le 1 ]; then
+    log "DECISION" "$story_id: FAST-PATH implement|sonnet (standard, first attempt)"
+    echo "implement|sonnet|"
+    return 0
+  fi
+
+  # === End fast path — fall through to Opus decision call ===
 
   # Get knowledge summary
   local knowledge_summary=""
@@ -45,6 +71,12 @@ decision_call() {
   local error_patterns=""
   if [ -f "$KNOWLEDGE_DB" ]; then
     error_patterns=$(query_errors "$KNOWLEDGE_DB" "$story_id" 2>/dev/null)
+  fi
+
+  # Get historical decision stats
+  local decision_stats=""
+  if [ -f "$KNOWLEDGE_DB" ]; then
+    decision_stats=$(query_decision_stats "$KNOWLEDGE_DB" 2>/dev/null)
   fi
 
   # Build prompt
@@ -66,6 +98,9 @@ ${knowledge_summary:-No learnings available yet.}
 
 ## Error Patterns
 ${error_patterns:-No error history for this story.}
+
+## Historical Model Success Rates
+${decision_stats:-No historical data yet. (model|total|successes|rate%)}
 
 ## Decision Required
 Respond with JSON only, no other text:

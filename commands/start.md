@@ -396,8 +396,10 @@ Question: "How should stories execute?"
 - multiSelect: false
 - Options:
   - Label: "Sequential (Recommended)" | Description: "One story at a time — safest, no merge conflicts"
+  - Label: "Interactive" | Description: "Sequential but pauses between stories for user review and approval"
   - Label: "Parallel (3 concurrent)" | Description: "Independent stories run simultaneously in git worktrees"
   - Label: "Parallel (5 concurrent)" | Description: "More parallelism — faster but uses more resources"
+  - Label: "Agent Teams (experimental)" | Description: "Orchestrator + implementers team — most advanced, requires Claude Agent Teams"
 
 **If parallel mode selected, ask follow-up:**
 
@@ -437,8 +439,10 @@ For model (Question 4):
 
 For parallel mode:
 - "Sequential (Recommended)" → parallel_mode: sequential
+- "Interactive" → parallel_mode: sequential, interactive_mode: true
 - "Parallel (3 concurrent)" → parallel_mode: parallel, max_parallel: 3
 - "Parallel (5 concurrent)" → parallel_mode: parallel, max_parallel: 5
+- "Agent Teams (experimental)" → parallel_mode: teams, max_parallel: 3
 
 For worktree setup (only if parallel):
 - "None needed" → worktree_setup_command: ""

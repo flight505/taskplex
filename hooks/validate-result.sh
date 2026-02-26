@@ -140,8 +140,12 @@ fi
 
 # === Scope drift detection ===
 # Compare git diff against expected files from story context.
-# Informational only — logs a warning but never blocks the agent.
+# Action is configurable: "warn" (default), "block", or "review"
 SCOPE_DRIFT=""
+SCOPE_DRIFT_ACTION="warn"
+if [ -f "$CONFIG_FILE" ]; then
+  SCOPE_DRIFT_ACTION=$(jq -r '.scope_drift_action // "warn"' "$CONFIG_FILE" 2>/dev/null)
+fi
 if [ -f "$PRD_FILE" ]; then
   STORY_ID_DRIFT=$(jq -r '.userStories[] | select(.status == "in_progress") | .id' "$PRD_FILE" 2>/dev/null | head -1)
 
@@ -196,6 +200,16 @@ if [ -f "$PRD_FILE" ]; then
       source "$SCRIPT_DIR/scripts/knowledge-db.sh" 2>/dev/null || true
       ESCAPED_DRIFT=$(echo "$SCOPE_DRIFT" | sed "s/'/''/g" | head -c 500)
       sqlite3 "$KNOWLEDGE_DB" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$STORY_ID_DRIFT', '${TASKPLEX_RUN_ID:-unknown}', '$ESCAPED_DRIFT', 0.5, 'scope-drift', 'validate-result');" 2>/dev/null || true
+    fi
+
+    # Enforce scope drift action based on config
+    if [ -n "$SCOPE_DRIFT" ] && [ "$SCOPE_DRIFT_ACTION" = "block" ]; then
+      FAILURES="${FAILURES}Scope drift detected (action: block):
+${SCOPE_DRIFT}
+
+Reduce the number of changed files to match story scope.
+
+"
     fi
   fi
 fi

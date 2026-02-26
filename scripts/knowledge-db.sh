@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS decisions (
   effort_level TEXT,
   reasoning TEXT,
   tokens_used INTEGER,
+  outcome TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -67,7 +68,21 @@ CREATE TABLE IF NOT EXISTS runs (
   started_at TEXT DEFAULT (datetime('now')),
   ended_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS patterns (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL UNIQUE,
+  category TEXT NOT NULL,
+  occurrence_count INTEGER DEFAULT 1,
+  base_confidence REAL DEFAULT 0.9,
+  source_stories TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
 SQL
+
+  # Migrate existing DBs: add outcome column to decisions if missing
+  sqlite3 "$db" "ALTER TABLE decisions ADD COLUMN outcome TEXT;" 2>/dev/null || true
 }
 
 # Migrate knowledge.md to SQLite (one-time, idempotent)
@@ -247,6 +262,39 @@ mine_implicit_learnings() {
     done <<< "$env_obs"
   fi
 
+  # Pattern 4: Discoveries and workarounds ("I discovered...", "Had to work around...")
+  local discoveries
+  discoveries=$(echo "$message" | grep -ioE '(I discovered [^.]+\.)|(Had to work around [^.]+\.)|(The project uses [^.]+\.)|(Workaround: [^.]+\.)' 2>/dev/null | head -5)
+  if [ -n "$discoveries" ]; then
+    while IFS= read -r disc; do
+      [ -z "$disc" ] && continue
+      local escaped_disc
+      escaped_disc=$(echo "$disc" | sed "s/'/''/g")
+      local existing_disc
+      existing_disc=$(sqlite3 "$db" "SELECT COUNT(*) FROM learnings WHERE content LIKE '%$(echo "$escaped_disc" | head -c 50)%' AND story_id = '$story_id';" 2>/dev/null || echo "0")
+      if [ "$existing_disc" = "0" ]; then
+        local disc_category="general"
+        echo "$disc" | grep -iq "work.around" && disc_category="workaround"
+        echo "$disc" | grep -iq "project uses" && disc_category="codebase_convention"
+        sqlite3 "$db" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$story_id', '$run_id', '$escaped_disc', 0.7, '$disc_category,implicit', 'transcript-mining');" 2>/dev/null || true
+        mined=$((mined + 1))
+      fi
+    done <<< "$discoveries"
+  fi
+
+  # Pattern 5: Convention observations ("The codebase follows...", "Convention here is...")
+  local conventions
+  conventions=$(echo "$message" | grep -ioE '(The codebase (follows|uses|has) [^.]+\.)|(Convention here is [^.]+\.)|(The pattern used is [^.]+\.)' 2>/dev/null | head -3)
+  if [ -n "$conventions" ]; then
+    while IFS= read -r conv; do
+      [ -z "$conv" ] && continue
+      local escaped_conv
+      escaped_conv=$(echo "$conv" | sed "s/'/''/g")
+      sqlite3 "$db" "INSERT INTO learnings (story_id, run_id, content, confidence, tags, source) VALUES ('$story_id', '$run_id', '$escaped_conv', 0.75, 'codebase_convention,implicit', 'transcript-mining');" 2>/dev/null || true
+      mined=$((mined + 1))
+    done <<< "$conventions"
+  fi
+
   return 0
 }
 
@@ -269,6 +317,14 @@ query_learnings() {
     if [ -n "$tag_conditions" ]; then
       where_clause="WHERE ($tag_conditions)"
     fi
+  fi
+
+  # Add 60-day hard cutoff to WHERE clause
+  local age_filter="julianday('now') - julianday(created_at) <= 60"
+  if [ -n "$where_clause" ]; then
+    where_clause="$where_clause AND $age_filter"
+  else
+    where_clause="WHERE $age_filter"
   fi
 
   sqlite3 -separator '|' "$db" "
@@ -308,6 +364,96 @@ query_decisions() {
     ORDER BY created_at DESC
     LIMIT 3;
   " 2>/dev/null
+}
+
+# Get historical decision success rates by model
+# Args: $1=db
+# Output: model|total|successes|success_rate
+query_decision_stats() {
+  local db="$1"
+  sqlite3 -separator '|' "$db" "
+    SELECT d.model, COUNT(*) as total,
+      SUM(CASE WHEN d.outcome = 'success' THEN 1 ELSE 0 END) as successes,
+      ROUND(CAST(SUM(CASE WHEN d.outcome = 'success' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) * 100, 1) as success_rate
+    FROM decisions d
+    WHERE d.outcome IS NOT NULL
+    GROUP BY d.model
+    ORDER BY success_rate DESC;
+  " 2>/dev/null
+}
+
+# Promote repeated learnings to patterns
+# Called after each run completes. Scans learnings for content appearing
+# in 3+ stories or 2+ runs and promotes them to the patterns table.
+# Patterns survive decay longer (base_confidence=0.9) and are injected first.
+# Args: $1=db
+promote_learnings_to_patterns() {
+  local db="$1"
+
+  # Find learnings that appear in 3+ different stories (approximate match via LIKE prefix)
+  sqlite3 "$db" "
+    INSERT OR IGNORE INTO patterns (content, category, occurrence_count, source_stories)
+    SELECT
+      l.content,
+      CASE
+        WHEN l.tags LIKE '%environment%' THEN 'environment_note'
+        WHEN l.tags LIKE '%file-relationship%' THEN 'codebase_convention'
+        WHEN l.tags LIKE '%scope-drift%' THEN 'gotcha'
+        ELSE 'general'
+      END,
+      COUNT(DISTINCT l.story_id),
+      GROUP_CONCAT(DISTINCT l.story_id)
+    FROM learnings l
+    WHERE l.confidence >= 0.5
+    GROUP BY l.content
+    HAVING COUNT(DISTINCT l.story_id) >= 3 OR COUNT(DISTINCT l.run_id) >= 2;
+  " 2>/dev/null || true
+
+  # Update occurrence counts for existing patterns
+  sqlite3 "$db" "
+    UPDATE patterns SET
+      occurrence_count = (
+        SELECT COUNT(DISTINCT l.story_id)
+        FROM learnings l WHERE l.content = patterns.content
+      ),
+      source_stories = (
+        SELECT GROUP_CONCAT(DISTINCT l.story_id)
+        FROM learnings l WHERE l.content = patterns.content
+      ),
+      updated_at = datetime('now')
+    WHERE EXISTS (SELECT 1 FROM learnings l WHERE l.content = patterns.content);
+  " 2>/dev/null || true
+}
+
+# Query patterns (no decay — patterns are long-lived)
+# Args: $1=db, $2=limit (default 10), $3=category (optional)
+query_patterns() {
+  local db="$1" limit="${2:-10}" category="${3:-}"
+
+  local where_clause=""
+  if [ -n "$category" ]; then
+    where_clause="WHERE category = '$category'"
+  fi
+
+  sqlite3 -separator '|' "$db" "
+    SELECT content, category, occurrence_count, base_confidence
+    FROM patterns
+    $where_clause
+    ORDER BY occurrence_count DESC, base_confidence DESC
+    LIMIT $limit;
+  " 2>/dev/null
+}
+
+# Update decision outcome after story completes
+# Args: $1=db, $2=story_id, $3=run_id, $4=outcome ('success' or 'failure')
+update_decision_outcome() {
+  local db="$1" story_id="$2" run_id="$3" outcome="$4"
+  sqlite3 "$db" "
+    UPDATE decisions SET outcome = '$outcome'
+    WHERE story_id = '$story_id' AND run_id = '$run_id'
+    AND outcome IS NULL
+    ORDER BY created_at DESC LIMIT 1;
+  " 2>/dev/null || true
 }
 
 # Get summary statistics for report
