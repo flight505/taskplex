@@ -1,151 +1,915 @@
 {
-  "version": "1.0.0",
-  "description": "Sample stories for benchmark validation — 5 stories, 1 per tier",
+  "version": "2.0.0",
+  "description": "Full benchmark suite — 30 stories across 5 complexity tiers and 2 target projects",
+  "target_projects": {
+    "sample-ts-api": {
+      "description": "TypeScript Express REST API with Prisma ORM, JWT auth, and Vitest",
+      "stack": ["typescript", "express", "prisma", "vitest", "zod"],
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit"
+    },
+    "sample-react-app": {
+      "description": "React 19 + TypeScript SPA with Vite, TanStack Query, and Vitest",
+      "stack": ["typescript", "react", "vite", "tanstack-query", "vitest"],
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit"
+    }
+  },
   "stories": [
+
     {
       "id": "S001",
       "tier": "T1",
-      "title": "Fix incorrect export in utility module",
-      "description": "The `utils/format.ts` module exports `formatDate` as a named export, but it should also be the default export. Some imports use `import formatDate from './format'` and fail at runtime.",
+      "title": "Fix incorrect default export in date utility",
+      "description": "The `src/utils/format-date.ts` module exports `formatDate` only as a named export. Several modules import it as a default import (`import formatDate from './format-date'`) and fail at runtime with `undefined is not a function`.",
       "acceptance_criteria": [
         "formatDate is exported as both named and default export",
-        "Existing named imports still work",
+        "All existing named imports continue to work",
         "No TypeScript errors"
       ],
-      "target_project": "sample-ts-app",
-      "test_command": "npm test",
-      "build_command": "npm run build",
-      "typecheck_command": "tsc --noEmit",
-      "files_affected": ["src/utils/format.ts"],
-      "complexity_notes": "Single-line fix, trivial scope",
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/utils/format-date.ts"],
+      "setup_commands": [],
+      "complexity_notes": "Single-line addition, trivial scope",
       "expected_skills": ["taskplex-verify"],
-      "tags": ["bugfix", "trivial"]
+      "tags": ["bugfix", "trivial", "export"]
     },
+
     {
       "id": "S002",
+      "tier": "T1",
+      "title": "Fix off-by-one in pagination helper",
+      "description": "The `paginate()` function in `src/utils/pagination.ts` returns one fewer item than requested. When `limit=10`, only 9 results are returned. The `.slice(offset, offset + limit - 1)` should be `.slice(offset, offset + limit)`.",
+      "acceptance_criteria": [
+        "paginate(items, { offset: 0, limit: 10 }) returns exactly 10 items when available",
+        "paginate() with offset beyond array length returns empty array",
+        "Existing pagination test passes without modification"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/utils/pagination.ts"],
+      "setup_commands": [],
+      "complexity_notes": "Single character fix, but requires understanding the bug from description",
+      "expected_skills": ["taskplex-verify"],
+      "tags": ["bugfix", "trivial", "off-by-one"]
+    },
+
+    {
+      "id": "S003",
+      "tier": "T1",
+      "title": "Add missing return type annotations to auth helpers",
+      "description": "The functions in `src/auth/helpers.ts` — `hashPassword`, `comparePassword`, and `generateToken` — are missing explicit return type annotations. TypeScript infers them correctly but the project's eslint config requires explicit return types on exported functions.",
+      "acceptance_criteria": [
+        "All three exported functions have explicit return type annotations",
+        "Types match the inferred types (Promise<string>, Promise<boolean>, string)",
+        "No TypeScript or ESLint errors"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/auth/helpers.ts"],
+      "setup_commands": [],
+      "complexity_notes": "Mechanical type annotation, no logic change",
+      "expected_skills": ["taskplex-verify"],
+      "tags": ["refactor", "trivial", "types"]
+    },
+
+    {
+      "id": "S004",
+      "tier": "T1",
+      "title": "Fix broken CSS class name in navigation component",
+      "description": "The `NavBar` component in `src/components/NavBar.tsx` uses `className='nav-active'` but the CSS module exports it as `navActive`. The active state styling is completely missing in production.",
+      "acceptance_criteria": [
+        "Active nav item displays correct styling",
+        "CSS module import is used consistently (styles.navActive)",
+        "No runtime className mismatches"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/components/NavBar.tsx"],
+      "setup_commands": [],
+      "complexity_notes": "String replacement in JSX, trivial",
+      "expected_skills": ["taskplex-verify"],
+      "tags": ["bugfix", "trivial", "css"]
+    },
+
+    {
+      "id": "S005",
+      "tier": "T1",
+      "title": "Remove unused imports flagged by tree-shaking",
+      "description": "The build output warns about unused imports in three files: `src/routes/users.ts` imports `Request` but only uses `Router`, `src/middleware/cors.ts` imports `NextFunction` but doesn't use it, and `src/utils/logger.ts` imports `format` from `date-fns` but uses `formatISO` instead.",
+      "acceptance_criteria": [
+        "All three unused imports are removed",
+        "No other imports are affected",
+        "Build completes with zero warnings about unused imports",
+        "All tests still pass"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/routes/users.ts", "src/middleware/cors.ts", "src/utils/logger.ts"],
+      "setup_commands": [],
+      "complexity_notes": "Three files but each is a single-line deletion",
+      "expected_skills": ["taskplex-verify"],
+      "tags": ["refactor", "trivial", "cleanup"]
+    },
+
+    {
+      "id": "S006",
+      "tier": "T1",
+      "title": "Fix environment variable fallback in database config",
+      "description": "The database config in `src/config/database.ts` reads `process.env.DB_PORT` but doesn't provide a fallback, so it's `undefined` in local development. Should default to `5432`.",
+      "acceptance_criteria": [
+        "DB_PORT defaults to 5432 when env var is not set",
+        "DB_PORT uses env var value when set",
+        "Type is number, not string"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/config/database.ts"],
+      "setup_commands": [],
+      "complexity_notes": "One-line fix with parseInt and fallback",
+      "expected_skills": ["taskplex-verify"],
+      "tags": ["bugfix", "trivial", "config"]
+    },
+
+    {
+      "id": "S007",
       "tier": "T2",
-      "title": "Add input validation to config parser",
-      "description": "The config parser in `src/config.ts` uses `JSON.parse()` directly without validation. Invalid JSON causes an unhandled exception that crashes the server. Add proper error handling with descriptive error messages including line numbers when possible.",
+      "title": "Add input validation to config parser with custom errors",
+      "description": "The config parser in `src/config/index.ts` uses `JSON.parse()` directly without validation. Invalid JSON causes an unhandled exception that crashes the server. Add proper error handling with custom error classes and descriptive messages.",
       "acceptance_criteria": [
         "Invalid JSON throws ConfigParseError with descriptive message",
         "Missing required fields (name, version) throw ConfigValidationError",
         "Valid configs parse correctly (no regression)",
-        "Unit tests cover: invalid JSON, missing fields, valid input"
+        "Unit tests cover: invalid JSON, missing fields, empty object, valid input"
       ],
-      "target_project": "sample-ts-app",
-      "test_command": "npm test",
-      "build_command": "npm run build",
-      "typecheck_command": "tsc --noEmit",
-      "files_affected": ["src/config.ts", "src/errors.ts", "tests/config.test.ts"],
-      "complexity_notes": "Multi-file but focused scope. Requires new error classes.",
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/config/index.ts", "src/errors/config-errors.ts", "tests/config/index.test.ts"],
+      "setup_commands": [],
+      "complexity_notes": "New error classes + validation logic + tests. Multi-file but focused.",
       "expected_skills": ["taskplex-tdd", "taskplex-verify"],
       "tags": ["feature", "error-handling", "tdd"]
     },
+
     {
-      "id": "S003",
+      "id": "S008",
+      "tier": "T2",
+      "title": "Add request logging middleware with structured output",
+      "description": "Add an Express middleware that logs every request with structured JSON: method, path, status code, duration in ms, and request ID. Use the existing logger from `src/utils/logger.ts`. Skip logging for health check endpoints.",
+      "acceptance_criteria": [
+        "Every request (except /health) produces a structured JSON log line",
+        "Log includes: method, path, statusCode, durationMs, requestId",
+        "Request ID is a UUID attached via X-Request-Id header",
+        "Health check endpoints (/health, /ready) are excluded",
+        "Unit tests verify log output format and health exclusion"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/middleware/request-logger.ts", "src/middleware/index.ts", "tests/middleware/request-logger.test.ts"],
+      "setup_commands": [],
+      "complexity_notes": "New middleware file, integration with existing logger, duration timing, UUID generation",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "middleware", "logging", "tdd"]
+    },
+
+    {
+      "id": "S009",
+      "tier": "T2",
+      "title": "Implement soft delete for user records",
+      "description": "Currently user deletion is a hard DELETE from the database. Implement soft delete: add a `deletedAt` timestamp column, modify the delete endpoint to set this timestamp instead of removing the row, and filter soft-deleted users from all queries by default.",
+      "acceptance_criteria": [
+        "User model has deletedAt nullable timestamp field",
+        "DELETE /users/:id sets deletedAt instead of removing row",
+        "GET /users excludes soft-deleted users by default",
+        "GET /users?includeDeleted=true returns all users",
+        "Soft-deleted users cannot log in",
+        "Tests cover: soft delete, query filtering, login rejection"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/models/user.ts", "src/routes/users.ts", "src/auth/middleware.ts", "tests/routes/users.test.ts"],
+      "setup_commands": [],
+      "complexity_notes": "Touches model, routes, and auth. Requires understanding query patterns.",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "database", "tdd"]
+    },
+
+    {
+      "id": "S010",
+      "tier": "T2",
+      "title": "Add form validation with error display to login page",
+      "description": "The login form in `src/pages/LoginPage.tsx` submits without any client-side validation. Add Zod schema validation for email format and password minimum length (8 chars). Display inline error messages below each field.",
+      "acceptance_criteria": [
+        "Email field validates format (must contain @)",
+        "Password field requires minimum 8 characters",
+        "Errors display inline below the relevant field in red",
+        "Errors clear when user starts typing in that field",
+        "Form does not submit while validation errors exist",
+        "Tests verify: invalid email, short password, valid submission"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/pages/LoginPage.tsx", "src/schemas/auth.ts", "tests/pages/LoginPage.test.tsx"],
+      "setup_commands": [],
+      "complexity_notes": "React form state + Zod validation + conditional rendering + tests",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "validation", "react", "tdd"]
+    },
+
+    {
+      "id": "S011",
+      "tier": "T2",
+      "title": "Fix race condition in debounced search input",
+      "description": "The search bar in `src/components/SearchBar.tsx` fires API requests on every keystroke with a 300ms debounce, but responses can arrive out of order — typing 'ab' then quickly 'abc' sometimes shows results for 'ab' because that response arrived last. Implement request cancellation.",
+      "acceptance_criteria": [
+        "Only the most recent search request's results are displayed",
+        "Previous in-flight requests are cancelled via AbortController",
+        "Debounce still works (no request on every keystroke)",
+        "Tests verify: cancellation of stale requests, correct final result"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/components/SearchBar.tsx", "tests/components/SearchBar.test.tsx"],
+      "setup_commands": [],
+      "complexity_notes": "Async race condition fix, AbortController, cleanup in useEffect",
+      "expected_skills": ["systematic-debugging", "taskplex-tdd", "taskplex-verify"],
+      "tags": ["bugfix", "async", "race-condition", "react"]
+    },
+
+    {
+      "id": "S012",
+      "tier": "T2",
+      "title": "Add retry with exponential backoff to HTTP client",
+      "description": "The API client in `src/utils/http-client.ts` makes requests with no retry logic. Transient 5xx errors and network timeouts cause immediate failures. Add configurable retry with exponential backoff and jitter.",
+      "acceptance_criteria": [
+        "Retries on 5xx status codes and network errors",
+        "Does NOT retry on 4xx status codes",
+        "Exponential backoff: 1s, 2s, 4s (configurable base)",
+        "Random jitter added to prevent thundering herd",
+        "Max retries configurable (default 3)",
+        "Tests cover: retry on 500, no retry on 400, max retries exceeded, success after retry"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/utils/http-client.ts", "tests/utils/http-client.test.ts"],
+      "setup_commands": [],
+      "complexity_notes": "Algorithm implementation with async/await, timing, and randomness",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "resilience", "networking", "tdd"]
+    },
+
+    {
+      "id": "S013",
+      "tier": "T2",
+      "title": "Extract shared Button component from duplicate implementations",
+      "description": "Three pages (LoginPage, SettingsPage, DashboardPage) each have inline button styling with slightly different implementations. Extract a shared `Button` component with variants: primary, secondary, danger. Include size props (sm, md, lg) and loading state.",
+      "acceptance_criteria": [
+        "Shared Button component with variant prop (primary, secondary, danger)",
+        "Size prop (sm, md, lg) with appropriate padding/font scaling",
+        "Loading state shows spinner and disables click",
+        "All three pages updated to use shared Button",
+        "Visual output unchanged for existing buttons",
+        "Tests for: each variant, each size, loading state, click handler"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/components/Button.tsx", "src/pages/LoginPage.tsx", "src/pages/SettingsPage.tsx", "src/pages/DashboardPage.tsx", "tests/components/Button.test.tsx"],
+      "setup_commands": [],
+      "complexity_notes": "Extraction refactor touching 4 existing files + 1 new component",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["refactor", "component", "react", "tdd"]
+    },
+
+    {
+      "id": "S014",
+      "tier": "T2",
+      "title": "Add Zod schema validation to all API route handlers",
+      "description": "The API routes in `src/routes/` accept request bodies without validation. Add Zod schemas for the create and update endpoints of users and posts. Return 400 with structured error messages on validation failure.",
+      "acceptance_criteria": [
+        "Zod schemas defined for: createUser, updateUser, createPost, updatePost",
+        "Invalid requests return 400 with { errors: [{ field, message }] } format",
+        "Valid requests pass through unchanged",
+        "Tests cover: missing required fields, wrong types, valid payloads"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": ["src/schemas/user.ts", "src/schemas/post.ts", "src/routes/users.ts", "src/routes/posts.ts", "tests/routes/users.test.ts", "tests/routes/posts.test.ts"],
+      "setup_commands": [],
+      "complexity_notes": "Multiple schemas + route integration. Repetitive but requires consistency.",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "validation", "zod", "tdd"]
+    },
+
+    {
+      "id": "S015",
       "tier": "T3",
-      "title": "Add rate limiting middleware with Redis backend",
-      "description": "Implement a rate limiting middleware for the Express API. Should use a sliding window algorithm backed by Redis. Must support per-route and per-user configuration. Include a `/health` endpoint bypass.",
+      "title": "Add rate limiting middleware with sliding window algorithm",
+      "description": "Implement rate limiting middleware for the Express API using a sliding window counter algorithm. Support per-route and per-user configuration. Store counters in-memory with a Map (Redis integration later). Include /health endpoint bypass.",
       "acceptance_criteria": [
         "RateLimiter middleware accepts config: windowMs, maxRequests, keyGenerator",
-        "Sliding window algorithm (not fixed window) tracks requests in Redis",
+        "Sliding window algorithm tracks request counts accurately",
         "Returns 429 with Retry-After header when limit exceeded",
-        "Health endpoint is excluded from rate limiting",
-        "Per-user rate limiting uses authenticated user ID as key",
-        "Integration tests with Redis mock verify window sliding behavior",
-        "Unit tests cover edge cases: Redis down (graceful degradation), concurrent requests"
+        "X-RateLimit-Limit and X-RateLimit-Remaining headers on every response",
+        "Health endpoint (/health, /ready) excluded from rate limiting",
+        "Per-user limiting uses authenticated user ID as key, per-IP for anonymous",
+        "Stale entries are cleaned up periodically (no memory leak)",
+        "Unit tests cover: limit enforcement, window sliding, header values, cleanup"
       ],
-      "target_project": "sample-ts-app",
-      "test_command": "npm test",
-      "build_command": "npm run build",
-      "typecheck_command": "tsc --noEmit",
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
       "files_affected": [
         "src/middleware/rate-limiter.ts",
         "src/middleware/index.ts",
-        "tests/rate-limiter.test.ts",
-        "tests/rate-limiter.integration.test.ts"
+        "tests/middleware/rate-limiter.test.ts"
       ],
-      "complexity_notes": "Multi-file feature with external dependency (Redis), algorithm implementation, error handling, and integration testing",
+      "setup_commands": [],
+      "complexity_notes": "Algorithm implementation, timer-based cleanup, header management, multiple key strategies",
       "expected_skills": ["taskplex-tdd", "systematic-debugging", "taskplex-verify"],
-      "tags": ["feature", "middleware", "redis", "tdd"]
+      "tags": ["feature", "middleware", "algorithm", "tdd"]
     },
+
     {
-      "id": "S004",
+      "id": "S016",
+      "tier": "T3",
+      "title": "Implement JWT refresh token rotation",
+      "description": "The current auth system uses only access tokens. Add refresh token support: issue a refresh token alongside the access token on login, implement a /auth/refresh endpoint that rotates the refresh token, and add a token family tracking system to detect reuse of old tokens (indicating theft).",
+      "acceptance_criteria": [
+        "Login returns both accessToken (15min) and refreshToken (7d)",
+        "POST /auth/refresh accepts refreshToken, returns new pair",
+        "Old refresh token is invalidated after rotation",
+        "Token family tracking: reuse of revoked token invalidates entire family",
+        "Refresh tokens stored in database with family ID",
+        "Integration tests: login flow, refresh flow, token theft detection",
+        "Unit tests: token generation, family tracking, expiry"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/auth/tokens.ts",
+        "src/auth/refresh.ts",
+        "src/routes/auth.ts",
+        "src/models/refresh-token.ts",
+        "tests/auth/tokens.test.ts",
+        "tests/auth/refresh.test.ts",
+        "tests/routes/auth.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Security-critical feature. Token rotation, family tracking, database model, multiple test layers.",
+      "expected_skills": ["taskplex-tdd", "systematic-debugging", "taskplex-verify"],
+      "tags": ["feature", "auth", "security", "tdd"]
+    },
+
+    {
+      "id": "S017",
+      "tier": "T3",
+      "title": "Build data table component with sorting, filtering, and pagination",
+      "description": "Create a reusable `DataTable` component that accepts column definitions and data. Support client-side sorting (click column header), text filtering (search input), and pagination (configurable page size). Use generics so it works with any data shape.",
+      "acceptance_criteria": [
+        "DataTable<T> accepts columns: { key, header, sortable?, filterable? }[] and data: T[]",
+        "Clicking sortable column header sorts asc/desc with indicator",
+        "Filter input narrows results across all filterable columns",
+        "Pagination controls: prev/next, page size selector (10/25/50)",
+        "Empty state shown when no data or no filter matches",
+        "Accessible: proper aria labels, keyboard navigation for sort/page",
+        "Tests: sorting, filtering, pagination, empty state, keyboard nav"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/components/DataTable/DataTable.tsx",
+        "src/components/DataTable/types.ts",
+        "src/components/DataTable/index.ts",
+        "tests/components/DataTable.test.tsx"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Generic component, multiple interactive features, accessibility, comprehensive testing",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "component", "react", "generics", "tdd"]
+    },
+
+    {
+      "id": "S018",
+      "tier": "T3",
+      "title": "Add WebSocket support for real-time notifications",
+      "description": "Add a WebSocket server alongside the Express HTTP server. Authenticated users should receive real-time notifications when: a new post is created, a comment is added to their post, or their account settings change. Include connection management and heartbeat.",
+      "acceptance_criteria": [
+        "WebSocket server runs on same port as HTTP (upgrade handler)",
+        "Connection requires valid JWT (reject unauthorized)",
+        "Notification types: post.created, comment.added, settings.changed",
+        "Users only receive notifications relevant to them",
+        "Heartbeat ping/pong every 30s, disconnect stale clients",
+        "Connection manager tracks active connections per user",
+        "Integration tests: connect, authenticate, receive notification, heartbeat"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/ws/server.ts",
+        "src/ws/connection-manager.ts",
+        "src/ws/handlers.ts",
+        "src/ws/types.ts",
+        "src/server.ts",
+        "tests/ws/server.test.ts",
+        "tests/ws/connection-manager.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "New subsystem (WebSocket), auth integration, connection lifecycle, event routing",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "taskplex-verify"],
+      "tags": ["feature", "websocket", "real-time", "tdd"]
+    },
+
+    {
+      "id": "S019",
+      "tier": "T3",
+      "title": "Implement optimistic updates for todo list with rollback",
+      "description": "The todo list page makes API calls and waits for the response before updating the UI, causing visible lag. Implement optimistic updates: immediately update the UI on toggle/delete/create, then rollback if the API call fails. Use TanStack Query's mutation callbacks.",
+      "acceptance_criteria": [
+        "Toggle todo: UI updates immediately, reverts on API failure",
+        "Delete todo: item removed from list immediately, restored on failure",
+        "Create todo: appears in list immediately with temp ID, replaced with real ID on success",
+        "Error toast shown on rollback with retry option",
+        "Loading skeleton shown only on initial page load, not mutations",
+        "Tests: optimistic create, optimistic toggle, rollback on failure, retry"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/pages/TodoPage.tsx",
+        "src/hooks/useTodos.ts",
+        "src/components/TodoItem.tsx",
+        "src/components/Toast.tsx",
+        "tests/pages/TodoPage.test.tsx",
+        "tests/hooks/useTodos.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "TanStack Query optimistic mutation pattern, rollback logic, temp ID management",
+      "expected_skills": ["taskplex-tdd", "systematic-debugging", "taskplex-verify"],
+      "tags": ["feature", "react", "optimistic-update", "tdd"]
+    },
+
+    {
+      "id": "S020",
+      "tier": "T3",
+      "title": "Add comprehensive error boundary with error reporting",
+      "description": "The React app has no error boundaries — any component crash shows a blank white screen. Implement a layered error boundary system: a global boundary that catches everything, route-level boundaries for graceful page recovery, and an error reporting service that logs to the API.",
+      "acceptance_criteria": [
+        "Global ErrorBoundary wraps the app root",
+        "Route-level boundaries wrap each page independently",
+        "Global fallback shows friendly error page with 'Reload' button",
+        "Route-level fallback shows error within the layout (nav still visible)",
+        "Error details sent to POST /api/errors with stack, component, route",
+        "Development mode shows full stack trace, production shows friendly message",
+        "Tests: component crash caught, error reported, reload works, route isolation"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/components/ErrorBoundary.tsx",
+        "src/components/RouteErrorBoundary.tsx",
+        "src/services/error-reporter.ts",
+        "src/App.tsx",
+        "tests/components/ErrorBoundary.test.tsx"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "React class component (error boundaries), two layers, API integration, dev vs prod modes",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "error-handling", "react", "tdd"]
+    },
+
+    {
+      "id": "S021",
+      "tier": "T3",
+      "title": "Implement file upload with streaming and progress tracking",
+      "description": "Add a file upload endpoint that accepts multipart form data, streams the file to disk (not buffering in memory), validates file type and size, and returns upload progress events via Server-Sent Events. Support image files up to 10MB.",
+      "acceptance_criteria": [
+        "POST /uploads accepts multipart/form-data with a 'file' field",
+        "Files streamed to disk, not buffered in memory",
+        "Validates: max size 10MB, allowed types (jpg, png, gif, webp)",
+        "Returns 400 with descriptive error for invalid files",
+        "GET /uploads/:id/progress returns SSE stream with progress percentage",
+        "Upload metadata stored in database (filename, size, mimetype, path)",
+        "Tests: successful upload, oversized file, invalid type, progress events"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/routes/uploads.ts",
+        "src/services/upload-service.ts",
+        "src/middleware/upload-validator.ts",
+        "src/models/upload.ts",
+        "tests/routes/uploads.test.ts",
+        "tests/services/upload-service.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Streaming, SSE, file validation, multipart parsing, multiple new files",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "taskplex-verify"],
+      "tags": ["feature", "file-upload", "streaming", "tdd"]
+    },
+
+    {
+      "id": "S022",
+      "tier": "T3",
+      "title": "Add dark mode with system preference detection and persistence",
+      "description": "Add dark mode support to the React app. Detect system preference via `prefers-color-scheme`, allow manual toggle that persists in localStorage, and ensure all components respect the theme. Use CSS custom properties for theming.",
+      "acceptance_criteria": [
+        "Theme context provides current theme and toggle function",
+        "System preference is detected on first visit",
+        "Manual toggle overrides system preference and persists in localStorage",
+        "CSS custom properties change for all color tokens (bg, text, border, accent)",
+        "No flash of wrong theme on page load (SSR-safe or blocking script)",
+        "Theme toggle button in header with sun/moon icon",
+        "Tests: default detection, toggle, persistence, CSS variable application"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/contexts/ThemeContext.tsx",
+        "src/hooks/useTheme.ts",
+        "src/components/ThemeToggle.tsx",
+        "src/styles/themes.css",
+        "src/App.tsx",
+        "tests/contexts/ThemeContext.test.tsx"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Context provider, localStorage, CSS custom properties, media query detection, FOUC prevention",
+      "expected_skills": ["taskplex-tdd", "taskplex-verify"],
+      "tags": ["feature", "theming", "react", "tdd"]
+    },
+
+    {
+      "id": "S023",
       "tier": "T4",
       "title": "Implement event sourcing for order management",
-      "description": "Refactor the order management module from CRUD to event sourcing. Orders should be built from a sequence of domain events (OrderCreated, ItemAdded, ItemRemoved, OrderSubmitted, OrderCancelled). Add event store, aggregate root, and projection for read model.",
+      "description": "Refactor the order management module from CRUD to event sourcing. Orders should be built from a sequence of domain events (OrderCreated, ItemAdded, ItemRemoved, OrderSubmitted, OrderCancelled). Add event store, aggregate root, and projection for read model. Existing API endpoints must remain backward compatible.",
       "acceptance_criteria": [
         "EventStore interface with append() and getEvents() methods",
         "InMemoryEventStore implementation for testing",
-        "Order aggregate root rebuilds state from events",
-        "All mutations go through events (no direct state modification)",
-        "OrderProjection builds read-optimized view from events",
+        "Order aggregate root rebuilds state from event stream",
+        "All mutations go through domain events (no direct state modification)",
+        "OrderProjection builds read-optimized view from event stream",
         "Existing API endpoints work unchanged (backward compatible)",
-        "Event schema validated before storage",
-        "Full test coverage: aggregate rebuilding, projection, concurrent events",
-        "Integration test verifies end-to-end order lifecycle"
+        "Event schema validated with Zod before storage",
+        "Snapshot support for aggregates with many events (configurable threshold)",
+        "Full test coverage: aggregate rebuilding, projection consistency, concurrent events",
+        "Integration test verifies end-to-end order lifecycle through API"
       ],
-      "target_project": "sample-ts-app",
-      "test_command": "npm test",
-      "build_command": "npm run build",
-      "typecheck_command": "tsc --noEmit",
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
       "files_affected": [
         "src/events/event-store.ts",
         "src/events/in-memory-store.ts",
+        "src/events/types.ts",
         "src/orders/order-aggregate.ts",
         "src/orders/order-events.ts",
         "src/orders/order-projection.ts",
         "src/orders/order-service.ts",
         "tests/events/event-store.test.ts",
         "tests/orders/order-aggregate.test.ts",
+        "tests/orders/order-projection.test.ts",
         "tests/orders/order-lifecycle.integration.test.ts"
       ],
-      "complexity_notes": "Architectural refactor touching 9+ files. Requires understanding of event sourcing pattern, aggregate roots, and CQRS. Must maintain backward compatibility.",
+      "setup_commands": [],
+      "complexity_notes": "Architectural refactor touching 11+ files. Event sourcing pattern, aggregate roots, CQRS, snapshot optimization. Must maintain backward compatibility.",
       "expected_skills": ["taskplex-tdd", "writing-plans", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
       "tags": ["refactor", "architecture", "event-sourcing", "complex"]
     },
+
     {
-      "id": "S005",
+      "id": "S024",
+      "tier": "T4",
+      "title": "Build role-based access control (RBAC) system",
+      "description": "Implement a flexible RBAC system. Define roles (admin, editor, viewer) with granular permissions (users.read, users.write, posts.read, posts.write, etc.). Add middleware that checks permissions on each route. Support role inheritance (admin inherits editor permissions). Include a management API for role CRUD.",
+      "acceptance_criteria": [
+        "Permission model: role has many permissions, user has many roles",
+        "Built-in roles: admin (all permissions), editor (content CRUD), viewer (read-only)",
+        "Admin inherits all editor permissions, editor inherits viewer permissions",
+        "authorize('posts.write') middleware rejects unauthorized requests with 403",
+        "Management API: CRUD for roles and role-permission assignments",
+        "Only admin can modify roles",
+        "Permission check is O(1) via cached permission set per user",
+        "Database migration for roles and permissions tables",
+        "Tests: permission check, role inheritance, middleware rejection, cache invalidation"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/auth/rbac.ts",
+        "src/auth/permissions.ts",
+        "src/middleware/authorize.ts",
+        "src/models/role.ts",
+        "src/models/permission.ts",
+        "src/routes/roles.ts",
+        "src/routes/users.ts",
+        "tests/auth/rbac.test.ts",
+        "tests/middleware/authorize.test.ts",
+        "tests/routes/roles.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Cross-cutting concern touching auth, middleware, models, routes. Role inheritance graph, permission caching, migration.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
+      "tags": ["feature", "auth", "rbac", "architecture", "complex"]
+    },
+
+    {
+      "id": "S025",
+      "tier": "T4",
+      "title": "Implement full-text search with indexing and ranking",
+      "description": "Add full-text search across posts and comments. Build an inverted index that updates on content changes, implement TF-IDF ranking, support phrase queries and field boosting (title matches rank higher than body). Include search API with pagination and highlighting.",
+      "acceptance_criteria": [
+        "SearchIndex class with index(), remove(), and search() methods",
+        "Inverted index stored in-memory with term → document mapping",
+        "TF-IDF scoring for result ranking",
+        "Phrase queries: \"exact phrase\" matches consecutive terms",
+        "Field boosting: title matches weighted 3x higher than body",
+        "Search results include highlighted snippets with matched terms",
+        "GET /search?q=term&page=1&limit=10 API endpoint",
+        "Index updates automatically when posts/comments are created/updated/deleted",
+        "Tests: indexing, TF-IDF ranking, phrase search, boosting, highlighting, pagination"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/search/index.ts",
+        "src/search/tokenizer.ts",
+        "src/search/ranking.ts",
+        "src/search/highlighter.ts",
+        "src/search/types.ts",
+        "src/routes/search.ts",
+        "src/services/search-sync.ts",
+        "tests/search/index.test.ts",
+        "tests/search/ranking.test.ts",
+        "tests/search/highlighter.test.ts",
+        "tests/routes/search.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Algorithm-heavy: inverted index, TF-IDF, tokenization, phrase matching. 11 files, multiple subsystems.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
+      "tags": ["feature", "search", "algorithm", "complex"]
+    },
+
+    {
+      "id": "S026",
+      "tier": "T4",
+      "title": "Build state machine for multi-step form wizard",
+      "description": "Create a generic finite state machine library and use it to build a multi-step onboarding wizard (Profile → Preferences → Plan → Confirmation). Each step has its own validation, navigation guards, and data persistence. Support back/forward navigation and resume from last completed step.",
+      "acceptance_criteria": [
+        "StateMachine<S, E> generic class with transition(), can(), and current() methods",
+        "Transition guards: can reject transitions based on state validation",
+        "Side effects: onEnter/onExit callbacks for each state",
+        "Wizard has 4 steps with forward/back navigation",
+        "Each step validates before allowing forward navigation",
+        "Progress persisted to localStorage, resumes on page reload",
+        "Step indicator shows completed/current/upcoming steps",
+        "Final submission collects all step data into single API call",
+        "Tests: state machine transitions, guards, wizard navigation, persistence, submission"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/lib/state-machine.ts",
+        "src/components/Wizard/Wizard.tsx",
+        "src/components/Wizard/StepIndicator.tsx",
+        "src/components/Wizard/steps/ProfileStep.tsx",
+        "src/components/Wizard/steps/PreferencesStep.tsx",
+        "src/components/Wizard/steps/PlanStep.tsx",
+        "src/components/Wizard/steps/ConfirmationStep.tsx",
+        "src/components/Wizard/types.ts",
+        "tests/lib/state-machine.test.ts",
+        "tests/components/Wizard.test.tsx"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Generic library + concrete usage. State machine theory, transition guards, React state coordination, persistence.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "taskplex-verify", "requesting-code-review"],
+      "tags": ["feature", "state-machine", "react", "complex"]
+    },
+
+    {
+      "id": "S027",
+      "tier": "T4",
+      "title": "Add database migration system with up/down and versioning",
+      "description": "Build a migration system that manages database schema changes. Migrations are numbered SQL files with up and down functions. Support running all pending migrations, rolling back the last N migrations, and tracking which migrations have been applied. Include a CLI wrapper.",
+      "acceptance_criteria": [
+        "Migration files: NNNN_description.ts with up() and down() methods",
+        "migrations table tracks applied migrations with timestamps",
+        "migrate:up runs all pending migrations in order",
+        "migrate:down reverts last N migrations (default 1) in reverse order",
+        "migrate:status shows applied and pending migrations",
+        "Migrations run in a transaction (rollback on failure)",
+        "Lock mechanism prevents concurrent migration runs",
+        "CLI script: npx tsx scripts/migrate.ts [up|down|status]",
+        "Tests: up migration, down migration, ordering, failure rollback, lock"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/database/migrator.ts",
+        "src/database/migration-lock.ts",
+        "src/database/types.ts",
+        "scripts/migrate.ts",
+        "migrations/0001_create_users.ts",
+        "migrations/0002_create_posts.ts",
+        "tests/database/migrator.test.ts",
+        "tests/database/migration-lock.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Infrastructure tooling. Transaction management, file ordering, locking, CLI. Requires careful error handling.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
+      "tags": ["feature", "database", "migrations", "infrastructure", "complex"]
+    },
+
+    {
+      "id": "S028",
       "tier": "T5",
       "title": "Build plugin system with hot-reload and dependency resolution",
-      "description": "Design and implement a plugin system that allows third-party extensions to register commands, hooks, and middleware. Plugins must declare dependencies on other plugins. Support hot-reload during development. Include a plugin registry, dependency resolver, lifecycle manager, and sandboxed execution environment.",
+      "description": "Design and implement a plugin system that allows third-party extensions to register commands, hooks, and middleware. Plugins declare dependencies on other plugins. Support hot-reload during development. Include a plugin registry, dependency resolver with cycle detection, lifecycle manager, and sandboxed execution. Build an example plugin that demonstrates all extension points.",
       "acceptance_criteria": [
-        "Plugin manifest schema (name, version, dependencies, exports)",
-        "PluginRegistry with register(), unregister(), and query methods",
-        "DependencyResolver detects cycles and resolves load order",
-        "PluginLifecycle manages init/start/stop/destroy transitions",
-        "Hot-reload detects file changes and reloads affected plugins",
-        "Plugins can register commands via declarative API",
-        "Plugins can register hooks for pre/post lifecycle events",
-        "Plugins can add Express middleware to specific routes",
-        "Sandboxed execution prevents plugins from accessing host internals",
-        "Plugin errors don't crash the host application",
-        "Full test suite: registry, dependency resolution, lifecycle, hot-reload",
-        "Example plugin demonstrating all extension points",
-        "Architecture documentation with component diagram"
+        "Plugin manifest schema (name, version, dependencies, exports) validated with Zod",
+        "PluginRegistry with register(), unregister(), get(), and list() methods",
+        "DependencyResolver detects cycles and computes correct load order (topological sort)",
+        "PluginLifecycle manages init→start→stop→destroy transitions with guards",
+        "Hot-reload via chokidar: detects file changes, reloads affected plugin and dependents",
+        "Plugins register commands via a CommandRegistry API",
+        "Plugins register hooks for plugin lifecycle events (onLoad, onUnload, onError)",
+        "Plugins add Express middleware scoped to specific route prefixes",
+        "vm2 sandbox prevents plugins from accessing process, fs, or host internals",
+        "Plugin errors caught and logged without crashing host application",
+        "Full test suite: registry CRUD, dependency resolution, lifecycle transitions, hot-reload",
+        "Example plugin demonstrating: command, hook, middleware, dependency declaration",
+        "Architecture documentation with component interaction diagram"
       ],
-      "target_project": "sample-ts-app",
-      "test_command": "npm test",
-      "build_command": "npm run build",
-      "typecheck_command": "tsc --noEmit",
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
       "files_affected": [
         "src/plugins/registry.ts",
         "src/plugins/resolver.ts",
         "src/plugins/lifecycle.ts",
         "src/plugins/sandbox.ts",
         "src/plugins/hot-reload.ts",
+        "src/plugins/command-registry.ts",
+        "src/plugins/hook-registry.ts",
         "src/plugins/types.ts",
         "src/plugins/index.ts",
         "tests/plugins/registry.test.ts",
         "tests/plugins/resolver.test.ts",
         "tests/plugins/lifecycle.test.ts",
         "tests/plugins/hot-reload.test.ts",
+        "tests/plugins/sandbox.test.ts",
         "tests/plugins/integration.test.ts",
-        "examples/sample-plugin/"
+        "examples/sample-plugin/manifest.json",
+        "examples/sample-plugin/index.ts"
       ],
-      "complexity_notes": "Full system design with 13+ files. Requires architectural decisions on sandbox strategy, dependency graph algorithm, file watcher integration. Must handle edge cases like circular deps, crash isolation, and partial reload.",
+      "setup_commands": [],
+      "complexity_notes": "Full system design with 17 files. Architectural decisions: sandbox strategy, dependency graph algorithm (topological sort), file watcher debouncing. Edge cases: circular deps, crash isolation, partial reload, dependency chain invalidation.",
       "expected_skills": ["taskplex-tdd", "writing-plans", "dispatching-parallel-agents", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
       "tags": ["feature", "architecture", "plugin-system", "ambitious"]
+    },
+
+    {
+      "id": "S029",
+      "tier": "T5",
+      "title": "Implement real-time collaborative editing with CRDT",
+      "description": "Build a collaborative text editor where multiple users can edit the same document simultaneously. Use a CRDT (Conflict-free Replicated Data Type) — specifically a Yjs-inspired sequence CRDT — to merge concurrent edits without conflicts. Include WebSocket transport, cursor presence, and operational history.",
+      "acceptance_criteria": [
+        "CRDT implementation: insert and delete operations that commute",
+        "Document model preserves user intent on concurrent edits",
+        "WebSocket room system: users join document rooms",
+        "Cursor presence: see other users' cursor positions in real-time",
+        "Operational history: undo/redo per user (not global)",
+        "Offline support: buffer operations, sync on reconnect",
+        "Conflict resolution is automatic (no manual merge)",
+        "React editor component with real-time updates",
+        "Server persists document state on disconnect/interval",
+        "Tests: concurrent insert/delete, cursor sync, offline buffer, undo/redo, persistence",
+        "Load test: verify correctness with 5 simulated concurrent users"
+      ],
+      "target_project": "sample-react-app",
+      "test_command": "npx vitest run",
+      "build_command": "npx vite build",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/crdt/sequence.ts",
+        "src/crdt/operations.ts",
+        "src/crdt/types.ts",
+        "src/collab/room.ts",
+        "src/collab/transport.ts",
+        "src/collab/presence.ts",
+        "src/collab/history.ts",
+        "src/components/CollabEditor.tsx",
+        "src/hooks/useCollaboration.ts",
+        "tests/crdt/sequence.test.ts",
+        "tests/crdt/concurrent.test.ts",
+        "tests/collab/room.test.ts",
+        "tests/collab/presence.test.ts",
+        "tests/collab/history.test.ts",
+        "tests/collab/integration.test.ts"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Research-level challenge: CRDT implementation, WebSocket rooms, cursor sync, operational transform history. 15+ files across algorithm, transport, and UI layers.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "dispatching-parallel-agents", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
+      "tags": ["feature", "crdt", "collaborative", "websocket", "ambitious"]
+    },
+
+    {
+      "id": "S030",
+      "tier": "T5",
+      "title": "Build end-to-end CI/CD pipeline with canary deployments",
+      "description": "Design and implement a CI/CD pipeline system within the API. It should accept pipeline definitions (YAML-like config), execute stages sequentially or in parallel, support canary deployments (route 10% traffic to new version, monitor error rate, auto-rollback if threshold exceeded). Include a dashboard page showing pipeline status.",
+      "acceptance_criteria": [
+        "Pipeline config schema: stages with steps, parallel groups, conditions",
+        "PipelineRunner executes stages in defined order with parallel support",
+        "Each step has: name, command, timeout, retryCount, onFailure (abort/continue)",
+        "Canary deployment stage: routes configurable % of traffic to new version",
+        "Health monitor: checks error rate during canary window, auto-rollback if >5%",
+        "Pipeline status API: GET /pipelines/:id with stage-by-stage progress",
+        "Dashboard page: list pipelines, view current stage, see logs, trigger rollback",
+        "Pipeline events emitted via WebSocket for real-time dashboard updates",
+        "Audit log: all pipeline actions recorded with timestamps and actor",
+        "Tests: pipeline execution, parallel stages, canary routing, rollback trigger, dashboard render",
+        "Example pipeline config for the sample app itself"
+      ],
+      "target_project": "sample-ts-api",
+      "test_command": "npx vitest run",
+      "build_command": "npx tsc --noEmit",
+      "typecheck_command": "npx tsc --noEmit",
+      "files_affected": [
+        "src/pipeline/runner.ts",
+        "src/pipeline/parser.ts",
+        "src/pipeline/types.ts",
+        "src/pipeline/stage-executor.ts",
+        "src/pipeline/canary.ts",
+        "src/pipeline/health-monitor.ts",
+        "src/pipeline/audit-log.ts",
+        "src/routes/pipelines.ts",
+        "src/ws/pipeline-events.ts",
+        "tests/pipeline/runner.test.ts",
+        "tests/pipeline/canary.test.ts",
+        "tests/pipeline/health-monitor.test.ts",
+        "tests/pipeline/integration.test.ts",
+        "examples/pipeline.yaml"
+      ],
+      "setup_commands": [],
+      "complexity_notes": "Full system: config parsing, execution engine, traffic routing, health monitoring, WebSocket events, audit trail. 14+ files spanning backend, real-time, and (optionally) frontend dashboard.",
+      "expected_skills": ["taskplex-tdd", "writing-plans", "dispatching-parallel-agents", "systematic-debugging", "taskplex-verify", "requesting-code-review"],
+      "tags": ["feature", "ci-cd", "canary", "infrastructure", "ambitious"]
     }
   ]
 }
