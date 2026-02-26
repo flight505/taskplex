@@ -191,9 +191,9 @@ test_agent() {
     }')
 
   if [ "$task_completed" = "true" ]; then
-    printf "  ${GREEN}✓${RESET} %s completed (%ds, \$%s)\n" "$agent_name" "$duration" "$cost"
+    printf "  ${GREEN}✓${RESET} %s completed (%ds, \$%s)\n" "$agent_name" "$duration" "$cost" >&2
   else
-    printf "  ${RED}✗${RESET} %s did not complete (exit=%d, %ds)\n" "$agent_name" "$exit_code" "$duration"
+    printf "  ${RED}✗${RESET} %s did not complete (exit=%d, %ds)\n" "$agent_name" "$exit_code" "$duration" >&2
   fi
 
   echo "$result"
@@ -224,7 +224,7 @@ fi
 
 while IFS= read -r agent_name; do
   [ -z "$agent_name" ] && continue
-  echo "Testing agent: ${agent_name}"
+  echo "Testing agent: ${agent_name}" >&2
 
   result=$(test_agent "$agent_name" || echo '{"error":"test_failed"}')
   all_results=$(echo "[$all_results, $result]" | jq 'add // []')
@@ -233,7 +233,7 @@ while IFS= read -r agent_name; do
   if echo "$result" | jq -e '.task_completed == true' > /dev/null 2>&1; then
     completed=$((completed + 1))
   fi
-  echo ""
+  echo "" >&2
 done <<EOF
 $AGENTS
 EOF

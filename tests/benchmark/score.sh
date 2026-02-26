@@ -57,7 +57,7 @@ score_discipline() {
   local d3="null"
   applicable=$((applicable + 1))
   local review_count
-  review_count=$(jq '[.events[] | select(.event == "skill_invoked" and (.skill | test("code.review|requesting-code-review")))] | length' "$trace" 2>/dev/null || echo "0")
+  review_count=$(jq '[.events[] | select(.event == "skill_invoked" and (.data.skill | test("code.review|requesting-code-review")))] | length' "$trace" 2>/dev/null || echo "0")
   if [ "$review_count" -gt 0 ]; then
     d3="true"
     passed=$((passed + 1))
@@ -100,7 +100,7 @@ score_discipline() {
   local d6="null"
   applicable=$((applicable + 1))
   local gate_count
-  gate_count=$(jq '[.events[] | select(.event == "skill_invoked" and (.skill | test("using-taskplex|using-superpowers")))] | length' "$trace" 2>/dev/null || echo "0")
+  gate_count=$(jq '[.events[] | select(.event == "skill_invoked" and (.data.skill | test("using-taskplex|using-superpowers")))] | length' "$trace" 2>/dev/null || echo "0")
   if [ "$gate_count" -gt 0 ]; then
     d6="true"
     passed=$((passed + 1))
@@ -115,7 +115,7 @@ score_discipline() {
   if [ "$error_count" -gt 0 ]; then
     applicable=$((applicable + 1))
     local debug_before_fix
-    debug_before_fix=$(jq '[.events[] | select(.event == "skill_invoked" and (.skill | test("systematic-debugging|debugging")))] | length' "$trace" 2>/dev/null || echo "0")
+    debug_before_fix=$(jq '[.events[] | select(.event == "skill_invoked" and (.data.skill | test("systematic-debugging|debugging")))] | length' "$trace" 2>/dev/null || echo "0")
     if [ "$debug_before_fix" -gt 0 ]; then
       d7="true"
       passed=$((passed + 1))

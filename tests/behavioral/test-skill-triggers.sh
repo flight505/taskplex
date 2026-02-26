@@ -167,19 +167,19 @@ test_skill() {
   while IFS= read -r prompt; do
     [ -z "$prompt" ] && continue
     total=$((total + 1))
-    printf "  Testing should_trigger: %.60s...\n" "$prompt"
+    printf "  Testing should_trigger: %.60s...\n" "$prompt" >&2
 
     invoked=$(run_prompt "$prompt")
     is_correct=false
     if echo "$invoked" | grep -q "$skill_name"; then
       is_correct=true
       correct=$((correct + 1))
-      printf "    ${GREEN}✓${RESET} triggered '%s'\n" "$invoked"
+      printf "    ${GREEN}✓${RESET} triggered '%s'\n" "$invoked" >&2
     else
       if [ -n "$invoked" ]; then
-        printf "    ${RED}✗${RESET} triggered wrong skill: '%s'\n" "$invoked"
+        printf "    ${RED}✗${RESET} triggered wrong skill: '%s'\n" "$invoked" >&2
       else
-        printf "    ${RED}✗${RESET} no skill triggered\n"
+        printf "    ${RED}✗${RESET} no skill triggered\n" >&2
       fi
     fi
 
@@ -198,7 +198,7 @@ EOF
   no_trigger_prompt=$(jq -r --arg n "$skill_name" '.skills[] | select(.name==$n) | .should_not_trigger' "$FIXTURES" 2>/dev/null)
   if [ -n "$no_trigger_prompt" ]; then
     total=$((total + 1))
-    printf "  Testing should_not_trigger: %.60s...\n" "$no_trigger_prompt"
+    printf "  Testing should_not_trigger: %.60s...\n" "$no_trigger_prompt" >&2
 
     invoked=$(run_prompt "$no_trigger_prompt")
     is_correct=false
@@ -206,12 +206,12 @@ EOF
       is_correct=true
       correct=$((correct + 1))
       if [ -n "$invoked" ]; then
-        printf "    ${GREEN}✓${RESET} correctly invoked different skill: '%s'\n" "$invoked"
+        printf "    ${GREEN}✓${RESET} correctly invoked different skill: '%s'\n" "$invoked" >&2
       else
-        printf "    ${GREEN}✓${RESET} correctly did not trigger '%s'\n" "$skill_name"
+        printf "    ${GREEN}✓${RESET} correctly did not trigger '%s'\n" "$skill_name" >&2
       fi
     else
-      printf "    ${RED}✗${RESET} incorrectly triggered '%s'\n" "$skill_name"
+      printf "    ${RED}✗${RESET} incorrectly triggered '%s'\n" "$skill_name" >&2
     fi
 
     results=$(echo "$results" | jq \
@@ -257,7 +257,7 @@ fi
 
 while IFS= read -r skill_name; do
   [ -z "$skill_name" ] && continue
-  echo "Testing skill: ${skill_name}"
+  echo "Testing skill: ${skill_name}" >&2
 
   skill_results=$(test_skill "$skill_name" || echo "[]")
   all_results=$(echo "[$all_results, $skill_results]" | jq 'add // []')
@@ -272,7 +272,7 @@ while IFS= read -r skill_name; do
     fi
     rm -f "/tmp/skill-test-result-${skill_name}"
   fi
-  echo ""
+  echo "" >&2
 done <<EOF
 $SKILLS
 EOF
