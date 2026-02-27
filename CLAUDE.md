@@ -19,7 +19,7 @@ TaskPlex is an **always-on autonomous development companion** — brainstorming 
 ```
 taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
-├── agents/                            # 7 subagents (architect, implementer, validator, spec-reviewer, reviewer, merger, code-reviewer)
+├── agents/                            # 6 registered subagents (architect, implementer, validator, spec-reviewer, merger, code-reviewer)
 ├── commands/start.md                  # 8-checkpoint interactive wizard (optional — proactive path available)
 ├── skills/                            # 17 skills: brainstorm + 14 adapted Superpowers + failure-analyzer + using-taskplex gate
 ├── hooks/
@@ -52,7 +52,6 @@ taskplex/
 | implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify REQUIRED) |
 | validator | haiku | dontAsk | Bash, Read, Glob, Grep | Verify acceptance criteria (read-only) |
 | spec-reviewer | haiku | dontAsk | Read, Grep, Glob, Bash | Spec compliance review — Stage 1 (mandatory) |
-| reviewer | sonnet | plan | Read, Glob, Grep | Review PRD quality |
 | merger | haiku | bypassPermissions | Bash, Read, Grep | Git branch operations |
 | code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | Code quality review — Stage 2 (opt-in) |
 

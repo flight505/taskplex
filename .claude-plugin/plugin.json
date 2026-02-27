@@ -47,7 +47,6 @@
     "./agents/implementer.md",
     "./agents/validator.md",
     "./agents/spec-reviewer.md",
-    "./agents/reviewer.md",
     "./agents/merger.md",
     "./agents/code-reviewer.md"
   ]

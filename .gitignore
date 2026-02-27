@@ -36,7 +36,7 @@ progress.txt
 knowledge.md
 tasks/
 .last-branch
-archive/
+/archive/
 
 # Test databases
 *.db
