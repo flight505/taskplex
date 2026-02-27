@@ -245,7 +245,7 @@ mine_implicit_learnings() {
 
   # Pattern 3: Environment/config observations ("requires X" / "needs X installed" / "X must be set")
   local env_obs
-  env_obs=$(echo "$message" | grep -ioE '(requires [^ ]+ (to be |)(installed|configured|set|enabled))|(needs [^ ]+ (installed|set|configured))' 2>/dev/null | head -3)
+  env_obs=$(echo "$message" | grep -ioE '(requires [^ ]+ (to be )?(installed|configured|set|enabled))|(needs [^ ]+ (installed|set|configured))' 2>/dev/null | head -3)
   if [ -n "$env_obs" ]; then
     while IFS= read -r env; do
       [ -z "$env" ] && continue
