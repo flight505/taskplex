@@ -4,6 +4,25 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v4.1.0 (2026-02-27)
+
+**SSC Spec Hardening + Bayesian Confidence:**
+
+**Added:**
+- `harden_spec()` in `taskplex.sh` — SSC-inspired pre-implementation spec hardening that tightens vague acceptance criteria before the first implementation attempt (arxiv: 2507.18742)
+- Bayesian confidence tracking: `applied_count` and `success_count` columns in learnings table. Learnings with 2+ applications use Beta posterior `(success+1)/(applied+2)` instead of linear time-decay
+- `record_learning_application()` — tracks when learnings are injected into agents
+- `record_learning_success()` — records story-level success for Bayesian update
+- `query_learnings_with_ids()` — returns learning IDs for application tracking
+- Config options: `spec_hardening` (bool, default: true), `spec_harden_model` (string, default: "haiku")
+
+**Changed:**
+- `query_learnings()` now uses Bayesian confidence when applied_count >= 2, graceful fallback to time-decay otherwise
+- `inject-knowledge.sh` switched from `query_learnings()` to `query_learnings_with_ids()` for application tracking
+- Story completion now calls `record_learning_success()` alongside `update_decision_outcome()`
+
+---
+
 ### v4.0.0 (2026-02-26)
 
 **SOTA Transformation — Brainstorming, Lean Skills, Routing, Safety:**

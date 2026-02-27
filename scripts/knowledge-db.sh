@@ -83,6 +83,10 @@ SQL
 
   # Migrate existing DBs: add outcome column to decisions if missing
   sqlite3 "$db" "ALTER TABLE decisions ADD COLUMN outcome TEXT;" 2>/dev/null || true
+
+  # Migrate existing DBs: add Bayesian confidence tracking columns to learnings
+  sqlite3 "$db" "ALTER TABLE learnings ADD COLUMN applied_count INTEGER DEFAULT 0;" 2>/dev/null || true
+  sqlite3 "$db" "ALTER TABLE learnings ADD COLUMN success_count INTEGER DEFAULT 0;" 2>/dev/null || true
 }
 
 # Migrate knowledge.md to SQLite (one-time, idempotent)
@@ -320,7 +324,12 @@ query_learnings() {
   sqlite3 -separator '|' "$db" "
     SELECT content, story_id, eff_confidence FROM (
       SELECT content, story_id,
-        ROUND(confidence * POWER(0.95, julianday('now') - julianday(created_at)), 3) AS eff_confidence
+        ROUND(CASE
+          WHEN applied_count >= 2 THEN
+            CAST(success_count + 1 AS REAL) / (applied_count + 2)
+          ELSE
+            confidence * POWER(0.95, julianday('now') - julianday(created_at))
+        END, 3) AS eff_confidence
       FROM learnings
       $where_clause
     )
@@ -444,5 +453,74 @@ update_decision_outcome() {
     AND outcome IS NULL
     ORDER BY created_at DESC LIMIT 1;
   " 2>/dev/null || true
+}
+
+# Record that learnings were applied (injected into an agent)
+# Increments applied_count for each learning ID
+# Args: $1=db, $2=comma-separated learning IDs (e.g., "1,5,12")
+record_learning_application() {
+  local db="$1" ids="$2"
+  if [ -z "$ids" ]; then return 0; fi
+  sqlite3 "$db" "
+    UPDATE learnings SET applied_count = applied_count + 1
+    WHERE id IN ($ids);
+  " 2>/dev/null || true
+}
+
+# Record that learnings contributed to a successful story
+# Increments success_count for learnings tagged with the successful story
+# Args: $1=db, $2=story_id
+record_learning_success() {
+  local db="$1" story_id="$2"
+  sqlite3 "$db" "
+    UPDATE learnings SET success_count = success_count + 1
+    WHERE applied_count > 0
+    AND (story_id = '$story_id' OR tags LIKE '%$story_id%');
+  " 2>/dev/null || true
+}
+
+# Query top-N learnings with IDs (for tracking which learnings were applied)
+# Same as query_learnings() but returns id column for application tracking
+# Args: $1=db, $2=limit (default 10), $3=tags_filter (optional JSON array string)
+query_learnings_with_ids() {
+  local db="$1" limit="${2:-10}" tags_filter="${3:-}"
+
+  local where_clause=""
+  if [ -n "$tags_filter" ]; then
+    local tag_conditions=""
+    for tag in $(echo "$tags_filter" | jq -r '.[]' 2>/dev/null); do
+      if [ -n "$tag_conditions" ]; then
+        tag_conditions="$tag_conditions OR "
+      fi
+      tag_conditions="${tag_conditions}tags LIKE '%$(echo "$tag" | sed "s/'/''/g")%'"
+    done
+    if [ -n "$tag_conditions" ]; then
+      where_clause="WHERE ($tag_conditions)"
+    fi
+  fi
+
+  local age_filter="julianday('now') - julianday(created_at) <= 60"
+  if [ -n "$where_clause" ]; then
+    where_clause="$where_clause AND $age_filter"
+  else
+    where_clause="WHERE $age_filter"
+  fi
+
+  sqlite3 -separator '|' "$db" "
+    SELECT id, content, story_id, eff_confidence FROM (
+      SELECT id, content, story_id,
+        ROUND(CASE
+          WHEN applied_count >= 2 THEN
+            CAST(success_count + 1 AS REAL) / (applied_count + 2)
+          ELSE
+            confidence * POWER(0.95, julianday('now') - julianday(created_at))
+        END, 3) AS eff_confidence
+      FROM learnings
+      $where_clause
+    )
+    WHERE eff_confidence > 0.3
+    ORDER BY eff_confidence DESC
+    LIMIT $limit;
+  " 2>/dev/null
 }
 

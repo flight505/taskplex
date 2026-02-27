@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 4.0.0** | Last Updated: 2026-02-26
+**Version 4.1.0** | Last Updated: 2026-02-27
 
 Developer instructions for the TaskPlex plugin. For architecture deep dives, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -90,6 +90,8 @@ For detailed data flow, hook system, knowledge architecture, and error handling,
 | `decision_model` | string | "opus" | Model for decision calls |
 | `validate_on_stop` | bool | true | Enable SubagentStop inline validation |
 | `model_routing` | string | "auto" | "auto" (decision call picks) or "fixed" |
+| `spec_hardening` | bool | true | Enable SSC spec hardening before implementation |
+| `spec_harden_model` | string | "haiku" | Model for spec hardening calls |
 
 ---
 

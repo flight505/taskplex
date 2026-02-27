@@ -331,6 +331,8 @@ load_config() {
   VALIDATE_ON_STOP=true
   MODEL_ROUTING="auto"
   INTERACTIVE_MODE=false
+  SPEC_HARDENING=true
+  SPEC_HARDEN_MODEL="haiku"
 
   # Load from config file if it exists
   if [ -f "$CONFIG_FILE" ]; then
@@ -358,6 +360,8 @@ load_config() {
     VALIDATE_ON_STOP=$(jq -r 'if .validate_on_stop == false then "false" elif .validate_on_stop == true then "true" else "true" end' "$CONFIG_FILE")
     MODEL_ROUTING=$(jq -r '.model_routing // "auto"' "$CONFIG_FILE")
     INTERACTIVE_MODE=$(jq -r 'if .interactive_mode == true then "true" else "false" end' "$CONFIG_FILE")
+    SPEC_HARDENING=$(jq -r 'if .spec_hardening == false then "false" else "true" end' "$CONFIG_FILE")
+    SPEC_HARDEN_MODEL=$(jq -r '.spec_harden_model // "haiku"' "$CONFIG_FILE")
 
     log "INIT" "Configuration loaded from $CONFIG_FILE"
   else
@@ -1654,6 +1658,107 @@ Output your structured JSON verdict as described in your system prompt."
   esac
 }
 
+# SSC Spec Hardening — tighten acceptance criteria before implementation
+# Uses a single Haiku call to identify gaming vectors and rewrite vague criteria.
+# Runs on first attempt only. All failures are non-fatal (return 0).
+# Args: $1=story_id
+harden_spec() {
+  local story_id="$1"
+
+  # Check if enabled
+  if [ "$SPEC_HARDENING" != "true" ]; then
+    return 0
+  fi
+
+  log "SSC-$story_id" "Hardening acceptance criteria (model: $SPEC_HARDEN_MODEL)"
+
+  # Extract current acceptance criteria
+  local criteria_json
+  criteria_json=$(jq -r --arg id "$story_id" \
+    '.userStories[] | select(.id == $id) | .acceptanceCriteria' \
+    "$PRD_FILE" 2>/dev/null)
+
+  if [ -z "$criteria_json" ] || [ "$criteria_json" = "null" ]; then
+    log "SSC-$story_id" "No acceptance criteria found, skipping"
+    return 0
+  fi
+
+  local criteria_count
+  criteria_count=$(echo "$criteria_json" | jq 'length' 2>/dev/null || echo "0")
+  if [ "$criteria_count" -eq 0 ]; then
+    return 0
+  fi
+
+  # Build prompt for Haiku
+  local ssc_prompt="You are a specification hardening assistant. Your job is to identify gaming vectors in acceptance criteria and rewrite them to be concrete and measurable.
+
+For each criterion below, identify if it is vague, untestable, or gameable (e.g., 'handle edge cases' can be satisfied by a single if-check). Rewrite each to include concrete bounds, specific behaviors, or measurable thresholds.
+
+RULES:
+- Output ONLY a JSON array of strings (same count as input)
+- Every criterion must be rewritten (even if only minor tightening)
+- Do NOT add new criteria or remove existing ones
+- Keep criteria concise (1-2 sentences each)
+
+Input criteria:
+$(echo "$criteria_json" | jq -r 'to_entries | map("\(.key + 1). \(.value)") | .[]')
+
+Output the tightened criteria as a JSON array of strings:"
+
+  # Call Haiku (non-interactive, capture output)
+  local ssc_output ssc_exit_code
+  ssc_output=$(echo "$ssc_prompt" | env -u CLAUDECODE claude -p --model "$SPEC_HARDEN_MODEL" --max-turns 1 --output-format json 2>/dev/null) || true
+  ssc_exit_code=$?
+
+  if [ $ssc_exit_code -ne 0 ] || [ -z "$ssc_output" ]; then
+    log "SSC-$story_id" "Haiku call failed (exit $ssc_exit_code), skipping (non-fatal)"
+    return 0
+  fi
+
+  # Extract the result array from the response
+  local hardened_json
+  hardened_json=$(echo "$ssc_output" | jq -r '.result // empty' 2>/dev/null)
+  if [ -z "$hardened_json" ]; then
+    # Try parsing the output directly as JSON array
+    hardened_json=$(echo "$ssc_output" | jq -r 'if type == "array" then . else empty end' 2>/dev/null)
+  fi
+  if [ -z "$hardened_json" ]; then
+    # Try extracting JSON array from text
+    hardened_json=$(echo "$ssc_output" | grep -oE '\[.*\]' 2>/dev/null | jq '.' 2>/dev/null)
+  fi
+
+  if [ -z "$hardened_json" ]; then
+    log "SSC-$story_id" "Could not parse hardened criteria, skipping (non-fatal)"
+    return 0
+  fi
+
+  # Validate same count
+  local hardened_count
+  hardened_count=$(echo "$hardened_json" | jq 'length' 2>/dev/null || echo "0")
+  if [ "$hardened_count" -ne "$criteria_count" ]; then
+    log "SSC-$story_id" "Count mismatch: original=$criteria_count, hardened=$hardened_count, skipping"
+    return 0
+  fi
+
+  # Update prd.json in-place
+  local tmp_prd
+  tmp_prd=$(mktemp)
+  jq --arg id "$story_id" --argjson criteria "$hardened_json" \
+    '(.userStories[] | select(.id == $id)).acceptanceCriteria = $criteria' \
+    "$PRD_FILE" > "$tmp_prd" 2>/dev/null
+
+  if [ $? -eq 0 ] && [ -s "$tmp_prd" ]; then
+    mv "$tmp_prd" "$PRD_FILE"
+    log "SSC-$story_id" "Acceptance criteria hardened ($criteria_count criteria)"
+    emit_event "spec.hardened" "{\"criteria_count\":$criteria_count}" "$story_id"
+  else
+    rm -f "$tmp_prd"
+    log "SSC-$story_id" "Failed to update prd.json, skipping (non-fatal)"
+  fi
+
+  return 0
+}
+
 # Code quality review (Stage 2, opt-in)
 # Args: story_id
 # Returns: 0=approved, 1=changes requested, 2=rejected
@@ -1883,6 +1988,11 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     export CLAUDE_CODE_EFFORT_LEVEL="$STORY_EFFORT"
   else
     unset CLAUDE_CODE_EFFORT_LEVEL
+  fi
+
+  # SSC: Harden acceptance criteria before first implementation attempt
+  if [ "$STORY_ATTEMPTS" -le 1 ]; then
+    harden_spec "$CURRENT_STORY" || log "SSC" "Spec hardening non-fatal failure for $CURRENT_STORY"
   fi
 
   # Build story context (knowledge injection handled by SubagentStart hook)
@@ -2161,10 +2271,11 @@ Please address the issue and try again."
       update_story_status "$CURRENT_STORY" "completed"
       write_checkpoint "$CURRENT_STORY" "completed" "$STORY_ATTEMPTS"
 
-      # Mark errors as resolved and record successful decision outcome
+      # Mark errors as resolved, record successful decision outcome, and update Bayesian confidence
       if [ -f "$KNOWLEDGE_DB" ]; then
         resolve_errors "$KNOWLEDGE_DB" "$CURRENT_STORY" 2>/dev/null || true
         update_decision_outcome "$KNOWLEDGE_DB" "$CURRENT_STORY" "$RUN_ID" "success" 2>/dev/null || true
+        record_learning_success "$KNOWLEDGE_DB" "$CURRENT_STORY" 2>/dev/null || true
       fi
 
       # Log completion with duration (Layer 1: operational log)

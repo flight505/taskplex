@@ -187,17 +187,31 @@ for tag in $RELATED_TO $DEPENDS_ON $STORY_ID; do
 done
 TAGS_JSON="${TAGS_JSON}]"
 
-LEARNINGS=$(query_learnings "$KNOWLEDGE_DB" 10 "$TAGS_JSON" 2>/dev/null)
+LEARNINGS=$(query_learnings_with_ids "$KNOWLEDGE_DB" 10 "$TAGS_JSON" 2>/dev/null)
 
 if [ -n "$LEARNINGS" ]; then
   CONTEXT="${CONTEXT}## Project Knowledge (from previous stories)
 "
-  while IFS='|' read -r content story_id confidence; do
+  APPLIED_IDS=""
+  while IFS='|' read -r lid content story_id confidence; do
     CONTEXT="${CONTEXT}- [${story_id}] (confidence: ${confidence}) ${content}
 "
+    # Collect IDs for application tracking
+    if [ -n "$lid" ]; then
+      if [ -n "$APPLIED_IDS" ]; then
+        APPLIED_IDS="${APPLIED_IDS},${lid}"
+      else
+        APPLIED_IDS="${lid}"
+      fi
+    fi
   done <<< "$LEARNINGS"
   CONTEXT="${CONTEXT}
 "
+
+  # Record that these learnings were applied (Bayesian tracking)
+  if [ -n "$APPLIED_IDS" ]; then
+    record_learning_application "$KNOWLEDGE_DB" "$APPLIED_IDS" 2>/dev/null || true
+  fi
 fi
 
 # 5. Error history (if retry)

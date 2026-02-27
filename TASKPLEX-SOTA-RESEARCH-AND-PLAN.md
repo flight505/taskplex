@@ -32,7 +32,7 @@ This document reconstructs the research and strategic analysis that drove TaskPl
 
 3. **SOTA research validates TaskPlex's architecture.** Multi-agent role specialization (SWE-agent, Agentless), external memory (A-MEM, Memora), process reward models (AgentPRM), reward hacking prevention (Sycophancy to Subterfuge), and difficulty-aware routing (Hybrid LLM, BEST-Route) are all active research frontiers — and TaskPlex implements practical versions of each.
 
-4. **TaskPlex v4.0.0 has already implemented ~90% of the transformative features.** The remaining 10% consists of research-frontier capabilities: self-improving prompts, Bayesian confidence, consistency-based routing, and structured reflection.
+4. **TaskPlex v4.0.0 has already implemented ~90% of the transformative features.** v4.1.0 adds SSC spec hardening and Bayesian confidence. The remaining frontier capabilities are self-improving prompts, consistency-based routing, and structured reflection.
 
 ---
 
@@ -404,33 +404,41 @@ The v4.0.0 transformation addressed the vast majority of findings from our resea
 
 ## 8. Remaining Gaps & Future Directions
 
-### 8.1 Research-Frontier Capabilities (Not Yet Implemented)
+### 8.1 Research-Frontier Capabilities
 
-| Capability | Research Basis | Complexity | Impact | Priority |
-|-----------|---------------|-----------|--------|----------|
-| **Self-improving prompts** | Live-SWE-agent (arxiv: 2511.13646) | High | High | P2 |
-| **Bayesian confidence** | MACLA (arxiv: 2512.18950) | Medium | Medium | P3 |
-| **Consistency-based routing** | BEST-Route (arxiv: 2506.22716) | Medium | High | P2 |
-| **Structured reflection** | VIGIL (arxiv: 2512.07094) | Medium | Medium | P3 |
-| **Specification self-correction** | SSC (arxiv: 2507.18742) | Low | Medium | P3 |
+| Capability | Research Basis | Complexity | Impact | Priority | Claude Native? | Status |
+|-----------|---------------|-----------|--------|----------|---------------|--------|
+| **Specification self-correction (SSC)** | SSC (arxiv: 2507.18742) | Low | High | P1 | No — requires pre-implementation spec rewriting | **Implemented v4.1.0** |
+| **Bayesian confidence** | MACLA (arxiv: 2512.18950) | Medium | High | P1 | No — requires tracking per-learning success/failure | **Implemented v4.1.0** |
+| **Self-improving prompts** | SCOPE (arxiv: 2512.15374) | High | High | P2 | Partially — Claude learns within session, not across runs | Not implemented |
+| **Consistency-based routing** | BEST-Route (arxiv: 2506.22716) | Medium | High | P2 | No — requires multi-sample consensus logic | Not implemented |
+| **Structured reflection** | VIGIL (arxiv: 2512.07094) | Medium | Medium | P3 | Partially — Claude reflects naturally but not in structured replay format | Not implemented |
+
+> **Note on attribution:** Live-SWE-agent (arxiv: 2511.13646) is about *runtime tool synthesis* — the agent generates new tools during execution. The actual cross-run prompt optimization reference is SCOPE (arxiv: 2512.15374), which analyzes execution traces across runs to identify and promote successful prompt patterns.
+
+#### Specification Self-Correction (SSC) — Implemented v4.1.0
+
+**Problem:** Agents game acceptance criteria at 63-75% (SSC paper). Vague specs like "handle edge cases" get satisfied by a single `if` check.
+**Mechanism:** Before implementation, a Haiku call critiques each acceptance criterion for gaming vectors (vagueness, missing bounds, untestable claims) and rewrites them with concrete, measurable thresholds. Runs once on first attempt only — retries use already-hardened specs.
+**Integration:** `harden_spec()` in `taskplex.sh`, runs between decision call and context brief. Non-fatal; configurable via `spec_hardening` (default: true).
+
+#### Bayesian Confidence — Implemented v4.1.0
+
+**Problem:** Linear time-based decay (5%/day) treats all learnings equally regardless of actual reliability. A learning that worked 10/10 times decays at the same rate as one that worked 1/5 times.
+**Mechanism:** Adds `applied_count` and `success_count` columns to the learnings table. Each time a learning is injected into an agent, `applied_count` increments. On story success, `success_count` increments for all learnings that were applied. With 2+ applications, confidence switches from time-decay to Beta posterior: `(success+1)/(applied+2)`. Below 2 applications, the original time-decay formula persists as a graceful fallback.
+**Integration:** `inject-knowledge.sh` tracks applied IDs; `taskplex.sh` records success on story completion. Schema migration is idempotent (`ALTER TABLE ... || true` pattern).
 
 #### Self-Improving Prompts
 
-Analyze execution data across 5+ runs to identify prompt patterns that correlate with success. Modify agent prompts accordingly. Requires statistical significance testing.
-
-**Approach:** After each run, compare prompt variations (from decision-call reasoning) against outcomes. If a prompt pattern yields >80% success across 5+ stories, promote it to the agent's system prompt.
-
-#### Bayesian Confidence
-
-Replace linear time-based decay (5%/day) with Bayesian posterior reliability: track per-entry success/failure counts across runs where the learning was injected. More stable under low-sample conditions.
-
-**Approach:** Add `applied_count` and `success_count` columns to learnings table. When a learning is injected and the story succeeds, increment both. When it fails, increment only `applied_count`. Confidence = Beta(success+1, failure+1) posterior.
+**Problem:** Agent prompts are static — the same instructions regardless of what worked or failed in previous runs.
+**Mechanism (SCOPE):** After each run, compare prompt variations against outcomes. Patterns yielding >80% success across 5+ stories get promoted to the agent's system prompt. Requires statistical significance testing to avoid overfitting.
+**Claude native?** Partially — Claude learns within a session context, but cannot persist prompt improvements across sessions without external infrastructure.
 
 #### Consistency-Based Routing
 
-For moderate-difficulty stories, sample 3 Haiku responses and check consistency. If all agree, use the result (~$0.003). If they disagree, escalate to Sonnet ($0.06). Saves cost vs. default Sonnet routing.
-
-**Approach:** Add "consensus" routing tier between haiku and sonnet in decision-call.sh. Run 3 parallel Haiku calls, compare outputs. Agreement → accept; disagreement → escalate.
+**Problem:** Default Sonnet routing is expensive for stories where Haiku would suffice, but Haiku's correctness is unpredictable.
+**Mechanism (BEST-Route):** For moderate-difficulty stories, sample 3 Haiku responses and check consistency. If all agree, use the result (~$0.003). If they disagree, escalate to Sonnet ($0.06). Saves cost vs. default Sonnet routing.
+**Claude native?** No — requires multi-sample consensus logic external to any single model call.
 
 ### 8.2 Practical Enhancements (Low-Hanging Fruit)
 
@@ -459,7 +467,7 @@ Based on our research, "better" means:
 6. **Configurable behavior** — users can tune the system to their needs
 7. **Research-grounded architecture** — each design decision backed by SOTA literature
 
-TaskPlex v4.0.0 achieves all seven. The remaining frontier capabilities (self-improving prompts, Bayesian confidence, consistency routing) would move TaskPlex from "better than Superpowers" to "research-frontier."
+TaskPlex v4.0.0 achieves all seven. v4.1.0 adds SSC spec hardening and Bayesian confidence, moving two frontier capabilities into production. The remaining capabilities (self-improving prompts, consistency routing, structured reflection) represent the next research frontier.
 
 ---
 
@@ -482,7 +490,8 @@ TaskPlex v4.0.0 achieves all seven. The remaining frontier capabilities (self-im
 | TRACE: Reward Exploit Taxonomy | 2026 | 2601.20103 | 54 categories of code reward exploits |
 | ZeroRouter: Universal Latent Space Routing | 2026 | 2601.06220 | Zero-shot model onboarding |
 | VIGIL: Reflective Runtime for Self-Healing Agents | 2025 | 2512.07094 | Structured reflection |
-| Live-SWE-agent: Self-Improving Agents | 2025 | 2511.13646 | Self-evolving orchestration |
+| Live-SWE-agent: Runtime Tool Synthesis | 2025 | 2511.13646 | Self-evolving orchestration (runtime) |
+| SCOPE: Cross-Run Prompt Optimization | 2025 | 2512.15374 | Self-improving prompts (cross-run) |
 | MACLA: Bayesian Procedural Memory | 2025 | 2512.18950 | Bayesian confidence tracking |
 
 ### 9.2 Superpowers GitHub Issues
