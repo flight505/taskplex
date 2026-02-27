@@ -6,19 +6,18 @@ All notable changes to TaskPlex are documented here.
 
 ### v4.1.1 (2026-02-27)
 
-**Test Suite Overhaul — Structural Optimization + Quality Evaluation:**
+**Test Suite Overhaul — Structural Optimization + Evaluation Suite:**
 
 **Added:**
-- `test-results/taskplex/run-evals.sh` — new evaluation suite (7 sections: decision routing, knowledge mining, Bayesian ranking, pattern promotion, hook behavior, spec hardening [LLM-gated], skill response quality [LLM-gated])
+- `test-results/taskplex/run-evals.sh` — new offline evaluation suite (5 sections, 53 tests, pure bash/SQLite, no LLM calls): decision routing accuracy, knowledge mining quality, Bayesian ranking, pattern promotion, hook behavior
 - `run_hook()` helper in `run-tests.sh` — reduces hook test boilerplate to single-line calls
-- `run_hook_decision()` helper in `run-evals.sh` — tests hook permission decisions
 - Per-section metrics in `--save` output: each section tracks pass/fail/warn independently
 - Three-tier OVERALL status: `PASS`, `PASS_WITH_ISSUES` (1-3 failures), `FAIL` (4+)
 - `suite` field in JSONL history (`"structural"` or `"evaluation"`) for tracking both test types
 - `notes` array in JSONL output — captures all warnings and failures
 
 **Changed:**
-- Structural suite (`run-tests.sh`): 281 tests (was 322) — removed ~41 redundant tests (S8.1, S8.2, S8.4, S7 SKILL.md exists) that duplicated S1/S3 checks
+- Structural suite (`run-tests.sh`): 276 tests (was 322) — removed ~41 redundant tests (S8.1, S8.2, S8.4, S7 SKILL.md exists) that duplicated S1/S3 checks
 - Fixed false positive in S8.5/S8.6 cross-refs: `grep -q "$name"` → exact path match `grep -q "/$name$"` (prevented `reviewer.md` false-matching `code-reviewer.md`)
 - `header()` now takes section key parameter for JSON metrics
 - JSONL records now compact (single-line) with `jq -cn`
