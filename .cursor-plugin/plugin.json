@@ -1,0 +1,18 @@
+{
+  "name": "taskplex",
+  "displayName": "TaskPlex",
+  "description": "Always-on autonomous development companion: brainstorming, lean skills, PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery.",
+  "version": "5.0.0",
+  "author": {
+    "name": "Jesper Vang",
+    "email": "jesper_vang@me.com"
+  },
+  "homepage": "https://github.com/flight505/taskplex",
+  "repository": "https://github.com/flight505/taskplex",
+  "license": "MIT",
+  "keywords": ["skills", "tdd", "debugging", "autonomous", "prd", "subagents", "development-companion"],
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "commands": "./commands/",
+  "hooks": "./hooks/hooks.json"
+}

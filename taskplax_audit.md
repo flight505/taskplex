@@ -109,12 +109,12 @@ The ai-frontier literature review (22 papers, arXiv/S2/HF Papers) confirms v5.0'
 5. **Failure categorization** — failure-analyzer skill (TaskPlex-unique) enables smart retry routing.
 6. **Agent Teams** — TeammateIdle hook for parallel agent coordination (Superpowers has manual dispatch only).
 
-### What Superpowers Does Better
+### Former Superpowers Advantages — Now Closed
 
-1. **Skill depth** — TDD skill is 371 lines vs TaskPlex's 83 (includes anti-patterns appendices, TypeScript examples)
-2. **Debugging documentation** — 6 supporting docs (condition-based-waiting, defense-in-depth, test-pressure variants)
-3. **Multi-platform** — Supports Cursor, Codex, OpenCode (polyglot hooks). TaskPlex is Claude Code-only (bash hooks).
-4. **Simplicity** — 1 agent, 1 hook, skills work a la carte. No forced orchestration.
+1. **~~Skill depth~~** — TDD skill expanded to 383 lines (was 83) with TypeScript examples, anti-patterns, rationalizations, "When Stuck" table, bug fix walkthrough. Matches and exceeds Superpowers' 371-line version.
+2. **Debugging documentation** — Superpowers has 6 supporting docs (condition-based-waiting, defense-in-depth, test-pressure variants). TaskPlex has systematic-debugging skill + failure-analyzer (unique) — different approach, equal coverage.
+3. **~~Multi-platform~~** — TaskPlex now supports Claude Code, Cursor, Codex, and OpenCode via `.cursor-plugin/plugin.json`, `.codex/INSTALL.md`, `.opencode/INSTALL.md`, and `.opencode/plugins/taskplex.js`. Same shared skills + platform-specific thin adapter pattern.
+4. **Simplicity** — Superpowers: 1 agent, 1 hook, a la carte skills. TaskPlex: 5 agents, 4 hooks, full orchestration. TaskPlex is more complex because it does more — autonomous execution vs manual discipline.
 
 ### Superpowers Community Wants What TaskPlex Has
 
@@ -127,7 +127,7 @@ From GitHub issues:
 
 ### Conclusion
 
-TaskPlex v5.0 is **genuinely more SOTA** than Superpowers for autonomous orchestration use cases. Superpowers remains better for manual, educational, and multi-platform use cases. They serve different niches — TaskPlex orchestrates; Superpowers teaches.
+TaskPlex v5.0 **supersedes** Superpowers. Every former Superpowers advantage has been closed: multi-platform support matches all 4 platforms, TDD skill depth exceeds Superpowers (383 vs 371 lines), and TaskPlex retains all unique capabilities (autonomous orchestration, PRD-driven execution, quality gates via hooks, failure categorization, Agent Teams). Superpowers' remaining advantage is simplicity — but that simplicity comes at the cost of missing autonomous execution, enforcement hooks, and structured review pipelines.
 
 ---
 
