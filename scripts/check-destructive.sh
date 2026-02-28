@@ -2,12 +2,18 @@
 # TaskPlex - Block destructive git commands during implementation
 # Used as a PreToolUse hook for Bash commands
 # Reads hook JSON from stdin, extracts the command, checks for destructive ops
+#
+# Exit codes:
+#   0 = allow (with optional JSON deny on stdout for blocked commands)
+#   PreToolUse uses JSON permissionDecision, not exit 2
+#
 # NOTE: set -e intentionally omitted — hook requires explicit exit code control
 
 # Read hook input from stdin and extract the bash command
-INPUT=$(cat | jq -r '.tool_input.command // ""' 2>/dev/null)
+HOOK_INPUT=$(cat)
+INPUT=$(echo "$HOOK_INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
 
-# If no command found, allow
+# If no command or jq failed, allow through
 if [ -z "$INPUT" ]; then
   exit 0
 fi

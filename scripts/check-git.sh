@@ -69,18 +69,21 @@ STASH_COUNT=${STASH_COUNT:-0}
 # ----- 3. Check .gitignore for TaskPlex state files -----
 
 GITIGNORE_FILE="$GIT_ROOT/.gitignore"
-MISSING_IGNORES=()
-TASKPLEX_ENTRIES=("prd.json" "progress.txt" "knowledge.db" "knowledge.md" ".claude/taskplex*.pid" ".claude/taskplex.log" ".claude/taskplex.config.json")
-
-for entry in "${TASKPLEX_ENTRIES[@]}"; do
+# Bash 3.2 compatible — newline-separated string, no arrays
+MISSING_IGNORES=""
+for entry in prd.json progress.txt knowledge.db knowledge.md ".claude/taskplex*.pid" .claude/taskplex.log .claude/taskplex.config.json; do
   if [ ! -f "$GITIGNORE_FILE" ] || ! grep -qF "$entry" "$GITIGNORE_FILE" 2>/dev/null; then
-    MISSING_IGNORES+=("$entry")
+    if [ -n "$MISSING_IGNORES" ]; then
+      MISSING_IGNORES="$(printf '%s\n%s' "$MISSING_IGNORES" "$entry")"
+    else
+      MISSING_IGNORES="$entry"
+    fi
   fi
 done
 
 MISSING_IGNORES_JSON="[]"
-if [ ${#MISSING_IGNORES[@]} -gt 0 ]; then
-  MISSING_IGNORES_JSON=$(printf '%s\n' "${MISSING_IGNORES[@]}" | jq -R . | jq -s .)
+if [ -n "$MISSING_IGNORES" ]; then
+  MISSING_IGNORES_JSON=$(printf '%s\n' "$MISSING_IGNORES" | jq -R . | jq -s .)
 fi
 
 # ----- 4. Check for stale worktrees (relevant for parallel mode) -----

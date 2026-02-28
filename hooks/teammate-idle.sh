@@ -41,13 +41,28 @@ if [ -z "$NEXT_STORY" ]; then
   exit 0
 fi
 
-# Mark story as in_progress in prd.json
-TEMP_PRD=$(mktemp)
-jq --arg id "$NEXT_STORY" --arg mate "$TEAMMATE_NAME" '
+# Mark story as in_progress in prd.json — with safe temp file handling
+TEMP_PRD=$(mktemp) || { echo '{}'; exit 0; }
+trap 'rm -f "$TEMP_PRD"' EXIT
+
+if ! jq --arg id "$NEXT_STORY" --arg mate "$TEAMMATE_NAME" '
   .userStories |= map(
     if .id == $id then .status = "in_progress" | .assigned_to = $mate else . end
   )
-' "$PRD_FILE" > "$TEMP_PRD" && mv "$TEMP_PRD" "$PRD_FILE"
+' "$PRD_FILE" > "$TEMP_PRD"; then
+  # jq failed — don't corrupt prd.json
+  echo '{}' >&2
+  exit 0
+fi
+
+# Verify the temp file has content before overwriting
+if [ ! -s "$TEMP_PRD" ]; then
+  echo '{}' >&2
+  exit 0
+fi
+
+mv "$TEMP_PRD" "$PRD_FILE"
+trap - EXIT
 
 # Get story details for context
 STORY_TITLE=$(jq -r --arg id "$NEXT_STORY" '.userStories[] | select(.id == $id) | .title' "$PRD_FILE" 2>/dev/null)
