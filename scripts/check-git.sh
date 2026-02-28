@@ -71,7 +71,7 @@ STASH_COUNT=${STASH_COUNT:-0}
 GITIGNORE_FILE="$GIT_ROOT/.gitignore"
 # Bash 3.2 compatible — newline-separated string, no arrays
 MISSING_IGNORES=""
-for entry in prd.json progress.txt knowledge.db knowledge.md ".claude/taskplex*.pid" .claude/taskplex.log .claude/taskplex.config.json; do
+for entry in prd.json .claude/taskplex.log .claude/taskplex.config.json; do
   if [ ! -f "$GITIGNORE_FILE" ] || ! grep -qF "$entry" "$GITIGNORE_FILE" 2>/dev/null; then
     if [ -n "$MISSING_IGNORES" ]; then
       MISSING_IGNORES="$(printf '%s\n%s' "$MISSING_IGNORES" "$entry")"

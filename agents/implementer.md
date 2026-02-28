@@ -18,12 +18,6 @@ skills:
   - failure-analyzer
   - taskplex-tdd
   - taskplex-verify
-hooks:
-  PreToolUse:
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/check-destructive.sh"
 ---
 
 # Implementer Agent
