@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "4.1.0",
-  "description": "Always-on autonomous development companion: brainstorming, lean skills, difficulty-aware routing, reward hacking prevention, Agent Teams, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence with experience-based learning, and error recovery.",
+  "version": "5.0.0",
+  "description": "Always-on autonomous development companion: brainstorming, lean skills (adapted Superpowers disciplines), PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery. Leverages native Claude Code features for memory, routing, and orchestration.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",
@@ -14,11 +14,10 @@
     "claude-cli",
     "autonomous",
     "prd",
-    "agent-loop",
-    "resilient",
     "subagents",
-    "dependency-aware",
-    "long-running"
+    "tdd",
+    "skills",
+    "development-companion"
   ],
   "commands": [
     "./commands/start.md"
@@ -45,8 +44,7 @@
   "agents": [
     "./agents/architect.md",
     "./agents/implementer.md",
-    "./agents/validator.md",
-    "./agents/spec-reviewer.md",
+    "./agents/reviewer.md",
     "./agents/merger.md",
     "./agents/code-reviewer.md"
   ]

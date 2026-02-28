@@ -1,14 +1,14 @@
 # CLAUDE.md
 
-**Version 4.1.0** | Last Updated: 2026-02-27
+**Version 5.0.0** | Last Updated: 2026-02-28
 
-Developer instructions for the TaskPlex plugin. For architecture deep dives, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
+Developer instructions for the TaskPlex plugin. For architecture details, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
 ## Overview
 
-TaskPlex is an **always-on autonomous development companion** — brainstorming + all 15 Superpowers discipline skills (adapted, MIT licensed from Jesse Vincent) + PRD-driven autonomous execution, TDD enforcement, verification gates, two-stage code review, SQLite knowledge persistence, experience-based learning, difficulty-aware routing, reward hacking prevention, Agent Teams support, and error recovery. Fully replaces Superpowers.
+TaskPlex is an **always-on autonomous development companion** — brainstorming + 17 skills (adapted, MIT licensed from Jesse Vincent's Superpowers) + PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery. Leverages native Claude Code features (`memory: project`, `model:` frontmatter, `isolation: worktree`, `TaskCreate`/`TaskUpdate`) instead of custom orchestration.
 
 **Philosophy:** Always-on awareness, challenge assumptions first, discipline before code, precise PRD, lean context, fresh context per task, resilient error recovery.
 
@@ -19,30 +19,26 @@ TaskPlex is an **always-on autonomous development companion** — brainstorming 
 ```
 taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
-├── agents/                            # 6 registered subagents (architect, implementer, validator, spec-reviewer, merger, code-reviewer)
-├── commands/start.md                  # 8-checkpoint interactive wizard (optional — proactive path available)
+├── agents/                            # 5 registered subagents
+│   ├── architect.md                   # Read-only codebase explorer (brainstorm)
+│   ├── implementer.md                 # Code a single story (TDD + verify)
+│   ├── reviewer.md                    # Spec compliance + validation (merged validator+spec-reviewer)
+│   ├── code-reviewer.md              # Code quality review (opt-in)
+│   └── merger.md                      # Git branch operations
+├── commands/start.md                  # Interactive wizard
 ├── skills/                            # 17 skills: brainstorm + 14 adapted Superpowers + failure-analyzer + using-taskplex gate
 ├── hooks/
-│   ├── hooks.json                     # 13 hooks across 10 events
-│   ├── stop-guard.sh                  # Stop: prevents premature exit
-│   ├── task-completed.sh              # TaskCompleted: gates on test pass
-│   ├── inject-knowledge.sh            # SubagentStart: SQLite → additionalContext
-│   ├── inject-edit-context.sh         # PreToolUse: file patterns → additionalContext
-│   ├── pre-compact.sh                 # PreCompact: saves state before compaction
-│   └── validate-result.sh             # SubagentStop: inline validation + learnings
+│   ├── hooks.json                     # 4 hooks across 4 events
+│   ├── session-context.sh             # SessionStart: inject using-taskplex awareness
+│   ├── validate-result.sh             # SubagentStop: run test/build/typecheck
+│   └── teammate-idle.sh               # TeammateIdle: story assignment
 ├── scripts/
-│   ├── taskplex.sh                    # Main orchestration loop
-│   ├── parallel.sh                    # Wave-based parallel execution (opt-in)
-│   ├── knowledge-db.sh                # SQLite knowledge store helpers
-│   ├── decision-call.sh               # Rule-based fast path + 1-shot Opus decision calls
-│   ├── teams.sh                       # Agent Teams orchestrator (opt-in)
-│   └── check-*.sh                     # Dependency, git, and destructive command checks
-├── monitor/                           # Optional Bun + Vue 3 dashboard sidecar
+│   ├── check-deps.sh                  # Dependency verification
+│   ├── check-destructive.sh           # Block dangerous git/rm commands
+│   └── check-git.sh                   # Git repository diagnostics
 └── tests/
-    └── run-suite.sh                   # Thin wrapper → delegates to marketplace test suite
+    └── run-suite.sh                   # Delegates to marketplace test suite
 ```
-
-> **Note:** The comprehensive 8-section test suite (~320 tests) lives at `test-results/taskplex/run-tests.sh` in the marketplace root. `tests/run-suite.sh` delegates to it when running in submodule context, falling back to basic structural checks standalone. No API-calling tests — all tests are pure bash.
 
 ### Subagents
 
@@ -50,12 +46,11 @@ taskplex/
 |-------|-------|------------|-------|---------|
 | architect | sonnet | dontAsk | Read, Grep, Glob, Bash | Read-only codebase explorer (brainstorm phase) |
 | implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify REQUIRED) |
-| validator | haiku | dontAsk | Bash, Read, Glob, Grep | Verify acceptance criteria (read-only) |
-| spec-reviewer | haiku | dontAsk | Read, Grep, Glob, Bash | Spec compliance review — Stage 1 (mandatory) |
+| reviewer | haiku | dontAsk | Read, Grep, Glob, Bash | Spec compliance + validation (two-phase) |
+| code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | Code quality review (opt-in) |
 | merger | haiku | bypassPermissions | Bash, Read, Grep | Git branch operations |
-| code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | Code quality review — Stage 2 (opt-in) |
 
-For detailed data flow, hook system, knowledge architecture, and error handling, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md).
+For detailed data flow and hook system, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md).
 
 ---
 
@@ -65,32 +60,14 @@ For detailed data flow, hook system, knowledge architecture, and error handling,
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `max_iterations` | int | 25 | Stop after N iterations (formula: stories x 2.5) |
-| `iteration_timeout` | int | 900 | Timeout per iteration in seconds |
-| `execution_mode` | string | "foreground" | "foreground" (interactive) or "background" |
-| `execution_model` | string | "sonnet" | "sonnet" or "opus" for story implementation |
-| `effort_level` | string | "" | "low"/"medium"/"high" (Opus 4.6 only) |
 | `branch_prefix` | string | "taskplex" | Git branch prefix |
-| `max_retries_per_story` | int | 2 | Max retry attempts before skipping |
-| `max_turns` | int | 200 | Max agentic turns per Claude invocation |
-| `merge_on_complete` | bool | false | Auto-merge to main when all stories complete |
 | `test_command` | string | "" | e.g. "npm test" |
 | `build_command` | string | "" | e.g. "npm run build" |
 | `typecheck_command` | string | "" | e.g. "tsc --noEmit" |
-| `parallel_mode` | string | "sequential" | "sequential", "parallel" (worktree), or "teams" (Agent Teams) |
+| `execution_model` | string | "sonnet" | "sonnet", "opus", or "inherit" |
+| `merge_on_complete` | bool | false | Auto-merge to main when all stories complete |
+| `code_review` | bool | false | Enable code-reviewer agent after validation |
 | `interactive_mode` | bool | false | Pause between stories for user approval |
-| `scope_drift_action` | string | "warn" | "warn", "block", or "review" for scope drift |
-| `max_parallel` | int | 3 | Max concurrent agents per wave |
-| `worktree_dir` | string | "" | Custom worktree base dir |
-| `worktree_setup_command` | string | "" | e.g. "npm install" |
-| `conflict_strategy` | string | "abort" | "abort" or "merger" (invoke merger agent) |
-| `code_review` | bool | false | Enable two-stage code review after validation |
-| `decision_calls` | bool | true | Enable 1-shot Opus decision calls |
-| `decision_model` | string | "opus" | Model for decision calls |
-| `validate_on_stop` | bool | true | Enable SubagentStop inline validation |
-| `model_routing` | string | "auto" | "auto" (decision call picks) or "fixed" |
-| `spec_hardening` | bool | true | Enable SSC spec hardening before implementation |
-| `spec_harden_model` | string | "haiku" | Model for spec hardening calls |
 
 ---
 
@@ -102,21 +79,21 @@ For detailed data flow, hook system, knowledge architecture, and error handling,
 - **Skills** — Single responsibility. Lettered options (A, B, C, D) for questions. `context: fork` runs in isolated subagent.
 - **Hooks** — `${CLAUDE_PLUGIN_ROOT}` resolves to install path. Scripts must be `chmod +x`. Sync hooks need `statusMessage` and `timeout`.
 - **Scripts** — `set -e` for fail-fast. Bash 3.2 compatible (no `declare -A`). `jq` is the only JSON parser.
-- **Commands** — Follow 8-checkpoint structure. Use `AskUserQuestion` at decision points.
+- **Commands** — Use `AskUserQuestion` at decision points.
 
 ### Testing Changes
 
 ```bash
-# Full test suite (8 sections, ~320 tests, from marketplace root)
-bash test-results/taskplex/run-tests.sh   # File structure, manifest, hooks, unit tests, agents, skills, cross-refs
+# Full test suite (from marketplace root)
+bash test-results/taskplex/run-tests.sh
 
 # Or via thin wrapper (auto-delegates to marketplace suite)
-bash tests/run-suite.sh                   # Standalone fallback if not in marketplace context
+bash tests/run-suite.sh
 
 # Structural validation (from marketplace root)
 cd /path/to/flight505-marketplace
-./scripts/validate-plugin-manifests.sh    # Manifests, hooks, frontmatter, cross-refs, shell syntax
-./scripts/plugin-doctor.sh                # CLI validation + cache drift + offline sanity
+./scripts/validate-plugin-manifests.sh
+./scripts/plugin-doctor.sh
 
 # Reinstall and test
 /plugin uninstall taskplex@flight505-marketplace
@@ -157,9 +134,6 @@ export ANTHROPIC_API_KEY='your-key'
 - `jq` is the only JSON parser — no `yq` or Python for JSON
 - `PermissionRequest` hooks do NOT fire in `-p` (headless) mode — use `permissionMode` in agent frontmatter instead
 - `set -e` + `[ cond ] && action` at end of function = silent crash — use `if/then/fi`
-- `env -u CLAUDECODE` is required before nested `claude -p` calls
-- `--dangerously-skip-permissions` is required for headless file writes
-- `jq` piped output needs `-r` for raw strings (no quotes around IDs)
 - Always use `python3` not `python` in hook commands (macOS has no `python` binary)
 - Hook scripts run in non-interactive shells — aliases and `.zshrc` not loaded
 - Exit 2 messages must go to stderr; stdout is for structured JSON output
@@ -176,9 +150,6 @@ cat ~/.claude/plugins/installed_plugins.json | jq '.plugins | keys'
 # Verify plugin structure
 ls -la ~/.claude/plugins/cache/flight505-marketplace/taskplex/*/
 
-# Test script directly
-bash scripts/taskplex.sh 1
-
 # Verify dependencies
 bash scripts/check-deps.sh
 
@@ -193,7 +164,7 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' | bash s
 
 ## References
 
-- [TaskPlex Architecture](./TASKPLEX-ARCHITECTURE.md) — Design, data flow, knowledge system, hooks, roadmap
+- [TaskPlex Architecture](./TASKPLEX-ARCHITECTURE.md) — Design, data flow, hooks
 - [Changelog](./CHANGELOG.md) — Version history
 - [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md)
 - [Claude Code Subagents](https://code.claude.com/docs/en/sub-agents.md)

@@ -80,4 +80,4 @@ After each GREEN phase, verify:
 When running inside the TaskPlex execution loop:
 - Each acceptance criterion gets its own RED-GREEN-REFACTOR cycle
 - The implementer agent follows this discipline per criterion
-- The validator and spec-reviewer verify the tests exist and pass
+- The reviewer agent verifies the tests exist and pass

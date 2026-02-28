@@ -14,6 +14,8 @@ model: sonnet
 permissionMode: dontAsk
 maxTurns: 30
 memory: project
+skills:
+  - brainstorm
 ---
 
 # Architect Agent

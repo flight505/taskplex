@@ -4,6 +4,64 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v5.0.0 (2026-02-28)
+
+**Remove Orchestration, Leverage Native Claude Code:**
+
+This is a major simplification release. ~7,350 lines of custom orchestration removed in favor of native Claude Code features.
+
+**Removed:**
+- `scripts/taskplex.sh` (2,361 lines) — bash orchestration loop, replaced by `subagent-driven-development` skill
+- `scripts/parallel.sh` (787 lines) — wave-based parallelism, replaced by native `isolation: worktree`
+- `scripts/knowledge-db.sh` (526 lines) — SQLite knowledge store, replaced by native `memory: project`
+- `scripts/decision-call.sh` (332 lines) — model routing, replaced by `model:` in agent frontmatter
+- `scripts/teams.sh` (123 lines) — Agent Teams wrapper, native Agent Teams used directly
+- `scripts/prompt.md` — orchestrator prompt template
+- `monitor/` (~2,000 lines) — Bun+Vue3 dashboard sidecar (extracted)
+- `agents/validator.md` — merged into `reviewer.md`
+- `agents/spec-reviewer.md` — merged into `reviewer.md`
+- `hooks/stop-guard.sh` — Stop hook (35 lines)
+- `hooks/task-completed.sh` — TaskCompleted hook (33 lines)
+- `hooks/inject-knowledge.sh` — SubagentStart knowledge injection (260 lines)
+- `hooks/inject-edit-context.sh` — PreToolUse file pattern injection (91 lines)
+- `hooks/pre-compact.sh` — PreCompact state preservation (78 lines)
+- `test-results/taskplex/run-evals.sh` — evaluation suite (55 orchestration-focused tests)
+- Config options: `max_iterations`, `iteration_timeout`, `execution_mode`, `effort_level`, `max_retries_per_story`, `max_turns`, `parallel_mode`, `max_parallel`, `worktree_dir`, `worktree_setup_command`, `conflict_strategy`, `decision_calls`, `decision_model`, `validate_on_stop`, `model_routing`, `spec_hardening`, `spec_harden_model`, `scope_drift_action`
+
+**Added:**
+- `agents/reviewer.md` — merged two-phase review (spec compliance + validation), replaces validator + spec-reviewer
+- `skills/subagent-driven-development/reviewer-prompt.md` — prompt template for reviewer subagent
+
+**Changed:**
+- Agents: 6 → 5 (validator + spec-reviewer merged into reviewer)
+- Hooks: 13 → 4 (SessionStart, PreToolUse, SubagentStop, TeammateIdle)
+- Config: 24 → 8 options (branch_prefix, test/build/typecheck commands, execution_model, merge_on_complete, code_review, interactive_mode)
+- `agents/architect.md` — added `skills: [brainstorm]` to frontmatter
+- `agents/implementer.md` — removed inject-edit-context hook, SQLite/orchestrator references, Stop/Worktree sections
+- `agents/code-reviewer.md` — removed Stage 1 (spec compliance), now does code quality only
+- `hooks/hooks.json` — 4 hooks across 4 events (was 13 across 10)
+- `hooks/validate-result.sh` — simplified to ~90 lines (was 236), removed SQLite learnings extraction, scope drift, implicit mining
+- `scripts/check-deps.sh` — removed sqlite3 and coreutils dependency checks
+- `commands/start.md` — simplified wizard, checkpoint 7 reduced to 3 questions, checkpoint 8 launches subagent-driven-development instead of taskplex.sh
+- `skills/taskplex-tdd` — "validator and spec-reviewer" → "reviewer agent"
+- `skills/taskplex-verify` — triple-layer → two-layer enforcement (removed Stop/TaskCompleted hooks)
+- `skills/subagent-driven-development` — spec-reviewer-prompt.md → reviewer-prompt.md, TodoWrite → TaskCreate
+- `skills/prd-converter` — removed progress.txt reference
+- `CLAUDE.md` — major rewrite for v5.0 architecture
+- `README.md` — major rewrite, simplified feature list
+- `TASKPLEX-ARCHITECTURE.md` — rewritten: 3 layers (Skills, Agents, Hooks) instead of 8
+- `TASKPLEX-AUDIT.md` → moved to `docs/archive/`
+- `TASKPLEX-SOTA-RESEARCH-AND-PLAN.md` → moved to `docs/archive/`
+- `.gitignore` — removed monitor-specific entries, test database entries
+
+**Migration notes:**
+- Existing `prd.json` files remain fully compatible
+- Existing `knowledge.db` is abandoned — native `memory: project` replaces it
+- Existing `taskplex.config.json` will have unrecognized fields (harmless, ignored)
+- Users must restart Claude Code after updating the plugin
+
+---
+
 ### v4.1.1 (2026-02-27)
 
 **Test Suite Overhaul — Structural Optimization + Evaluation Suite:**

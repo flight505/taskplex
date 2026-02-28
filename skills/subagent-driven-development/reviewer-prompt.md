@@ -1,14 +1,14 @@
-# Spec Compliance Reviewer Prompt Template
+# Reviewer Prompt Template
 
-Use this template when dispatching a spec compliance reviewer subagent.
+Use this template when dispatching a reviewer subagent.
 
-**Purpose:** Verify implementer built what was requested (nothing more, nothing less)
+**Purpose:** Verify implementer built what was requested AND that validation passes (spec compliance + validation in one pass)
 
 ```
-Task tool (general-purpose):
-  description: "Review spec compliance for Task N"
+Task tool (taskplex:reviewer):
+  description: "Review spec compliance and validation for Task N"
   prompt: |
-    You are reviewing whether an implementation matches its specification.
+    You are reviewing whether an implementation matches its specification and passes validation.
 
     ## What Was Requested
 
@@ -20,8 +20,8 @@ Task tool (general-purpose):
 
     ## CRITICAL: Do Not Trust the Report
 
-    The implementer finished suspiciously quickly. Their report may be incomplete,
-    inaccurate, or optimistic. You MUST verify everything independently.
+    The implementer's report may be incomplete, inaccurate, or optimistic.
+    You MUST verify everything independently.
 
     **DO NOT:**
     - Take their word for what they implemented
@@ -34,7 +34,7 @@ Task tool (general-purpose):
     - Check for missing pieces they claimed to implement
     - Look for extra features they didn't mention
 
-    ## Your Job
+    ## Phase 1: Spec Compliance
 
     Read the implementation code and verify:
 
@@ -46,16 +46,24 @@ Task tool (general-purpose):
     **Extra/unneeded work:**
     - Did they build things that weren't requested?
     - Did they over-engineer or add unnecessary features?
-    - Did they add "nice to haves" that weren't in spec?
 
     **Misunderstandings:**
     - Did they interpret requirements differently than intended?
     - Did they solve the wrong problem?
-    - Did they implement the right feature but wrong way?
 
     **Verify by reading code, not by trusting report.**
 
+    ## Phase 2: Validation
+
+    Only proceed if Phase 1 passes.
+
+    - Run test command if configured
+    - Run build command if configured
+    - Run typecheck command if configured
+    - Verify git commit exists for this task
+
     Report:
-    - ✅ Spec compliant (if everything matches after code inspection)
-    - ❌ Issues found: [list specifically what's missing or extra, with file:line references]
+    - Spec compliance: pass/fail (with file:line evidence for issues)
+    - Validation: pass/fail (with command output)
+    - Verdict: approve / request_changes / reject
 ```

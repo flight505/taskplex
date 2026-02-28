@@ -152,7 +152,7 @@ jq '.userStories[] | select((.acceptanceCriteria | length) > 7) | "\(.id): \(.ac
 
 Before writing new prd.json, check if existing one has a different `branchName`:
 1. Archive to `archive/YYYY-MM-DD-feature-name/`
-2. Copy `prd.json` and `progress.txt`
+2. Move `prd.json`
 
 ## Plan Segments (Optional)
 

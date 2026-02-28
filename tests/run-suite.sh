@@ -46,14 +46,6 @@ for f in "$PLUGIN_ROOT"/scripts/*.sh "$PLUGIN_ROOT"/hooks/*.sh; do
   check bash -n "$f"
 done
 
-# Knowledge-db functional tests
-source "$PLUGIN_ROOT/scripts/knowledge-db.sh"
-TEST_DB="/tmp/taskplex-fallback-test-$$.db"
-init_knowledge_db "$TEST_DB"
-TABLE_COUNT=$(sqlite3 "$TEST_DB" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
-if [ "$TABLE_COUNT" -eq 6 ]; then echo "  PASS: knowledge-db creates 6 tables"; PASS=$((PASS + 1)); else echo "  FAIL: expected 6 tables, got $TABLE_COUNT"; FAIL=$((FAIL + 1)); fi
-rm -f "$TEST_DB"
-
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

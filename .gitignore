@@ -23,25 +23,11 @@ taskplex-wizard-flow_review_log.json
 # Git worktrees
 .worktrees/
 
-# Monitor sidecar
-monitor/server/node_modules/
-monitor/client/node_modules/
-monitor/client/dist/
-monitor/node_modules/
-*.pid
-
-# TaskPlex runtime artifacts (test contamination prevention)
+# TaskPlex runtime artifacts
 prd.json
-progress.txt
-knowledge.md
-tasks/
+*.pid
 .last-branch
 /archive/
-
-# Test databases
-*.db
-*.sqlite
-tests/benchmark.db
 
 # Python virtual environments
 .venv/

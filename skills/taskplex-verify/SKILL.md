@@ -41,22 +41,19 @@ Before claiming any work is complete:
 - [ ] Checked for regressions (existing tests still pass)
 - [ ] Evidence captured (actual command output, not just "it worked")
 
-## Triple-Layer Enforcement
+## Two-Layer Enforcement
 
-TaskPlex enforces verification at three levels:
+TaskPlex enforces verification at two levels:
 
 ```
 Layer 1: This skill (cognitive discipline)
   Claude self-checks before claiming done
       ↓ (if Claude claims done anyway)
-Layer 2: TaskCompleted hook (automated gate)
-  Runs tests, blocks completion if they fail
-      ↓ (if Claude tries to stop the session)
-Layer 3: Stop hook (safety net)
-  Checks for active stories, blocks premature exit
+Layer 2: SubagentStop hook (automated gate)
+  Runs test/build/typecheck, blocks implementer if they fail
 ```
 
-If you follow this skill's discipline, the hooks never need to fire. The hooks exist as a safety net for when discipline slips.
+If you follow this skill's discipline, the hook never needs to fire. The hook exists as a safety net for when discipline slips.
 
 ## When This Skill Applies
 
