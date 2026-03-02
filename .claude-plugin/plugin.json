@@ -1,6 +1,6 @@
 {
   "name": "taskplex",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Always-on autonomous development companion: brainstorming, lean skills (adapted Superpowers disciplines), PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery. Leverages native Claude Code features for memory, routing, and orchestration.",
   "author": {
     "name": "Jesper Vang",
