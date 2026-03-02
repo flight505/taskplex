@@ -14,6 +14,8 @@ model: haiku
 permissionMode: dontAsk
 maxTurns: 40
 memory: project
+skills:
+  - receiving-code-review
 ---
 
 # Reviewer Agent

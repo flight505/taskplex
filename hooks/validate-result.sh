@@ -19,6 +19,7 @@ if [ $? -ne 0 ] || [ -z "$AGENT_TYPE" ]; then
 fi
 
 STOP_HOOK_ACTIVE=$(echo "$HOOK_INPUT" | jq -r '.stop_hook_active // "false"' 2>/dev/null)
+LAST_MESSAGE=$(echo "$HOOK_INPUT" | jq -r '.last_assistant_message // ""' 2>/dev/null)
 
 # Prevent infinite validation loops
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
@@ -27,6 +28,24 @@ fi
 
 # Only validate implementer agents
 if [ "$AGENT_TYPE" != "implementer" ]; then
+  exit 0
+fi
+
+# Extract structured output from implementer's last message
+# Look for the JSON block with status field
+IMPL_STATUS=""
+RETRY_HINT=""
+if [ -n "$LAST_MESSAGE" ]; then
+  # Extract JSON block from the message (last ```json ... ``` block)
+  JSON_BLOCK=$(echo "$LAST_MESSAGE" | sed -n '/```json/,/```/p' | sed '1d;$d' | tail -n +1)
+  if [ -n "$JSON_BLOCK" ]; then
+    IMPL_STATUS=$(echo "$JSON_BLOCK" | jq -r '.status // ""' 2>/dev/null) || IMPL_STATUS=""
+    RETRY_HINT=$(echo "$JSON_BLOCK" | jq -r '.retry_hint // ""' 2>/dev/null) || RETRY_HINT=""
+  fi
+fi
+
+# Skip validation if implementer reported story as skipped (already implemented)
+if [ "$IMPL_STATUS" = "skipped" ]; then
   exit 0
 fi
 
@@ -93,6 +112,12 @@ if [ -z "$FAILURES" ]; then
 fi
 
 # Validation failed — block agent with error details
+# Include retry_hint from implementer's structured output if available
+if [ -n "$RETRY_HINT" ]; then
+  FAILURES="${FAILURES}Implementer's retry hint: ${RETRY_HINT}
+"
+fi
+
 # Truncate to 4000 chars (enough for meaningful diagnostics without overwhelming)
 TRUNCATED_FAILURES=$(echo "$FAILURES" | head -c 4000)
 

@@ -61,30 +61,26 @@ if [ ! -s "$TEMP_PRD" ]; then
   exit 0
 fi
 
-mv "$TEMP_PRD" "$PRD_FILE"
+if ! mv "$TEMP_PRD" "$PRD_FILE"; then
+  echo '{}' >&2
+  exit 0
+fi
 trap - EXIT
 
 # Get story details for context
 STORY_TITLE=$(jq -r --arg id "$NEXT_STORY" '.userStories[] | select(.id == $id) | .title' "$PRD_FILE" 2>/dev/null)
 STORY_CRITERIA=$(jq -r --arg id "$NEXT_STORY" '.userStories[] | select(.id == $id) | .acceptanceCriteria | join("; ")' "$PRD_FILE" 2>/dev/null)
 
-# Return assignment context
-ESCAPED_CONTEXT=$(cat <<TASK_CONTEXT | jq -Rs '.'
-## Assigned Story: ${NEXT_STORY}
-**Title:** ${STORY_TITLE}
-**Criteria:** ${STORY_CRITERIA}
-
-Implement this story following TDD discipline. When complete, output <promise>COMPLETE</promise>.
-TASK_CONTEXT
-)
-
-cat <<HOOK_OUTPUT
-{
-  "hookSpecificOutput": {
-    "hookEventName": "TeammateIdle",
-    "additionalContext": ${ESCAPED_CONTEXT}
-  }
-}
-HOOK_OUTPUT
+# Return assignment context — use jq --arg to safely handle special characters
+jq -n \
+  --arg id "$NEXT_STORY" \
+  --arg title "$STORY_TITLE" \
+  --arg criteria "$STORY_CRITERIA" \
+  '{
+    hookSpecificOutput: {
+      hookEventName: "TeammateIdle",
+      additionalContext: ("## Assigned Story: " + $id + "\n**Title:** " + $title + "\n**Criteria:** " + $criteria + "\n\nImplement this story following TDD discipline. When complete, output <promise>COMPLETE</promise>.")
+    }
+  }'
 
 exit 0

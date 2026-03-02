@@ -8,7 +8,7 @@ Ground truth for TaskPlex's design. For developer instructions and config schema
 
 ## 1. Overview & Philosophy
 
-TaskPlex is an **always-on autonomous development companion** for Claude Code. It provides 17 discipline skills, 5 subagents, and 4 hooks that together enable PRD-driven autonomous execution with TDD enforcement, verification gates, and two-stage code review.
+TaskPlex is an **always-on autonomous development companion** for Claude Code. It provides 17 discipline skills, 5 subagents, and 5 hooks that together enable PRD-driven autonomous execution with TDD enforcement, verification gates, and two-stage code review.
 
 **v5.0 design principle:** Leverage native Claude Code features instead of custom infrastructure.
 
@@ -16,7 +16,7 @@ TaskPlex is an **always-on autonomous development companion** for Claude Code. I
 |---------|---------------|--------------|
 | Memory | SQLite `knowledge.db` (526 lines) | `memory: project` in agent frontmatter |
 | Routing | `decision-call.sh` (332 lines) | `model:` field in agent frontmatter |
-| Parallelism | `parallel.sh` (787 lines) | `isolation: worktree` (native) |
+| Parallelism | `parallel.sh` (787 lines) | `isolation: worktree` on implementer (native) |
 | Task tracking | `progress.txt` + bash loop (2,361 lines) | `TaskCreate` / `TaskUpdate` (native) |
 | Orchestration | `taskplex.sh` bash loop | `subagent-driven-development` skill |
 
@@ -55,26 +55,30 @@ Skills are pure markdown — no runtime dependencies.
 | Agent | Model | Permission | maxTurns | Purpose |
 |-------|-------|------------|----------|---------|
 | architect | sonnet | dontAsk | 30 | Read-only codebase exploration (brainstorm) |
-| implementer | inherit | bypassPermissions | 150 | Code a single story (TDD + verify enforced) |
+| implementer | inherit | bypassPermissions | 150 | Code a single story (TDD + verify, worktree-isolated) |
 | reviewer | haiku | dontAsk | 40 | Spec compliance + validation (two-phase) |
 | code-reviewer | sonnet | dontAsk | 40 | Code quality review (opt-in) |
 | merger | haiku | bypassPermissions | 50 | Git branch operations |
 
 **Design decisions:**
+- `isolation: worktree` on implementer gives each story a clean, isolated workspace
+- `memory: project` is worktree-local (`.claude/agent-memory/`) — each story starts fresh. Cross-story context flows through the orchestrator's `learnings` field. Auto memory (`~/.claude/projects/`) IS shared across worktrees
 - `disallowedTools: [Task]` on implementer prevents subagent spawning
 - `disallowedTools: [Write, Edit, Task]` on reviewer/code-reviewer enforces read-only
 - `model: inherit` means implementer uses the user's configured model
-- `memory: project` on architect, implementer, reviewer, code-reviewer provides cross-run learning
 - `skills: [failure-analyzer, taskplex-tdd, taskplex-verify]` on implementer preloads discipline
 - `skills: [brainstorm]` on architect preloads brainstorming patterns
+- `skills: [receiving-code-review]` on reviewer preloads review evaluation patterns
+- `skills: [using-git-worktrees]` on merger preloads git worktree awareness
 
-### Layer 3: Hooks (4)
+### Layer 3: Hooks (5)
 
 | Event | Script | Type | Purpose |
 |-------|--------|------|---------|
 | SessionStart | `session-context.sh` | sync | Detect prd.json, inject using-taskplex awareness |
-| PreToolUse (Bash) | `check-destructive.sh` | sync | Block `git push --force`, `reset --hard`, etc. |
-| SubagentStop (implementer) | `validate-result.sh` | sync | Run test/build/typecheck, exit 2 if fail |
+| PreToolUse (Bash) | `check-destructive.sh` | sync | Block `git push --force`, `reset --hard`, etc. (with git status context) |
+| SubagentStop (implementer) | `validate-result.sh` | sync | Run test/build/typecheck, parse structured output, exit 2 if fail |
+| TaskCompleted | `task-completed.sh` | sync | Verify story reviewed + tests pass before task completion |
 | TeammateIdle | `teammate-idle.sh` | sync | Assign next story to idle Agent Teams teammate |
 
 Plus agent-scoped hooks in `implementer.md` frontmatter:
@@ -155,9 +159,11 @@ For each story in prd.json:
 
 **SessionStart: session-context.sh** — Fires on startup, resume, clear, compact. Detects `prd.json` and injects status summary. Hardened against malformed JSON.
 
-**PreToolUse: check-destructive.sh** — Blocks: `git push --force`, `git reset --hard`, `git clean -f`, direct pushes to main/master. Allows `--force-with-lease`.
+**PreToolUse: check-destructive.sh** — Blocks: `git push --force`, `git reset --hard`, `git clean -f`, direct pushes to main/master. Allows `--force-with-lease`. Includes git status in `permissionDecisionReason` for agent awareness on deny.
 
-**SubagentStop: validate-result.sh** — Reads `test_command`, `build_command`, `typecheck_command` from config. Runs each, collects failures. If any fail, returns `{"decision": "block", "reason": "..."}` — the implementer continues in the same context with error injected as feedback (self-healing loop). Prevents infinite loops via `stop_hook_active` check.
+**SubagentStop: validate-result.sh** — Reads `test_command`, `build_command`, `typecheck_command` from config. Extracts `last_assistant_message` to parse implementer's structured JSON output — skips validation if status is `"skipped"`, includes `retry_hint` in failure feedback. Runs each command, collects failures. If any fail, exits 2 — the implementer continues in the same context with error injected as feedback (self-healing loop). Prevents infinite loops via `stop_hook_active` check.
+
+**TaskCompleted: task-completed.sh** — Gates story task completion. Checks that the story has been reviewed (not still `in_progress` in prd.json) and that configured tests pass. Exits 2 to block premature completion. Only fires for tasks with US-XXX in the subject.
 
 **TeammateIdle: teammate-idle.sh** — Queries `prd.json` for next ready story (respects dependency order). Marks story as `in_progress`, returns assignment context.
 

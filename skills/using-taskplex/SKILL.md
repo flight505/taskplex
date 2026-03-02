@@ -11,6 +11,8 @@ If you think there is even a 1% chance a TaskPlex skill might apply to what you 
 IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
 
 This is not negotiable. This is not optional. You cannot rationalize your way out of this.
+
+**Autonomous invocation:** When the decision flow routes to a skill, use the **Skill tool** to invoke it directly — do NOT tell the user to type a slash command. You have the Skill tool available. Use it.
 </EXTREMELY-IMPORTANT>
 
 ## TaskPlex Skill Catalog
@@ -36,9 +38,9 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 
 ## Decision Flow
 
-1. **Active prd.json?** → Report status + offer `/taskplex:start` resume
+1. **Active prd.json?** → Report status + invoke `taskplex:start` via the Skill tool to resume
 2. **Bug/failure?** → `systematic-debugging` (root cause FIRST)
-3. **Feature described?** → `brainstorm` (if novel/ambiguous) → `prd-generator`
+3. **Feature described?** → `brainstorm` (if novel/ambiguous) → invoke `prd-generator` via the Skill tool
 4. **Plan exists?** → `subagent-driven-development` (same session) or `executing-plans` (separate)
 5. **Need plan?** → `writing-plans`
 6. **2+ independent tasks?** → `dispatching-parallel-agents`

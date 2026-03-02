@@ -206,6 +206,14 @@ Ready to implement auth feature
 - Auto-detect and run project setup
 - Verify clean test baseline
 
+## Memory Behavior in Worktrees
+
+**Auto memory** (`~/.claude/projects/<project>/memory/`) is shared across all git worktrees of the same repository — stored outside the repo, keyed by repo identity.
+
+**Agent memory** (`memory: project` → `.claude/agent-memory/`) is stored inside the working directory. In a worktree, this means agent learnings are local to that worktree and discarded on cleanup. To persist learnings across stories, use `memory: user` (stores at `~/.claude/agent-memory/`, always shared) or rely on the structured output's `learnings` field, which the orchestrating conversation captures.
+
+The implementer agent uses `isolation: worktree` + `memory: project`. Each story starts with a fresh workspace and no prior agent memory — this is intentional: clean context prevents stale assumptions. Cross-story context flows through the orchestrator (subagent-driven-development skill), not through agent memory.
+
 ## Integration
 
 **Called by:**

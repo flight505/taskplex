@@ -214,9 +214,9 @@ git log --oneline -10
 | Document | Purpose |
 |----------|---------|
 | **CLAUDE.md** | Developer quick-reference (config, agents, testing) |
-| **TASKPLEX-ARCHITECTURE.md** | Architecture deep dive (3 layers, data flow, hooks) |
+| **TASKPLEX-ARCHITECTURE.md** | Single source of truth for architecture, components, competitive position |
 | **CHANGELOG.md** | Version history |
-| **docs/archive/** | Historical design documents |
+| **docs/diagrams/** | Architecture diagrams |
 
 ---
 

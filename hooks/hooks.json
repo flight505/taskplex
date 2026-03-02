@@ -39,6 +39,18 @@
         ]
       }
     ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/task-completed.sh",
+            "statusMessage": "Validating story completion...",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
     "TeammateIdle": [
       {
         "hooks": [

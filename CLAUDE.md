@@ -21,16 +21,17 @@ taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
 ├── agents/                            # 5 registered subagents
 │   ├── architect.md                   # Read-only codebase explorer (brainstorm)
-│   ├── implementer.md                 # Code a single story (TDD + verify)
+│   ├── implementer.md                 # Code a single story (TDD + verify, worktree-isolated)
 │   ├── reviewer.md                    # Spec compliance + validation (merged validator+spec-reviewer)
 │   ├── code-reviewer.md              # Code quality review (opt-in)
 │   └── merger.md                      # Git branch operations
 ├── commands/start.md                  # Interactive wizard
 ├── skills/                            # 17 skills: brainstorm + 14 adapted Superpowers + failure-analyzer + using-taskplex gate
 ├── hooks/
-│   ├── hooks.json                     # 4 hooks across 4 events
+│   ├── hooks.json                     # 5 hooks across 5 events
 │   ├── session-context.sh             # SessionStart: inject using-taskplex awareness
-│   ├── validate-result.sh             # SubagentStop: run test/build/typecheck
+│   ├── validate-result.sh             # SubagentStop: run test/build/typecheck + parse structured output
+│   ├── task-completed.sh              # TaskCompleted: verify story reviewed + tests pass
 │   └── teammate-idle.sh               # TeammateIdle: story assignment
 ├── scripts/
 │   ├── check-deps.sh                  # Dependency verification
@@ -45,7 +46,7 @@ taskplex/
 | Agent | Model | Permission | Tools | Purpose |
 |-------|-------|------------|-------|---------|
 | architect | sonnet | dontAsk | Read, Grep, Glob, Bash | Read-only codebase explorer (brainstorm phase) |
-| implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify REQUIRED) |
+| implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify, worktree-isolated) |
 | reviewer | haiku | dontAsk | Read, Grep, Glob, Bash | Spec compliance + validation (two-phase) |
 | code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | Code quality review (opt-in) |
 | merger | haiku | bypassPermissions | Bash, Read, Grep | Git branch operations |

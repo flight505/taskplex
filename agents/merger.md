@@ -12,6 +12,8 @@ disallowedTools:
 model: haiku
 permissionMode: bypassPermissions
 maxTurns: 50
+skills:
+  - using-git-worktrees
 ---
 
 # Merger Agent
