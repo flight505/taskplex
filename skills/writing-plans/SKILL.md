@@ -33,7 +33,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use taskplex:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use taskplex:guided-implementation to implement this plan task-by-task.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -102,7 +102,7 @@ After saving the plan, offer execution choice:
 
 **1. Subagent-Driven (this session)** - I dispatch fresh subagent per task, review between tasks, fast iteration
 
-**2. Parallel Session (separate)** - Open new session with executing-plans, batch execution with checkpoints
+**2. Parallel Session (separate)** - Open new session with guided-implementation, batch execution with checkpoints
 
 **Which approach?"**
 
@@ -113,4 +113,4 @@ After saving the plan, offer execution choice:
 
 **If Parallel Session chosen:**
 - Guide them to open new session in worktree
-- **REQUIRED SUB-SKILL:** New session uses taskplex:executing-plans
+- **REQUIRED SUB-SKILL:** New session uses taskplex:guided-implementation

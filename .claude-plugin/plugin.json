@@ -38,8 +38,9 @@
     "./skills/receiving-code-review",
     "./skills/subagent-driven-development",
     "./skills/writing-skills",
-    "./skills/executing-plans",
-    "./skills/writing-plans"
+    "./skills/guided-implementation",
+    "./skills/writing-plans",
+    "./skills/focused-task"
   ],
   "agents": [
     "./agents/architect.md",

@@ -1,9 +1,9 @@
 ---
-name: executing-plans
-description: Use when you have a written implementation plan to execute in a separate session with review checkpoints
+name: guided-implementation
+description: "Use when you have a written implementation plan to execute inline with human review checkpoints between batches. YOU (Claude) implement directly — no agent dispatch. For autonomous agent execution, use subagent-driven-development instead."
 ---
 
-# Executing Plans
+# Guided Implementation
 
 ## Overview
 
@@ -11,7 +11,17 @@ Load plan, review critically, execute tasks in batches, report for review betwee
 
 **Core principle:** Batch execution with checkpoints for architect review.
 
-**Announce at start:** "I'm using the executing-plans skill to implement this plan."
+**Announce at start:** "I'm using the guided-implementation skill to implement this plan."
+
+## How This Differs
+
+| Aspect | Guided Implementation | Subagent-Driven Development |
+|--------|----------------------|----------------------------|
+| **Who implements** | You (Claude) directly | Fresh subagent per task |
+| **Review style** | Human checkpoints between batches | Automated two-stage review |
+| **Session** | Can be same or separate session | Same session |
+| **Best for** | Plans needing human judgment at each step | Independent tasks with clear acceptance criteria |
+| **Context** | Accumulates across batch | Fresh per task (no pollution) |
 
 ## The Process
 

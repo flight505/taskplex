@@ -1,6 +1,6 @@
 # TaskPlex Architecture
 
-**Version 5.0.0** | Last Updated: 2026-02-28
+**Version 5.2.0** | Last Updated: 2026-03-03
 
 Ground truth for TaskPlex's design. For developer instructions and config schema, see [CLAUDE.md](./CLAUDE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -8,7 +8,7 @@ Ground truth for TaskPlex's design. For developer instructions and config schema
 
 ## 1. Overview & Philosophy
 
-TaskPlex is an **always-on autonomous development companion** for Claude Code. It provides 17 discipline skills, 5 subagents, and 5 hooks that together enable PRD-driven autonomous execution with TDD enforcement, verification gates, and two-stage code review.
+TaskPlex is an **always-on autonomous development companion** for Claude Code. It provides 18 discipline skills, 5 subagents, and 5 hooks that together enable PRD-driven autonomous execution with TDD enforcement, verification gates, and two-stage code review.
 
 **v5.0 design principle:** Leverage native Claude Code features instead of custom infrastructure.
 
@@ -33,7 +33,7 @@ TaskPlex is an **always-on autonomous development companion** for Claude Code. I
 
 ## 2. Three-Layer Architecture
 
-### Layer 1: Skills (17)
+### Layer 1: Skills (18)
 
 Skills are the core value — discipline patterns that shape how Claude works:
 
@@ -41,8 +41,8 @@ Skills are the core value — discipline patterns that shape how Claude works:
 |----------|--------|---------|
 | **Gate** | using-taskplex | Always-on 1% routing gate |
 | **Discipline** | taskplex-tdd, taskplex-verify | TDD enforcement, verification gates |
-| **Planning** | brainstorm, prd-generator, prd-converter, writing-plans, executing-plans | Idea → PRD → execution format |
-| **Execution** | subagent-driven-development, dispatching-parallel-agents | Task dispatch patterns |
+| **Planning** | brainstorm, prd-generator, prd-converter, writing-plans | Idea → PRD → execution format |
+| **Execution** | focused-task, subagent-driven-development, guided-implementation, dispatching-parallel-agents | Task dispatch patterns (scale-aware) |
 | **Git** | using-git-worktrees, finishing-a-development-branch | Branch lifecycle |
 | **Review** | requesting-code-review, receiving-code-review | Code review workflow |
 | **Diagnosis** | failure-analyzer, systematic-debugging | Error categorization |
@@ -101,6 +101,7 @@ Session starts
     │   └─ Injects status summary into conversation context
     │
     ├─ using-taskplex skill auto-triggers on relevant prompts
+    │   ├─ Routes to focused-task if well-scoped (1-5 files)
     │   ├─ Routes to brainstorm if exploration needed
     │   ├─ Routes to prd-generator/prd-converter if PRD needed
     │   └─ Routes to taskplex:start if execution needed
@@ -244,6 +245,7 @@ The `taskplex-tdd` skill includes tables of common rationalizations for skipping
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 5.2.0 | 2026-03-03 | Workflow refactoring: focused-task skill, executing-plans→guided-implementation rename, resume intelligence, code review boundaries |
 | 5.0.0 | 2026-02-28 | Remove orchestration, leverage native Claude Code. 6→5 agents, 13→4 hooks, 24→8 config options, monitor extracted |
 | 4.1.0 | 2026-02-27 | SSC spec hardening, Bayesian confidence tracking |
 | 4.0.0 | 2026-02-26 | SOTA transformation: brainstorm, 17 skills, rule-based routing, reward hacking prevention |

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 5.0.0** | Last Updated: 2026-02-28
+**Version 5.2.0** | Last Updated: 2026-03-03
 
 Developer instructions for the TaskPlex plugin. For architecture details, see [TASKPLEX-ARCHITECTURE.md](./TASKPLEX-ARCHITECTURE.md). For version history, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -8,7 +8,7 @@ Developer instructions for the TaskPlex plugin. For architecture details, see [T
 
 ## Overview
 
-TaskPlex is an **always-on autonomous development companion** — brainstorming + 17 skills (adapted, MIT licensed from Jesse Vincent's Superpowers) + PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery. Leverages native Claude Code features (`memory: project`, `model:` frontmatter, `isolation: worktree`, `TaskCreate`/`TaskUpdate`) instead of custom orchestration.
+TaskPlex is an **always-on autonomous development companion** — brainstorming + 18 skills (adapted, MIT licensed from Jesse Vincent's Superpowers) + PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery. Leverages native Claude Code features (`memory: project`, `model:` frontmatter, `isolation: worktree`, `TaskCreate`/`TaskUpdate`) instead of custom orchestration.
 
 **Philosophy:** Always-on awareness, challenge assumptions first, discipline before code, precise PRD, lean context, fresh context per task, resilient error recovery.
 
@@ -26,7 +26,7 @@ taskplex/
 │   ├── code-reviewer.md              # Code quality review (opt-in)
 │   └── merger.md                      # Git branch operations
 ├── commands/start.md                  # Interactive wizard
-├── skills/                            # 17 skills: brainstorm + 14 adapted Superpowers + failure-analyzer + using-taskplex gate
+├── skills/                            # 18 skills: brainstorm + 14 adapted Superpowers + failure-analyzer + focused-task + using-taskplex gate
 ├── hooks/
 │   ├── hooks.json                     # 5 hooks across 5 events
 │   ├── session-context.sh             # SessionStart: inject using-taskplex awareness

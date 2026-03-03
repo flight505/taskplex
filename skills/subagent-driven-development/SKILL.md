@@ -17,7 +17,7 @@ digraph when_to_use {
     "Tasks mostly independent?" [shape=diamond];
     "Stay in this session?" [shape=diamond];
     "subagent-driven-development" [shape=box];
-    "executing-plans" [shape=box];
+    "guided-implementation" [shape=box];
     "Manual execution or brainstorm first" [shape=box];
 
     "Have implementation plan?" -> "Tasks mostly independent?" [label="yes"];
@@ -25,11 +25,11 @@ digraph when_to_use {
     "Tasks mostly independent?" -> "Stay in this session?" [label="yes"];
     "Tasks mostly independent?" -> "Manual execution or brainstorm first" [label="no - tightly coupled"];
     "Stay in this session?" -> "subagent-driven-development" [label="yes"];
-    "Stay in this session?" -> "executing-plans" [label="no - parallel session"];
+    "Stay in this session?" -> "guided-implementation" [label="no - parallel session"];
 }
 ```
 
-**vs. Executing Plans (parallel session):**
+**vs. Guided Implementation (parallel session):**
 - Same session (no context switch)
 - Fresh subagent per task (no context pollution)
 - Two-stage review after each task: reviewer (spec + validation) first, then code quality
@@ -82,6 +82,51 @@ digraph process {
 }
 ```
 
+## Resume Logic
+
+When resuming an interrupted run with an existing prd.json, detect and skip completed stories.
+
+### Step 1: Detect State
+
+```bash
+jq '{
+  total: (.stories | length),
+  done: [.stories[] | select(.passes == true)] | length,
+  skipped: [.stories[] | select(.status == "skipped")] | length,
+  in_progress: [.stories[] | select(.status == "in_progress")] | length,
+  pending: [.stories[] | select(.passes != true and .status != "skipped" and .status != "in_progress")] | length
+}' prd.json
+```
+
+### Step 2: Skip Completed
+
+- `passes: true` → Done. Skip entirely.
+- `status: "skipped"` → Intentionally skipped. Skip.
+- `status: "in_progress"` → Interrupted. Check `git log --oneline -5` for partial commits. If commits exist, dispatch reviewer first to assess state. If no commits, treat as pending.
+
+### Step 3: Report and Continue
+
+```
+Resuming interrupted run:
+- X/Y stories complete
+- Z stories skipped
+- Starting from: US-NNN (<story title>)
+```
+
+Start from first pending story.
+
+### Step 4: Carry Forward Learnings
+
+Include `learnings` from completed stories in subsequent implementer context:
+
+```
+Previous stories discovered:
+- [learning from US-001]
+- [learning from US-002]
+```
+
+This prevents repeated mistakes and shares codebase insights across stories.
+
 ## Prompt Templates
 
 - `./implementer-prompt.md` - Dispatch implementer subagent
@@ -133,7 +178,7 @@ Task 2: Recovery modes
 - Parallel-safe (subagents don't interfere)
 - Subagent can ask questions (before AND during work)
 
-**vs. Executing Plans:**
+**vs. Guided Implementation:**
 - Same session (no handoff)
 - Continuous progress (no waiting)
 - Review checkpoints automatic
@@ -160,6 +205,8 @@ Task 2: Recovery modes
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before reviewer approves** (wrong order)
 - Move to next task while either review has open issues
+- Re-implement stories that already have `passes: true` in prd.json
+- Skip the resume check when prd.json already has completed stories
 
 **If subagent asks questions:**
 - Answer clearly and completely
@@ -179,13 +226,18 @@ Task 2: Recovery modes
 ## Integration
 
 **Required workflow skills:**
-- **taskplex:using-git-worktrees** - REQUIRED: Set up isolated workspace before starting
-- **taskplex:writing-plans** - Creates the plan this skill executes
-- **taskplex:requesting-code-review** - Code review template for reviewer subagents
-- **taskplex:finishing-a-development-branch** - Complete development after all tasks
+- **taskplex:using-git-worktrees** — REQUIRED: Set up isolated workspace before starting
+- **taskplex:finishing-a-development-branch** — REQUIRED: Complete development after all tasks
+
+**Plan sources (one of):**
+- **prd.json** — Created by /taskplex:start wizard (prd-generator → prd-converter). Stories extracted directly as tasks.
+- **Plan document** — Created by taskplex:writing-plans. Tasks extracted from markdown structure.
+
+**Review templates:**
+- **taskplex:requesting-code-review** — Code review template for reviewer subagents
 
 **Subagents should use:**
-- **taskplex:taskplex-tdd** - Subagents follow TDD for each task
+- **taskplex:taskplex-tdd** — Subagents follow TDD for each task
 
 **Alternative workflow:**
-- **taskplex:executing-plans** - Use for parallel session instead of same-session execution
+- **taskplex:guided-implementation** — Use for human-guided inline execution instead of agent dispatch

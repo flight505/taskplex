@@ -219,7 +219,8 @@ The implementer agent uses `isolation: worktree` + `memory: project`. Each story
 **Called by:**
 - **taskplex:prd-generator** (Phase 4) - REQUIRED when design is approved and implementation follows
 - **taskplex:subagent-driven-development** - REQUIRED before executing any tasks
-- **taskplex:executing-plans** - REQUIRED before executing any tasks
+- **taskplex:guided-implementation** - REQUIRED before executing any tasks
+- **taskplex:focused-task** - REQUIRED for isolated workspace
 - Any skill needing isolated workspace
 
 **Pairs with:**

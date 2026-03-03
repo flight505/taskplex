@@ -44,7 +44,7 @@ The plugin activates automatically via hooks — no need to invoke `/taskplex:st
 
 - **SessionStart hook** detects active `prd.json` and injects status
 - **using-taskplex skill** (1% gate) routes to the right workflow
-- **17 skills** covering the full development lifecycle
+- **18 skills** covering the full development lifecycle
 
 ### Brainstorming
 
@@ -144,7 +144,8 @@ Each agent follows **least privilege** — only the tools needed for its role. F
 | **systematic-debugging** | Bug, test failure, or unexpected behavior |
 | **failure-analyzer** | Implementation fails with unclear error |
 | **writing-plans** | Need detailed task-by-task plan |
-| **executing-plans** | Executing plan in separate session |
+| **focused-task** | Well-scoped task (1-5 files) without PRD |
+| **guided-implementation** | Executing plan inline with human checkpoints |
 | **subagent-driven-development** | Executing plan in current session |
 | **dispatching-parallel-agents** | 2+ independent tasks |
 | **using-git-worktrees** | Feature work needs isolation |

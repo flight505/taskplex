@@ -4,6 +4,32 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v5.2.0 (2026-03-03)
+
+**Workflow Refactoring — Scale-Aware Routing, Resume Intelligence, Clear Boundaries:**
+
+**Added:**
+- `skills/focused-task/SKILL.md` — Lightweight inline implementation path for well-scoped tasks (1-5 files). No PRD, no prd.json, no agent dispatch. TDD discipline without ceremony.
+- Resume logic in `subagent-driven-development` — Detects completed stories on interrupted runs, skips them, carries forward learnings to subsequent stories.
+- "Standalone vs. Built-In" section in `requesting-code-review` — Clarifies when code review is automatic (subagent-driven-development) vs. manual invocation (focused-task, guided-implementation, ad-hoc).
+- Scale-aware routing in `using-taskplex` decision flow — 1-5 files routes to focused-task, 6+ files routes to PRD.
+
+**Changed:**
+- `skills/executing-plans/` → `skills/guided-implementation/` — Renamed to clarify that this is human-guided inline execution, distinct from autonomous agent dispatch. Added "How This Differs" comparison table.
+- `skills/subagent-driven-development/SKILL.md` — Integration section now lists prd.json and plan documents as alternative input paths (was: writing-plans REQUIRED). Added resume red flags.
+- `skills/using-taskplex/SKILL.md` — Skill catalog updated (added focused-task, renamed guided-implementation). Decision flow now has scale-aware feature routing. Red flags table updated with nuanced PRD threshold.
+- `skills/requesting-code-review/SKILL.md` — Mandatory list rewritten for standalone contexts. Integration section clarifies automatic vs. manual invocation per workflow.
+- `skills/writing-plans/SKILL.md` — Updated 3 references from executing-plans to guided-implementation.
+- `skills/finishing-a-development-branch/SKILL.md` — Updated reference from executing-plans to guided-implementation.
+- `.claude-plugin/plugin.json` — Skills array: executing-plans → guided-implementation, added focused-task (17→18 skills).
+- `CLAUDE.md` — Architecture tree updated, skill count 17→18.
+- `TASKPLEX-ARCHITECTURE.md` — Layer 1 skills table updated, data flow updated, skill count 17→18.
+
+**Removed:**
+- `skills/executing-plans/` — Replaced by `skills/guided-implementation/` (content preserved, name and description changed).
+
+---
+
 ### v5.0.0 (2026-02-28)
 
 **Remove Orchestration, Leverage Native Claude Code:**
