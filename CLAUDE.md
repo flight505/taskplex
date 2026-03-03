@@ -46,7 +46,7 @@ taskplex/
 | Agent | Model | Permission | Tools | Purpose |
 |-------|-------|------------|-------|---------|
 | architect | sonnet | dontAsk | Read, Grep, Glob, Bash | Read-only codebase explorer (brainstorm phase) |
-| implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify, worktree-isolated) |
+| implementer | inherit | bypassPermissions | Bash, Read, Edit, Write, Glob, Grep | Code a single story (TDD + verify, runs in orchestrator's worktree) |
 | reviewer | haiku | dontAsk | Read, Grep, Glob, Bash | Spec compliance + validation (two-phase) |
 | code-reviewer | sonnet | dontAsk | Read, Grep, Glob, Bash | Code quality review (opt-in) |
 | merger | haiku | bypassPermissions | Bash, Read, Grep | Git branch operations |

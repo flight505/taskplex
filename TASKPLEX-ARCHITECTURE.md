@@ -16,7 +16,7 @@ TaskPlex is an **always-on autonomous development companion** for Claude Code. I
 |---------|---------------|--------------|
 | Memory | SQLite `knowledge.db` (526 lines) | `memory: project` in agent frontmatter |
 | Routing | `decision-call.sh` (332 lines) | `model:` field in agent frontmatter |
-| Parallelism | `parallel.sh` (787 lines) | `isolation: worktree` on implementer (native) |
+| Parallelism | `parallel.sh` (787 lines) | Orchestrator-level worktree via `using-git-worktrees` skill |
 | Task tracking | `progress.txt` + bash loop (2,361 lines) | `TaskCreate` / `TaskUpdate` (native) |
 | Orchestration | `taskplex.sh` bash loop | `subagent-driven-development` skill |
 
@@ -55,13 +55,13 @@ Skills are pure markdown — no runtime dependencies.
 | Agent | Model | Permission | maxTurns | Purpose |
 |-------|-------|------------|----------|---------|
 | architect | sonnet | dontAsk | 30 | Read-only codebase exploration (brainstorm) |
-| implementer | inherit | bypassPermissions | 150 | Code a single story (TDD + verify, worktree-isolated) |
+| implementer | inherit | bypassPermissions | 150 | Code a single story (TDD + verify, runs in orchestrator's worktree) |
 | reviewer | haiku | dontAsk | 40 | Spec compliance + validation (two-phase) |
 | code-reviewer | sonnet | dontAsk | 40 | Code quality review (opt-in) |
 | merger | haiku | bypassPermissions | 50 | Git branch operations |
 
 **Design decisions:**
-- `isolation: worktree` on implementer gives each story a clean, isolated workspace
+- Worktree isolation is handled at orchestration level (`using-git-worktrees` skill) — the implementer runs inside the orchestrator's worktree, not its own. This avoids nested worktree issues with Claude Code's agent system.
 - `memory: project` is worktree-local (`.claude/agent-memory/`) — each story starts fresh. Cross-story context flows through the orchestrator's `learnings` field. Auto memory (`~/.claude/projects/`) IS shared across worktrees
 - `disallowedTools: [Task]` on implementer prevents subagent spawning
 - `disallowedTools: [Write, Edit, Task]` on reviewer/code-reviewer enforces read-only
@@ -225,7 +225,7 @@ The `taskplex-tdd` skill includes tables of common rationalizations for skipping
 | v4.x Component | v5.0 Replacement | Lines Removed |
 |----------------|------------------|---------------|
 | `taskplex.sh` | `subagent-driven-development` skill | 2,361 |
-| `parallel.sh` | Native `isolation: worktree` | 787 |
+| `parallel.sh` | Orchestrator-level worktree (`using-git-worktrees`) | 787 |
 | `knowledge-db.sh` | `memory: project` in frontmatter | 526 |
 | `decision-call.sh` | `model:` in agent frontmatter | 332 |
 | `teams.sh` | Agent Teams (native) | 123 |

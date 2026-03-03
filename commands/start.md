@@ -9,7 +9,7 @@ allowed-tools: Bash, Read, Write, Edit, Task, AskUserQuestion
 
 **Active state detection:**
 
-!`if [ -f prd.json ]; then echo "EXISTING_PRD=true"; jq '{project: .project, stories: (.userStories | length), done: [.userStories[] | select(.passes == true)] | length, pending: [.userStories[] | select(.passes == false and .status != "skipped" and .status != "rewritten")] | length}' prd.json 2>/dev/null; else echo "EXISTING_PRD=false"; fi`
+!`if [ -f prd.json ]; then echo "EXISTING_PRD=true"; jq '{project: .project, stories: (.userStories | length), done: [.userStories[] | select(.passes == true)] | length, pending: [.userStories[] | select(.passes == false and ((.status == "skipped") | not) and ((.status == "rewritten") | not))] | length}' prd.json 2>/dev/null; else echo "EXISTING_PRD=false"; fi`
 
 !`if [ -f .claude/taskplex.config.json ]; then echo "EXISTING_CONFIG=true"; else echo "EXISTING_CONFIG=false"; fi`
 

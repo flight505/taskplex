@@ -11,7 +11,6 @@ tools:
 disallowedTools:
   - Task
 model: inherit
-isolation: worktree
 permissionMode: bypassPermissions
 maxTurns: 150
 memory: project

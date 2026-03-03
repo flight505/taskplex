@@ -76,7 +76,7 @@ v5.0 leverages native features instead of custom infrastructure:
 |---------|---------------|--------------|
 | Memory | SQLite knowledge.db | `memory: project` in agent frontmatter |
 | Routing | decision-call.sh + Opus calls | `model:` field in agent frontmatter |
-| Parallelism | parallel.sh + wave orchestration | `isolation: worktree` (native) |
+| Parallelism | parallel.sh + wave orchestration | Orchestrator-level worktree (`using-git-worktrees`) |
 | Task tracking | progress.txt + bash loop | `TaskCreate` / `TaskUpdate` (native) |
 | Orchestration | taskplex.sh (2,361 lines) | subagent-driven-development skill |
 

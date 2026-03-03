@@ -212,7 +212,7 @@ Ready to implement auth feature
 
 **Agent memory** (`memory: project` → `.claude/agent-memory/`) is stored inside the working directory. In a worktree, this means agent learnings are local to that worktree and discarded on cleanup. To persist learnings across stories, use `memory: user` (stores at `~/.claude/agent-memory/`, always shared) or rely on the structured output's `learnings` field, which the orchestrating conversation captures.
 
-The implementer agent uses `isolation: worktree` + `memory: project`. Each story starts with a fresh workspace and no prior agent memory — this is intentional: clean context prevents stale assumptions. Cross-story context flows through the orchestrator (subagent-driven-development skill), not through agent memory.
+The implementer agent runs inside the orchestrator's worktree (created by this skill) with `memory: project`. It does NOT use `isolation: worktree` in its own frontmatter — that caused nested worktree failures in Claude Code's agent system. Each story starts with fresh context (no prior agent memory). Cross-story context flows through the orchestrator (subagent-driven-development skill), not through agent memory.
 
 ## Integration
 
