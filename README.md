@@ -4,11 +4,11 @@
   <img src="./assets/TaskPlex_Hero@0.5x.png" alt="TaskPlex - Always-On Development Companion" width="800" />
 </p>
 
-[![Version](https://img.shields.io/badge/version-6.0.0-blue.svg)](https://github.com/flight505/taskplex)
+[![Version](https://img.shields.io/badge/version-6.1.0-blue.svg)](https://github.com/flight505/taskplex)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://github.com/anthropics/claude-code)
 
-Always-on development companion for Claude Code. TDD enforcement, verification gates, systematic debugging, code review, and disciplined workflows — powered by pure-markdown skills and zero runtime dependencies.
+Always-on development companion for Claude Code. TDD enforcement, verification gates, systematic debugging, code review, E2E testing, and disciplined workflows — powered by pure-markdown skills and zero runtime dependencies.
 
 **For larger projects (6+ files, PRD-driven):** Use [SDK-Bridge](https://github.com/flight505/sdk-bridge).
 
@@ -18,17 +18,18 @@ Always-on development companion for Claude Code. TDD enforcement, verification g
 
 TaskPlex activates automatically via a `SessionStart` hook that injects the `using-taskplex` skill into every conversation. This skill routes to the right workflow based on what you're doing — no explicit invocation needed.
 
-**Three shortcuts for common workflows:**
+**Four shortcuts for common workflows:**
 
 | Command | Skill | When |
 |---------|-------|------|
 | `/brainstorm` | brainstorm | Before creating anything new |
 | `/write-plan` | writing-plans | Need a task-by-task plan |
 | `/execute-plan` | guided-implementation | Execute a plan with review checkpoints |
+| `/e2e-test` | e2e-testing | Systematic end-to-end testing of your application |
 
 ---
 
-## Skills (14)
+## Skills (15)
 
 | Skill | Triggers When |
 |-------|--------------|
@@ -46,6 +47,7 @@ TaskPlex activates automatically via a `SessionStart` hook that injects the `usi
 | **writing-plans** | Need detailed task-by-task plan |
 | **writing-skills** | Creating or editing skills |
 | **using-taskplex** | Always-on routing gate |
+| **e2e-testing** | User invokes `/e2e-test` for systematic journey testing |
 
 ---
 
@@ -74,6 +76,7 @@ TaskPlex activates automatically via a `SessionStart` hook that injects the `usi
 - `/brainstorm` — Explore requirements before jumping to code
 - `/write-plan` — Create a detailed implementation plan
 - `/execute-plan` — Execute a plan with batch review checkpoints
+- `/e2e-test` — Research all user journeys, then test every path with evidence
 
 ---
 
@@ -81,18 +84,19 @@ TaskPlex activates automatically via a `SessionStart` hook that injects the `usi
 
 ```
 taskplex/
-├── .claude-plugin/plugin.json     # v6.0.0
+├── .claude-plugin/plugin.json     # v6.1.0
 ├── agents/
 │   └── code-reviewer.md           # Code quality review agent
-├── commands/                      # 3 shortcuts
+├── commands/                      # 4 shortcuts
 │   ├── brainstorm.md
 │   ├── write-plan.md
-│   └── execute-plan.md
+│   ├── execute-plan.md
+│   └── e2e-test.md
 ├── hooks/                         # 1 hook (SessionStart)
 │   ├── hooks.json
 │   ├── run-hook.cmd
 │   └── session-start
-└── skills/                        # 14 skills
+└── skills/                        # 15 skills
     ├── brainstorm/
     ├── test-driven-development/
     ├── verification-before-completion/
@@ -106,20 +110,27 @@ taskplex/
     ├── guided-implementation/
     ├── writing-plans/
     ├── writing-skills/
-    └── using-taskplex/
+    ├── using-taskplex/
+    └── e2e-testing/
 ```
 
 | Component | Count | Notes |
 |-----------|-------|-------|
-| Skills | 14 | Discipline patterns (TDD, debugging, verification, etc.) |
-| Commands | 3 | Shortcut entry points to key skills |
+| Skills | 15 | Discipline patterns (TDD, debugging, verification, E2E testing, etc.) |
+| Commands | 4 | Shortcut entry points to key skills |
 | Hooks | 1 | SessionStart injects skill awareness |
 | Agents | 1 | code-reviewer (dispatched by requesting-code-review) |
 | Config | 0 | No configuration files needed |
 
 ---
 
-## What Changed in v6.0.0
+## What's New
+
+### v6.1.0
+
+Added `/e2e-test` command and `e2e-testing` skill — systematic end-to-end testing that works for web apps, APIs, CLIs, and desktop applications. Launches 3 parallel research sub-agents to map all user journeys, state flows, and risk areas, then lets you choose between writing permanent test files (TDD) or running an exploratory testing session with evidence collection.
+
+### v6.0.0
 
 Stripped heavy orchestration infrastructure — PRD pipeline, config system, shell scripts — in favor of pure discipline skills. Heavy project execution moved to [SDK-Bridge](https://github.com/flight505/sdk-bridge).
 
@@ -128,7 +139,7 @@ Stripped heavy orchestration infrastructure — PRD pipeline, config system, she
 | 5 registered agents | 1 (code-reviewer) |
 | 5 hooks across 5 events | 1 hook (SessionStart) |
 | 8 config options | 0 |
-| `/taskplex:start` wizard | 3 shortcut commands |
+| `/taskplex:start` wizard | Shortcut commands |
 | PRD pipeline (generator + converter) | Removed (use SDK-Bridge) |
 | Shell scripts (check-deps, check-git, check-destructive) | Removed |
 
