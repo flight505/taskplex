@@ -141,6 +141,10 @@ Tests passing (<N> tests, 0 failures)
 Ready to implement <feature-name>
 ```
 
+### Context Continuity
+
+Project configs and auto memory are shared across all worktrees of the same repository (Claude Code 2.1.63+). Architectural decisions, naming conventions, and workflow preferences saved to auto memory in the main session are automatically available in worktree subagents — no manual context passing needed.
+
 ## Quick Reference
 
 | Situation | Action |

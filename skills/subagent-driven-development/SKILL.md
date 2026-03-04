@@ -182,6 +182,7 @@ Done!
 - Controller curates exactly what context is needed
 - Subagent gets complete information upfront
 - Questions surfaced before work begins (not after)
+- Auto memory is shared across worktrees (2.1.63+) — context from brainstorm automatically available to worktree subagents
 
 **Quality gates:**
 - Self-review catches issues before handoff

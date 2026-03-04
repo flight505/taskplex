@@ -67,6 +67,7 @@ digraph brainstorming {
 - Propose 2-3 different approaches with trade-offs
 - Present options conversationally with your recommendation and reasoning
 - Lead with your recommended option and explain why
+- On Opus 4.6, type "ultrathink" before approving approaches for deeper tradeoff analysis
 
 **Presenting the design:**
 - Once you believe you understand what you're building, present the design

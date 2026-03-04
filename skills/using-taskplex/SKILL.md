@@ -54,6 +54,16 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 8. **Review feedback?** → `receiving-code-review`
 9. **Work complete?** → `finishing-a-development-branch`
 
+**Tip:** For complex brainstorm or multi-task planning on Opus 4.6, type "ultrathink" before your message to request deeper reasoning.
+
+## TaskPlex vs Built-in CLI Commands
+
+The CLI includes `/simplify` (3 parallel review agents) and `/batch` (autonomous worktree-isolated agents). These are fast but have no discipline gates. TaskPlex skills complement them:
+
+- `/batch` does large-scale autonomous work — TaskPlex enforces TDD, spec compliance, and human checkpoints
+- `/simplify` does quick code review — TaskPlex's two-stage review catches spec drift, not just code quality
+- Use CLI commands for speed when discipline is less critical; use TaskPlex skills when correctness matters
+
 ## Red Flags — STOP, You're Rationalizing
 
 | Thought | Reality |
