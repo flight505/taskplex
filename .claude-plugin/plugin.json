@@ -38,8 +38,9 @@
     "./skills/guided-implementation",
     "./skills/writing-plans",
     "./skills/writing-skills",
-    "./skills/using-taskplex",
-    "./skills/focused-task",
-    "./skills/failure-analyzer"
+    "./skills/using-taskplex"
+  ],
+  "agents": [
+    "./agents/code-reviewer.md"
   ]
 }

@@ -25,7 +25,6 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 |-------|--------------|-------------|
 | `taskplex:brainstorm` | User describes a feature, BEFORE jumping to planning | Challenges assumptions, explores alternatives, produces Design Brief |
 | `taskplex:writing-plans` | Need a detailed task-by-task implementation plan | Creates bite-sized plan doc with TDD steps and exact commands |
-| `taskplex:focused-task` | Well-scoped task (1-5 files, clear criteria) | Inline TDD implementation without overhead |
 | `taskplex:test-driven-development` | Before ANY implementation (feature, bugfix, refactor) | Enforces RED-GREEN-REFACTOR discipline |
 | `taskplex:verification-before-completion` | Before ANY completion claim ("done", "fixed", "passing") | Enforces fresh evidence before claims |
 | `taskplex:systematic-debugging` | Any bug, test failure, or unexpected behavior | 4-phase root cause investigation before fixes |
@@ -37,15 +36,13 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 | `taskplex:subagent-driven-development` | Executing plan with independent tasks in current session | Fresh subagent per task + two-stage review |
 | `taskplex:guided-implementation` | Executing plan inline with human review checkpoints | Batch execution with human feedback between batches |
 | `taskplex:writing-skills` | Creating or editing skills | TDD applied to process documentation |
-| `taskplex:failure-analyzer` | Implementation fails with unclear error | Categorizes error and suggests retry strategy |
 
 ## Decision Flow
 
 1. **Bug/failure?** → `systematic-debugging` (root cause FIRST)
 2. **Feature described?**
-   - a. Well-scoped (1-5 files, clear criteria)? → `focused-task`
-   - b. Novel/ambiguous? → `brainstorm` → `writing-plans`
-   - c. Large project (6+ files, multi-story)? → Suggest SDK-Bridge: "This task is larger scope. Consider using `/sdk-bridge:start` for PRD-driven autonomous development."
+   - a. Novel/ambiguous? → `brainstorm` → `writing-plans`
+   - b. Large project (6+ files, multi-story)? → Suggest SDK-Bridge: "This task is larger scope. Consider using `/sdk-bridge:start` for PRD-driven autonomous development."
 3. **Plan exists?** → `subagent-driven-development` (same session) or `guided-implementation` (inline with human checkpoints)
 4. **Need plan?** → `writing-plans`
 5. **2+ independent tasks?** → `dispatching-parallel-agents`
@@ -79,7 +76,6 @@ The CLI includes `/simplify` (3 parallel review agents) and `/batch` (autonomous
 | "The reviewer is wrong" | Use receiving-code-review — verify before dismissing. |
 | "I'll do it all in sequence" | Independent tasks → dispatch parallel agents. |
 | "I'll just do this one thing first" | Check BEFORE doing anything. |
-| "This is too small for focused-task" | Discipline always applies. Even one-file fixes get acceptance criteria + TDD. |
 | "The skill is overkill" | Simple things become complex. Use it. |
 | "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
 
