@@ -8,9 +8,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://github.com/anthropics/claude-code)
 
-Always-on development companion for Claude Code. TDD enforcement, verification gates, systematic debugging, code review, and disciplined workflows — powered by 16 pure-markdown skills and zero runtime dependencies.
-
-Based on [Superpowers](https://github.com/obra/superpowers) v4.3.1 (MIT, Jesse Vincent) with targeted upgrades.
+Always-on development companion for Claude Code. TDD enforcement, verification gates, systematic debugging, code review, and disciplined workflows — powered by pure-markdown skills and zero runtime dependencies.
 
 **For larger projects (6+ files, PRD-driven):** Use [SDK-Bridge](https://github.com/flight505/sdk-bridge).
 
@@ -30,9 +28,7 @@ TaskPlex activates automatically via a `SessionStart` hook that injects the `usi
 
 ---
 
-## Skills (16)
-
-14 discipline skills from Superpowers + 2 TaskPlex originals:
+## Skills (14)
 
 | Skill | Triggers When |
 |-------|--------------|
@@ -50,8 +46,6 @@ TaskPlex activates automatically via a `SessionStart` hook that injects the `usi
 | **writing-plans** | Need detailed task-by-task plan |
 | **writing-skills** | Creating or editing skills |
 | **using-taskplex** | Always-on routing gate |
-| **focused-task** | Well-scoped task (1-5 files) without PRD *(TaskPlex upgrade)* |
-| **failure-analyzer** | Implementation fails with unclear error *(TaskPlex upgrade)* |
 
 ---
 
@@ -88,6 +82,8 @@ TaskPlex activates automatically via a `SessionStart` hook that injects the `usi
 ```
 taskplex/
 ├── .claude-plugin/plugin.json     # v6.0.0
+├── agents/
+│   └── code-reviewer.md           # Code quality review agent
 ├── commands/                      # 3 shortcuts
 │   ├── brainstorm.md
 │   ├── write-plan.md
@@ -96,7 +92,7 @@ taskplex/
 │   ├── hooks.json
 │   ├── run-hook.cmd
 │   └── session-start
-└── skills/                        # 16 skills
+└── skills/                        # 14 skills
     ├── brainstorm/
     ├── test-driven-development/
     ├── verification-before-completion/
@@ -110,28 +106,26 @@ taskplex/
     ├── guided-implementation/
     ├── writing-plans/
     ├── writing-skills/
-    ├── using-taskplex/
-    ├── focused-task/
-    └── failure-analyzer/
+    └── using-taskplex/
 ```
 
 | Component | Count | Notes |
 |-----------|-------|-------|
-| Skills | 16 | 14 from Superpowers + 2 TaskPlex originals |
+| Skills | 14 | Discipline patterns (TDD, debugging, verification, etc.) |
 | Commands | 3 | Shortcut entry points to key skills |
 | Hooks | 1 | SessionStart injects skill awareness |
-| Agents | 0 | Subagents dispatched via inline prompt templates |
+| Agents | 1 | code-reviewer (dispatched by requesting-code-review) |
 | Config | 0 | No configuration files needed |
 
 ---
 
 ## What Changed in v6.0.0
 
-TaskPlex was rebuilt to match [Superpowers](https://github.com/obra/superpowers) — lightweight, fast, always-on. Heavy orchestration infrastructure moved to [SDK-Bridge](https://github.com/flight505/sdk-bridge).
+Stripped heavy orchestration infrastructure — PRD pipeline, config system, shell scripts — in favor of pure discipline skills. Heavy project execution moved to [SDK-Bridge](https://github.com/flight505/sdk-bridge).
 
 | Before (v5.x) | After (v6.0) |
 |---------------|--------------|
-| 5 registered agents | 0 (inline prompt templates) |
+| 5 registered agents | 1 (code-reviewer) |
 | 5 hooks across 5 events | 1 hook (SessionStart) |
 | 8 config options | 0 |
 | `/taskplex:start` wizard | 3 shortcut commands |
@@ -151,7 +145,6 @@ TaskPlex was rebuilt to match [Superpowers](https://github.com/obra/superpowers)
 
 ## References
 
-- [Superpowers](https://github.com/obra/superpowers) — Upstream skill library (MIT, Jesse Vincent)
 - [SDK-Bridge](https://github.com/flight505/sdk-bridge) — PRD-driven project execution
 - [Claude Code Plugins](https://code.claude.com/docs/en/plugins.md)
 - [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md)

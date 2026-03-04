@@ -6,47 +6,44 @@ All notable changes to TaskPlex are documented here.
 
 ### v6.0.0 (2026-03-04)
 
-**Superpowers Alignment — Lightweight Always-On Companion:**
+**Lightweight Always-On Companion:**
 
-TaskPlex rebuilt to match [Superpowers](https://github.com/obra/superpowers) v4.3.1 (MIT, Jesse Vincent). Heavy orchestration infrastructure moved to [SDK-Bridge](https://github.com/flight505/sdk-bridge). Result: 16 skills, 3 commands, 1 hook, 0 agents, 0 config.
+Stripped heavy orchestration — PRD pipeline, config system, shell scripts, 5 registered agents — in favor of pure discipline skills. Heavy project execution moved to [SDK-Bridge](https://github.com/flight505/sdk-bridge). Result: 14 skills, 3 commands, 1 hook, 1 agent, 0 config.
 
 **Added:**
 - `commands/brainstorm.md` — Shortcut to `taskplex:brainstorm` skill
 - `commands/write-plan.md` — Shortcut to `taskplex:writing-plans` skill
 - `commands/execute-plan.md` — Shortcut to `taskplex:guided-implementation` skill
-- `hooks/run-hook.cmd` — Cross-platform hook runner (polyglot bash/batch, from Superpowers)
-- `hooks/session-start` — Extensionless SessionStart hook (Superpowers-compatible format)
+- `agents/code-reviewer.md` — Code quality review agent (dispatched by requesting-code-review)
+- `hooks/run-hook.cmd` — Cross-platform hook runner (polyglot bash/batch)
+- `hooks/session-start` — Extensionless SessionStart hook
+- CLI 2.1.63+ awareness: worktree-shared auto memory documented in skills
+- CLI 2.1.68 awareness: ultrathink tip for Opus 4.6 deep reasoning
+- Positioning vs built-in `/batch` and `/simplify` CLI commands
 
 **Changed:**
-- 12 shared skills synced from Superpowers with `taskplex:` namespace:
-  - `skills/brainstorm/` — rebuilt from Superpowers `brainstorming/`
+- Skills rewritten for discipline focus:
+  - `skills/brainstorm/` — rebuilt (was inline in commands)
   - `skills/test-driven-development/` — rebuilt (was `taskplex-tdd/`)
   - `skills/verification-before-completion/` — rebuilt (was `taskplex-verify/`)
-  - `skills/guided-implementation/` — rebuilt from Superpowers `executing-plans/`
+  - `skills/guided-implementation/` — rebuilt (was `executing-plans/`)
   - `skills/subagent-driven-development/` — rebuilt with inline prompt templates
-  - Plus: systematic-debugging, dispatching-parallel-agents, using-git-worktrees, finishing-a-development-branch, requesting-code-review, receiving-code-review, writing-plans, writing-skills
 - `skills/using-taskplex/SKILL.md` — Removed PRD routing, added SDK-Bridge pointer for 6+ file tasks
-- `skills/focused-task/SKILL.md` — Removed PRD escalation, updated sub-skill references
 - `hooks/hooks.json` — Simplified to single SessionStart hook (was 5 hooks across 5 events)
-- `.claude-plugin/plugin.json` — v6.0.0, removed agents array, updated skills list, updated commands
+- `.claude-plugin/plugin.json` — v6.0.0, 1 agent, 14 skills, 3 commands
 - `CLAUDE.md` — Rewritten for lightweight architecture
 - `README.md` — Rewritten for lightweight architecture
 
 **Removed:**
-- `agents/` directory — architect.md, implementer.md, reviewer.md, code-reviewer.md, merger.md (5 registered agents → 0, use inline prompt templates via subagent-driven-development)
-- `commands/start.md` — 8-checkpoint interactive wizard (use shortcut commands or proactive activation instead)
-- `scripts/` directory — check-deps.sh, check-git.sh, check-destructive.sh (enforcement moved to SDK-Bridge)
-- `hooks/session-context.sh` — Replaced by `hooks/session-start` (extensionless, Superpowers-compatible)
-- `hooks/validate-result.sh` — SubagentStop hook (moved to SDK-Bridge)
-- `hooks/task-completed.sh` — TaskCompleted hook (moved to SDK-Bridge)
-- `hooks/teammate-idle.sh` — TeammateIdle hook (moved to SDK-Bridge)
-- `hooks/check-destructive.sh` — PreToolUse hook (moved to SDK-Bridge)
-- `skills/prd-generator/` — PRD generation (moved to SDK-Bridge)
-- `skills/prd-converter/` — PRD conversion (moved to SDK-Bridge)
-- `skills/taskplex-tdd/` — Replaced by `test-driven-development/` (Superpowers sync)
-- `skills/taskplex-verify/` — Replaced by `verification-before-completion/` (Superpowers sync)
+- `agents/` — architect.md, implementer.md, reviewer.md, merger.md (moved to SDK-Bridge)
+- `commands/start.md` — 8-checkpoint interactive wizard
+- `scripts/` — check-deps.sh, check-git.sh, check-destructive.sh (moved to SDK-Bridge)
+- `hooks/session-context.sh`, `validate-result.sh`, `task-completed.sh`, `teammate-idle.sh`, `check-destructive.sh`
+- `skills/prd-generator/`, `skills/prd-converter/` (moved to SDK-Bridge)
+- `skills/taskplex-tdd/`, `skills/taskplex-verify/` (rebuilt as standard names)
+- `skills/focused-task/`, `skills/failure-analyzer/` (removed — orchestration overhead)
 - `TASKPLEX-ARCHITECTURE.md` — Consolidated into CLAUDE.md
-- Configuration system — `.claude/taskplex.config.json` no longer used (8 options → 0)
+- Configuration system — `.claude/taskplex.config.json` (8 options → 0)
 
 **Migration notes:**
 - No configuration file needed — remove `.claude/taskplex.config.json` if present
@@ -190,7 +187,7 @@ This is a major simplification release. ~7,350 lines of custom orchestration rem
 - `agents/architect.md` — Read-only codebase explorer for brainstorm phase (model: sonnet, permissionMode: dontAsk)
 - `agents/spec-reviewer.md` — Spec compliance review Stage 1 (model: haiku, permissionMode: dontAsk)
 - `skills/brainstorm/SKILL.md` — Challenge assumptions before jumping to PRD
-- 14 adapted Superpowers discipline skills (MIT licensed from Jesse Vincent): `taskplex-tdd`, `taskplex-verify`, `systematic-debugging`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch`, `requesting-code-review`, `receiving-code-review`, `subagent-driven-development`, `writing-skills`, `executing-plans`, `writing-plans`
+- 14 discipline skills: `taskplex-tdd`, `taskplex-verify`, `systematic-debugging`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch`, `requesting-code-review`, `receiving-code-review`, `subagent-driven-development`, `writing-skills`, `executing-plans`, `writing-plans`
 - `scripts/teams.sh` — Agent Teams orchestrator (opt-in via `parallel_mode: "teams"`)
 - `hooks/session-context.sh` — SessionStart hook for proactive context injection
 - `hooks/teammate-idle.sh` — TeammateIdle hook for Agent Teams story assignment
@@ -244,7 +241,7 @@ This is a major simplification release. ~7,350 lines of custom orchestration rem
 - `CLAUDE_ENV_FILE` persistence in `monitor/hooks/session-lifecycle.sh` — persists `TASKPLEX_MONITOR_PORT` and `TASKPLEX_RUN_ID` for all subsequent Bash commands.
 - `$ARGUMENTS` fast-start in `commands/start.md` — `/taskplex:start Fix the login bug` skips interview, injects description directly.
 - Dynamic context injection in `commands/start.md` — auto-detects existing `prd.json` and config, offers resume vs start fresh.
-- Competitive analysis PRD (`docs/plans/2026-02-20-sota-upgrade-design.md`) covering 15+ plugins (Superpowers 55k stars, claude-mem 29k, wshobson/agents 29k, etc.)
+- Competitive analysis PRD (`docs/plans/2026-02-20-sota-upgrade-design.md`) covering 15+ plugins
 
 **Changed:**
 - All 5 agents now have explicit `permissionMode`:

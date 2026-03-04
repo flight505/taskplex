@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
   "version": "6.0.0",
-  "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, code review, and disciplined workflows. Based on Superpowers (MIT, Jesse Vincent) with targeted upgrades.",
+  "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, code review, and disciplined workflows.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",

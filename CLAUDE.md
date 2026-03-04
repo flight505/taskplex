@@ -8,9 +8,7 @@ Developer instructions for the TaskPlex plugin.
 
 ## Overview
 
-TaskPlex is an **always-on development companion** — 16 skills (14 adapted from Superpowers, MIT licensed from Jesse Vincent + 2 TaskPlex originals), TDD enforcement, verification gates, systematic debugging, and code review via subagent dispatch. Pure markdown skills, zero runtime dependencies.
-
-**Based on:** [Superpowers](https://github.com/obra/superpowers) v4.3.1 by Jesse Vincent (MIT License)
+TaskPlex is an **always-on development companion** — TDD enforcement, verification gates, systematic debugging, code review, and disciplined workflows. Pure markdown skills, zero runtime dependencies.
 
 **Philosophy:** Discipline before code, challenge assumptions first, verify before claiming done. Lightweight enough for daily use — no orchestration overhead.
 
@@ -31,7 +29,9 @@ taskplex/
 │   ├── hooks.json                    # 1 hook (SessionStart)
 │   ├── run-hook.cmd                  # Cross-platform hook runner
 │   └── session-start                 # Injects using-taskplex awareness
-└── skills/                           # 16 skills
+├── agents/
+│   └── code-reviewer.md             # Code quality review agent
+└── skills/                           # 14 skills
     ├── brainstorm/                   # Design before code
     ├── test-driven-development/      # RED-GREEN-REFACTOR
     ├── verification-before-completion/ # Evidence before claims
@@ -45,19 +45,17 @@ taskplex/
     ├── guided-implementation/        # Human-guided batch execution
     ├── writing-plans/                # Bite-sized task plans
     ├── writing-skills/               # TDD for documentation
-    ├── using-taskplex/               # Always-on routing gate
-    ├── focused-task/                 # 1-5 file tasks (TaskPlex upgrade)
-    └── failure-analyzer/             # Error categorization (TaskPlex upgrade)
+    └── using-taskplex/               # Always-on routing gate
 ```
 
 ### Components
 
 | Type | Count | Notes |
 |------|-------|-------|
-| Skills | 16 | 14 from Superpowers + focused-task + failure-analyzer |
+| Skills | 14 | Discipline patterns (TDD, debugging, verification, etc.) |
 | Commands | 3 | brainstorm, write-plan, execute-plan |
 | Hooks | 1 | SessionStart (inject skill awareness) |
-| Agents | 0 | Subagents dispatched via inline prompt templates |
+| Agents | 1 | code-reviewer (dispatched by requesting-code-review) |
 | Config | 0 | No configuration files |
 
 ---
@@ -107,7 +105,6 @@ taskplex/
 
 ## References
 
-- [Superpowers](https://github.com/obra/superpowers) — Upstream skill library (MIT)
 - [SDK-Bridge](https://github.com/flight505/sdk-bridge) — PRD-driven project execution
 - [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md)
 - [Claude Code Skills](https://code.claude.com/docs/en/skills.md)
