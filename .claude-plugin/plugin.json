@@ -1,6 +1,6 @@
 {
   "name": "taskplex",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, code review, and disciplined workflows.",
   "author": {
     "name": "Jesper Vang",
@@ -22,7 +22,8 @@
   "commands": [
     "./commands/brainstorm.md",
     "./commands/write-plan.md",
-    "./commands/execute-plan.md"
+    "./commands/execute-plan.md",
+    "./commands/e2e-test.md"
   ],
   "skills": [
     "./skills/brainstorm",
@@ -38,7 +39,8 @@
     "./skills/guided-implementation",
     "./skills/writing-plans",
     "./skills/writing-skills",
-    "./skills/using-taskplex"
+    "./skills/using-taskplex",
+    "./skills/e2e-testing"
   ],
   "agents": [
     "./agents/code-reviewer.md"

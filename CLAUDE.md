@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 6.0.0** | Last Updated: 2026-03-04
+**Version 6.1.0** | Last Updated: 2026-03-04
 
 Developer instructions for the TaskPlex plugin.
 
@@ -21,17 +21,18 @@ TaskPlex is an **always-on development companion** — TDD enforcement, verifica
 ```
 taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
-├── commands/                          # 3 shortcut commands
+├── commands/                          # 4 shortcut commands
 │   ├── brainstorm.md                 # → taskplex:brainstorm skill
 │   ├── write-plan.md                 # → taskplex:writing-plans skill
-│   └── execute-plan.md              # → taskplex:guided-implementation skill
+│   ├── execute-plan.md              # → taskplex:guided-implementation skill
+│   └── e2e-test.md                  # → taskplex:e2e-testing skill
 ├── hooks/
 │   ├── hooks.json                    # 1 hook (SessionStart)
 │   ├── run-hook.cmd                  # Cross-platform hook runner
 │   └── session-start                 # Injects using-taskplex awareness
 ├── agents/
 │   └── code-reviewer.md             # Code quality review agent
-└── skills/                           # 14 skills
+└── skills/                           # 15 skills
     ├── brainstorm/                   # Design before code
     ├── test-driven-development/      # RED-GREEN-REFACTOR
     ├── verification-before-completion/ # Evidence before claims
@@ -45,15 +46,16 @@ taskplex/
     ├── guided-implementation/        # Human-guided batch execution
     ├── writing-plans/                # Bite-sized task plans
     ├── writing-skills/               # TDD for documentation
-    └── using-taskplex/               # Always-on routing gate
+    ├── using-taskplex/               # Always-on routing gate
+    └── e2e-testing/                  # Systematic journey testing (command-only)
 ```
 
 ### Components
 
 | Type | Count | Notes |
 |------|-------|-------|
-| Skills | 14 | Discipline patterns (TDD, debugging, verification, etc.) |
-| Commands | 3 | brainstorm, write-plan, execute-plan |
+| Skills | 15 | Discipline patterns (TDD, debugging, verification, E2E testing, etc.) |
+| Commands | 4 | brainstorm, write-plan, execute-plan, e2e-test |
 | Hooks | 1 | SessionStart (inject skill awareness) |
 | Agents | 1 | code-reviewer (dispatched by requesting-code-review) |
 | Config | 0 | No configuration files |

@@ -36,6 +36,7 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 | `taskplex:subagent-driven-development` | Executing plan with independent tasks in current session | Fresh subagent per task + two-stage review |
 | `taskplex:guided-implementation` | Executing plan inline with human review checkpoints | Batch execution with human feedback between batches |
 | `taskplex:writing-skills` | Creating or editing skills | TDD applied to process documentation |
+| `taskplex:e2e-testing` | User explicitly invokes `/e2e-test` | Parallel research, journey planning, systematic testing with evidence |
 
 ## Decision Flow
 
