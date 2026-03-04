@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "5.2.0",
-  "description": "Always-on autonomous development companion: brainstorming, lean skills (adapted Superpowers disciplines), PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery. Leverages native Claude Code features for memory, routing, and orchestration.",
+  "version": "6.0.0",
+  "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, code review, and disciplined workflows. Based on Superpowers (MIT, Jesse Vincent) with targeted upgrades.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",
@@ -12,24 +12,22 @@
   "homepage": "https://github.com/flight505/taskplex",
   "keywords": [
     "claude-cli",
-    "autonomous",
-    "prd",
-    "subagents",
-    "tdd",
     "skills",
+    "tdd",
+    "debugging",
+    "best-practices",
+    "workflows",
     "development-companion"
   ],
   "commands": [
-    "./commands/start.md"
+    "./commands/brainstorm.md",
+    "./commands/write-plan.md",
+    "./commands/execute-plan.md"
   ],
   "skills": [
     "./skills/brainstorm",
-    "./skills/prd-generator",
-    "./skills/prd-converter",
-    "./skills/failure-analyzer",
-    "./skills/using-taskplex",
-    "./skills/taskplex-tdd",
-    "./skills/taskplex-verify",
+    "./skills/test-driven-development",
+    "./skills/verification-before-completion",
     "./skills/systematic-debugging",
     "./skills/dispatching-parallel-agents",
     "./skills/using-git-worktrees",
@@ -37,16 +35,11 @@
     "./skills/requesting-code-review",
     "./skills/receiving-code-review",
     "./skills/subagent-driven-development",
-    "./skills/writing-skills",
     "./skills/guided-implementation",
     "./skills/writing-plans",
-    "./skills/focused-task"
-  ],
-  "agents": [
-    "./agents/architect.md",
-    "./agents/implementer.md",
-    "./agents/reviewer.md",
-    "./agents/merger.md",
-    "./agents/code-reviewer.md"
+    "./skills/writing-skills",
+    "./skills/using-taskplex",
+    "./skills/focused-task",
+    "./skills/failure-analyzer"
   ]
 }

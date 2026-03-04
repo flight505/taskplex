@@ -1,8 +1,8 @@
 {
   "name": "taskplex",
   "displayName": "TaskPlex",
-  "description": "Always-on autonomous development companion: brainstorming, lean skills, PRD-driven subagent execution, TDD enforcement, verification gates, two-stage code review, and error recovery.",
-  "version": "5.0.0",
+  "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, code review, and disciplined workflows. Based on Superpowers (MIT, Jesse Vincent) with targeted upgrades.",
+  "version": "6.0.0",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com"

@@ -1,25 +1,15 @@
 ---
-name: taskplex-tdd
-description: "Use when implementing any feature, bugfix, or refactor — before writing implementation code. Enforces RED-GREEN-REFACTOR test-driven development discipline."
-disable-model-invocation: false
-user-invocable: true
+name: test-driven-development
+description: Use when implementing any feature or bugfix, before writing implementation code
 ---
 
-# Test-Driven Development
+# Test-Driven Development (TDD)
 
-## The Rule
+## Overview
 
-**NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**
+Write the test first. Watch it fail. Write minimal code to pass.
 
-If you wrote production code before writing a test: DELETE IT. Write the test. Watch it fail. Then implement.
-
-**No exceptions:**
-- Don't keep it as "reference"
-- Don't "adapt" it while writing tests
-- Don't look at it
-- Delete means delete
-
-Implement fresh from tests. Period.
+**Core principle:** If you didn't watch the test fail, you don't know if it tests the right thing.
 
 **Violating the letter of the rules is violating the spirit of the rules.**
 
@@ -31,20 +21,56 @@ Implement fresh from tests. Period.
 - Refactoring
 - Behavior changes
 
-**Exceptions (ask the user):**
+**Exceptions (ask your human partner):**
 - Throwaway prototypes
 - Generated code
 - Configuration files
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
-## The Cycle
+## The Iron Law
 
-For each piece of functionality:
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
 
-### RED — Write a failing test
+Write code before the test? Delete it. Start over.
 
-Write a test that describes the desired behavior. Run it. It MUST fail.
+**No exceptions:**
+- Don't keep it as "reference"
+- Don't "adapt" it while writing tests
+- Don't look at it
+- Delete means delete
+
+Implement fresh from tests. Period.
+
+## Red-Green-Refactor
+
+```dot
+digraph tdd_cycle {
+    rankdir=LR;
+    red [label="RED\nWrite failing test", shape=box, style=filled, fillcolor="#ffcccc"];
+    verify_red [label="Verify fails\ncorrectly", shape=diamond];
+    green [label="GREEN\nMinimal code", shape=box, style=filled, fillcolor="#ccffcc"];
+    verify_green [label="Verify passes\nAll green", shape=diamond];
+    refactor [label="REFACTOR\nClean up", shape=box, style=filled, fillcolor="#ccccff"];
+    next [label="Next", shape=ellipse];
+
+    red -> verify_red;
+    verify_red -> green [label="yes"];
+    verify_red -> red [label="wrong\nfailure"];
+    green -> verify_green;
+    verify_green -> refactor [label="yes"];
+    verify_green -> green [label="no"];
+    refactor -> verify_green [label="stay\ngreen"];
+    verify_green -> next;
+    next -> red;
+}
+```
+
+### RED - Write Failing Test
+
+Write one minimal test showing what should happen.
 
 <Good>
 ```typescript
@@ -80,15 +106,11 @@ Vague name, tests mock not code
 </Bad>
 
 **Requirements:**
-- One behavior per test
-- Clear name describing expected behavior
+- One behavior
+- Clear name
 - Real code (no mocks unless unavoidable)
 
-**If the test passes immediately:**
-- Your test is wrong (testing nothing useful)
-- OR the feature already exists (check before implementing)
-
-### Verify RED — Watch It Fail
+### Verify RED - Watch It Fail
 
 **MANDATORY. Never skip.**
 
@@ -101,13 +123,13 @@ Confirm:
 - Failure message is expected
 - Fails because feature missing (not typos)
 
-**Test passes?** You're testing existing behavior. Fix the test.
+**Test passes?** You're testing existing behavior. Fix test.
 
 **Test errors?** Fix error, re-run until it fails correctly.
 
-### GREEN — Write minimal code
+### GREEN - Minimal Code
 
-Write the MINIMUM code to make the test pass. Run it. It MUST pass.
+Write simplest code to pass the test.
 
 <Good>
 ```typescript
@@ -135,19 +157,15 @@ async function retryOperation<T>(
     onRetry?: (attempt: number) => void;
   }
 ): Promise<T> {
-  // YAGNI — no test requires these options
+  // YAGNI
 }
 ```
 Over-engineered
 </Bad>
 
-Rules:
-- No extra code beyond what makes the test pass
-- No "while I'm here" additions
-- No premature abstractions
-- Ugly code is fine — it works
+Don't add features, refactor other code, or "improve" beyond the test.
 
-### Verify GREEN — Watch It Pass
+### Verify GREEN - Watch It Pass
 
 **MANDATORY.**
 
@@ -156,24 +174,26 @@ npm test path/to/test.test.ts
 ```
 
 Confirm:
-- New test passes
-- All existing tests still pass
+- Test passes
+- Other tests still pass
 - Output pristine (no errors, warnings)
 
 **Test fails?** Fix code, not test.
 
 **Other tests fail?** Fix now.
 
-### REFACTOR — Clean up
+### REFACTOR - Clean Up
 
 After green only:
 - Remove duplication
 - Improve names
-- Extract helpers if needed
+- Extract helpers
 
 Keep tests green. Don't add behavior.
 
-Then move to the next requirement — back to RED.
+### Repeat
+
+Next failing test for next feature.
 
 ## Good Tests
 
@@ -223,7 +243,7 @@ TDD IS pragmatic:
 
 "Pragmatic" shortcuts = debugging in production = slower.
 
-**"Tests after achieve the same goals — it's spirit not ritual"**
+**"Tests after achieve the same goals - it's spirit not ritual"**
 
 No. Tests-after answer "What does this do?" Tests-first answer "What should this do?"
 
@@ -248,9 +268,8 @@ Tests-first force edge case discovery before implementing. Tests-after verify yo
 | "TDD will slow me down" | TDD faster than debugging. Pragmatic = test-first. |
 | "Manual test faster" | Manual doesn't prove edge cases. You'll re-test every change. |
 | "Existing code has no tests" | You're improving it. Add tests for existing code. |
-| "This is different because..." | It isn't. Delete code. Start over with TDD. |
 
-## Red Flags — STOP and Start Over
+## Red Flags - STOP and Start Over
 
 - Code before test
 - Test after implementation
@@ -272,8 +291,7 @@ Tests-first force edge case discovery before implementing. Tests-after verify yo
 
 **Bug:** Empty email accepted
 
-### RED
-
+**RED**
 ```typescript
 test('rejects empty email', async () => {
   const result = await submitForm({ email: '' });
@@ -281,59 +299,30 @@ test('rejects empty email', async () => {
 });
 ```
 
-### Verify RED
-
+**Verify RED**
 ```bash
 $ npm test
 FAIL: expected 'Email required', got undefined
 ```
 
-Bug confirmed — empty email is accepted when it shouldn't be.
-
-### GREEN
-
+**GREEN**
 ```typescript
 function submitForm(data: FormData) {
   if (!data.email?.trim()) {
     return { error: 'Email required' };
   }
-  // ...existing logic
+  // ...
 }
 ```
 
-### Verify GREEN
-
+**Verify GREEN**
 ```bash
 $ npm test
 PASS
 ```
 
-### REFACTOR
-
-Extract validation for multiple fields if needed. Run tests again — still green.
-
-The test now prevents this bug from ever returning.
-
-## When Stuck
-
-| Problem | Solution |
-|---------|----------|
-| Don't know how to test | Write wished-for API. Write assertion first. Ask the user. |
-| Test too complicated | Design too complicated. Simplify interface. |
-| Must mock everything | Code too coupled. Use dependency injection. |
-| Test setup huge | Extract helpers. Still complex? Simplify design. |
-
-## Practical Adaptations
-
-TDD is the default. These are the ONLY exceptions:
-
-| Situation | Adaptation |
-|-----------|-----------|
-| Project has no test infrastructure | Set it up first: one test file, one runner, one passing test. Then TDD. |
-| Existing code with no tests | Write characterization tests for code you're changing, then TDD new behavior. |
-| Pure CSS/visual-only changes | Snapshot or component tests where practical. Skip TDD for CSS-only. |
-| Config/infrastructure files | Smoke test that config loads correctly. Full TDD not always applicable. |
-| Bug fix | Write a test that reproduces the bug FIRST (red), then fix (green). This is the most important TDD case. |
+**REFACTOR**
+Extract validation for multiple fields if needed.
 
 ## Verification Checklist
 
@@ -347,17 +336,17 @@ Before marking work complete:
 - [ ] Output pristine (no errors, warnings)
 - [ ] Tests use real code (mocks only if unavoidable)
 - [ ] Edge cases and errors covered
-- [ ] No production code was written without a failing test
 
 Can't check all boxes? You skipped TDD. Start over.
 
-## Testing Anti-Patterns
+## When Stuck
 
-Avoid these common pitfalls when writing tests:
-
-- **Testing mock behavior instead of real behavior** — If your test only proves a mock was called, it proves nothing about your code.
-- **Adding test-only methods to production classes** — If you need a method only for testing, your design needs work. Refactor to expose behavior through the public API.
-- **Mocking without understanding dependencies** — Every mock is a lie about your system. Only mock at boundaries (network, disk, clock). Mock internals = brittle tests.
+| Problem | Solution |
+|---------|----------|
+| Don't know how to test | Write wished-for API. Write assertion first. Ask your human partner. |
+| Test too complicated | Design too complicated. Simplify interface. |
+| Must mock everything | Code too coupled. Use dependency injection. |
+| Test setup huge | Extract helpers. Still complex? Simplify design. |
 
 ## Debugging Integration
 
@@ -365,13 +354,12 @@ Bug found? Write failing test reproducing it. Follow TDD cycle. Test proves fix 
 
 Never fix bugs without a test.
 
-## Integration with TaskPlex
+## Testing Anti-Patterns
 
-When running inside the TaskPlex execution loop:
-- Each acceptance criterion gets its own RED-GREEN-REFACTOR cycle
-- The implementer agent follows this discipline per criterion
-- The reviewer agent verifies the tests exist and pass
-- SubagentStop hook enforces test/build/typecheck gates
+When adding mocks or test utilities, read @testing-anti-patterns.md to avoid common pitfalls:
+- Testing mock behavior instead of real behavior
+- Adding test-only methods to production classes
+- Mocking without understanding dependencies
 
 ## Final Rule
 
@@ -380,4 +368,4 @@ Production code → test exists and failed first
 Otherwise → not TDD
 ```
 
-No exceptions without the user's permission.
+No exceptions without your human partner's permission.

@@ -206,22 +206,13 @@ Ready to implement auth feature
 - Auto-detect and run project setup
 - Verify clean test baseline
 
-## Memory Behavior in Worktrees
-
-**Auto memory** (`~/.claude/projects/<project>/memory/`) is shared across all git worktrees of the same repository — stored outside the repo, keyed by repo identity.
-
-**Agent memory** (`memory: project` → `.claude/agent-memory/`) is stored inside the working directory. In a worktree, this means agent learnings are local to that worktree and discarded on cleanup. To persist learnings across stories, use `memory: user` (stores at `~/.claude/agent-memory/`, always shared) or rely on the structured output's `learnings` field, which the orchestrating conversation captures.
-
-The implementer agent runs inside the orchestrator's worktree (created by this skill) with `memory: project`. It does NOT use `isolation: worktree` in its own frontmatter — that caused nested worktree failures in Claude Code's agent system. Each story starts with fresh context (no prior agent memory). Cross-story context flows through the orchestrator (subagent-driven-development skill), not through agent memory.
-
 ## Integration
 
 **Called by:**
-- **taskplex:prd-generator** (Phase 4) - REQUIRED when design is approved and implementation follows
-- **taskplex:subagent-driven-development** - REQUIRED before executing any tasks
-- **taskplex:guided-implementation** - REQUIRED before executing any tasks
-- **taskplex:focused-task** - REQUIRED for isolated workspace
+- **brainstorm** (Phase 4) - REQUIRED when design is approved and implementation follows
+- **subagent-driven-development** - REQUIRED before executing any tasks
+- **guided-implementation** - REQUIRED before executing any tasks
 - Any skill needing isolated workspace
 
 **Pairs with:**
-- **taskplex:finishing-a-development-branch** - REQUIRED for cleanup after work complete
+- **finishing-a-development-branch** - REQUIRED for cleanup after work complete

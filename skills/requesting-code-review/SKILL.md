@@ -11,22 +11,15 @@ Dispatch taskplex:code-reviewer subagent to catch issues before they cascade.
 
 ## When to Request Review
 
-**Mandatory (standalone contexts):**
-- After completing a focused-task with 3+ files changed
-- After each batch in guided-implementation
-- After completing major feature (ad-hoc work)
+**Mandatory:**
+- After each task in subagent-driven development
+- After completing major feature
 - Before merge to main
 
 **Optional but valuable:**
 - When stuck (fresh perspective)
 - Before refactoring (baseline check)
 - After fixing complex bug
-
-## Standalone vs. Built-In
-
-**Built-in (automatic):** During `subagent-driven-development`, code review is dispatched automatically by the workflow after each task passes spec review. You do NOT need to invoke this skill manually — the workflow handles it.
-
-**Standalone (invoke this skill):** In all other contexts — after `focused-task`, after `guided-implementation` batches, after manual work, or before merge. In these cases, you explicitly invoke this skill to dispatch the code-reviewer agent.
 
 ## How to Request
 
@@ -84,20 +77,16 @@ You: [Fix progress indicators]
 ## Integration with Workflows
 
 **Subagent-Driven Development:**
-- Automatic — dispatched by the workflow, not by you
+- Review after EACH task
 - Catch issues before they compound
 - Fix before moving to next task
 
-**Guided Implementation:**
-- Standalone — invoke after each batch (3 tasks)
+**Executing Plans:**
+- Review after each batch (3 tasks)
 - Get feedback, apply, continue
 
-**Focused Task:**
-- Standalone — invoke when 3+ files changed
-- Review before finishing branch
-
 **Ad-Hoc Development:**
-- Standalone — review before merge
+- Review before merge
 - Review when stuck
 
 ## Red Flags

@@ -4,6 +4,58 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v6.0.0 (2026-03-04)
+
+**Superpowers Alignment — Lightweight Always-On Companion:**
+
+TaskPlex rebuilt to match [Superpowers](https://github.com/obra/superpowers) v4.3.1 (MIT, Jesse Vincent). Heavy orchestration infrastructure moved to [SDK-Bridge](https://github.com/flight505/sdk-bridge). Result: 16 skills, 3 commands, 1 hook, 0 agents, 0 config.
+
+**Added:**
+- `commands/brainstorm.md` — Shortcut to `taskplex:brainstorm` skill
+- `commands/write-plan.md` — Shortcut to `taskplex:writing-plans` skill
+- `commands/execute-plan.md` — Shortcut to `taskplex:guided-implementation` skill
+- `hooks/run-hook.cmd` — Cross-platform hook runner (polyglot bash/batch, from Superpowers)
+- `hooks/session-start` — Extensionless SessionStart hook (Superpowers-compatible format)
+
+**Changed:**
+- 12 shared skills synced from Superpowers with `taskplex:` namespace:
+  - `skills/brainstorm/` — rebuilt from Superpowers `brainstorming/`
+  - `skills/test-driven-development/` — rebuilt (was `taskplex-tdd/`)
+  - `skills/verification-before-completion/` — rebuilt (was `taskplex-verify/`)
+  - `skills/guided-implementation/` — rebuilt from Superpowers `executing-plans/`
+  - `skills/subagent-driven-development/` — rebuilt with inline prompt templates
+  - Plus: systematic-debugging, dispatching-parallel-agents, using-git-worktrees, finishing-a-development-branch, requesting-code-review, receiving-code-review, writing-plans, writing-skills
+- `skills/using-taskplex/SKILL.md` — Removed PRD routing, added SDK-Bridge pointer for 6+ file tasks
+- `skills/focused-task/SKILL.md` — Removed PRD escalation, updated sub-skill references
+- `hooks/hooks.json` — Simplified to single SessionStart hook (was 5 hooks across 5 events)
+- `.claude-plugin/plugin.json` — v6.0.0, removed agents array, updated skills list, updated commands
+- `CLAUDE.md` — Rewritten for lightweight architecture
+- `README.md` — Rewritten for lightweight architecture
+
+**Removed:**
+- `agents/` directory — architect.md, implementer.md, reviewer.md, code-reviewer.md, merger.md (5 registered agents → 0, use inline prompt templates via subagent-driven-development)
+- `commands/start.md` — 8-checkpoint interactive wizard (use shortcut commands or proactive activation instead)
+- `scripts/` directory — check-deps.sh, check-git.sh, check-destructive.sh (enforcement moved to SDK-Bridge)
+- `hooks/session-context.sh` — Replaced by `hooks/session-start` (extensionless, Superpowers-compatible)
+- `hooks/validate-result.sh` — SubagentStop hook (moved to SDK-Bridge)
+- `hooks/task-completed.sh` — TaskCompleted hook (moved to SDK-Bridge)
+- `hooks/teammate-idle.sh` — TeammateIdle hook (moved to SDK-Bridge)
+- `hooks/check-destructive.sh` — PreToolUse hook (moved to SDK-Bridge)
+- `skills/prd-generator/` — PRD generation (moved to SDK-Bridge)
+- `skills/prd-converter/` — PRD conversion (moved to SDK-Bridge)
+- `skills/taskplex-tdd/` — Replaced by `test-driven-development/` (Superpowers sync)
+- `skills/taskplex-verify/` — Replaced by `verification-before-completion/` (Superpowers sync)
+- `TASKPLEX-ARCHITECTURE.md` — Consolidated into CLAUDE.md
+- Configuration system — `.claude/taskplex.config.json` no longer used (8 options → 0)
+
+**Migration notes:**
+- No configuration file needed — remove `.claude/taskplex.config.json` if present
+- `/taskplex:start` wizard no longer exists — use `/brainstorm`, `/write-plan`, `/execute-plan`, or just start working
+- For PRD-driven projects with 6+ files, use SDK-Bridge instead
+- Users must restart Claude Code after updating the plugin
+
+---
+
 ### v5.2.0 (2026-03-03)
 
 **Workflow Refactoring — Scale-Aware Routing, Resume Intelligence, Clear Boundaries:**

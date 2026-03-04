@@ -1,15 +1,15 @@
 ---
 name: focused-task
-description: "Use when implementing a single well-scoped task (1-5 files) that doesn't need PRD planning. Triggers on: clear bugfixes, small features, refactors, single-story tasks with obvious acceptance criteria."
+description: "Use when implementing a single well-scoped task (1-5 files) that doesn't need planning overhead. Triggers on: clear bugfixes, small features, refactors, single-story tasks with obvious acceptance criteria."
 ---
 
 # Focused Task
 
 ## Overview
 
-Implement a well-scoped task directly with TDD discipline — no PRD, no prd.json, no agent dispatch. You (Claude) work directly in the main conversation.
+Implement a well-scoped task directly with TDD discipline — no planning overhead, no agent dispatch. You (Claude) work directly in the main conversation.
 
-**Core principle:** Discipline without ceremony. Small tasks deserve the same rigor (TDD, verification, review) but not the same overhead (PRD, subagents, prd.json).
+**Core principle:** Discipline without ceremony. Small tasks deserve the same rigor (TDD, verification, review) but not the same overhead.
 
 **Announce at start:** "I'm using the focused-task skill for this implementation."
 
@@ -22,14 +22,13 @@ Implement a well-scoped task directly with TDD discipline — no PRD, no prd.jso
 - Single-story task with obvious acceptance criteria
 - User explicitly says "just do it" or "quick fix"
 
-**Bad fit — escalate to PRD:**
-- Touches 6+ files
+**Bad fit — escalate:**
+- Touches 6+ files → suggest brainstorm + writing-plans, or SDK-Bridge for PRD-driven execution
 - Multiple stories or unclear acceptance criteria
 - Architectural decisions needed
 - Novel feature with unknowns
-- Cross-cutting concern (auth, logging, etc.)
 
-**When in doubt:** Start with focused-task. If scope grows beyond 5 files or acceptance criteria multiply, stop and escalate: "This is growing beyond focused-task scope. Should I switch to prd-generator?"
+**When in doubt:** Start with focused-task. If scope grows beyond 5 files or acceptance criteria multiply, stop and escalate: "This is growing beyond focused-task scope. Should I switch to brainstorm + writing-plans, or use SDK-Bridge for a full PRD workflow?"
 
 ## The Process
 
@@ -55,13 +54,13 @@ Does this match your expectations?
 
 ### Step 3: Implement with TDD
 
-- **REQUIRED SUB-SKILL:** Use taskplex:taskplex-tdd
+- **REQUIRED SUB-SKILL:** Use taskplex:test-driven-development
 - Follow RED-GREEN-REFACTOR for each criterion
 - Commit after each passing test
 
 ### Step 4: Verify
 
-- **REQUIRED SUB-SKILL:** Use taskplex:taskplex-verify
+- **REQUIRED SUB-SKILL:** Use taskplex:verification-before-completion
 - Run full test suite
 - Check each acceptance criterion against evidence
 
@@ -82,7 +81,7 @@ For tasks touching 3+ files:
 - Skip acceptance criteria definition (even for "obvious" fixes)
 - Skip TDD because "it's too small"
 - Skip verification because "I just ran the tests"
-- Exceed 5 files without checking with user about escalating to PRD
+- Exceed 5 files without checking with user about escalating
 
 **Always:**
 - Get acceptance criteria confirmed before coding
@@ -103,7 +102,7 @@ For tasks touching 3+ files:
 
 **Sub-skills used:**
 - **taskplex:using-git-worktrees** — REQUIRED: Isolated workspace
-- **taskplex:taskplex-tdd** — REQUIRED: TDD discipline
-- **taskplex:taskplex-verify** — REQUIRED: Verification gate
+- **taskplex:test-driven-development** — REQUIRED: TDD discipline
+- **taskplex:verification-before-completion** — REQUIRED: Verification gate
 - **taskplex:requesting-code-review** — Optional: For 3+ file changes
 - **taskplex:finishing-a-development-branch** — REQUIRED: Branch completion

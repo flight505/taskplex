@@ -176,7 +176,7 @@ You MUST complete each phase before proceeding to the next.
    - Automated test if possible
    - One-off test script if no framework
    - MUST have before fixing
-   - Use the `taskplex:taskplex-tdd` skill for writing proper failing tests
+   - Use the `taskplex:test-driven-development` skill for writing proper failing tests
 
 2. **Implement Single Fix**
    - Address the root cause identified
@@ -208,7 +208,7 @@ You MUST complete each phase before proceeding to the next.
    - Are we "sticking with it through sheer inertia"?
    - Should we refactor architecture vs. continue fixing symptoms?
 
-   **Discuss with the user before attempting more fixes**
+   **Discuss with your human partner before attempting more fixes**
 
    This is NOT a failed hypothesis - this is a wrong architecture.
 
@@ -231,7 +231,7 @@ If you catch yourself thinking:
 
 **If 3+ fixes failed:** Question the architecture (see Phase 4.5)
 
-## the user's Signals You're Doing It Wrong
+## your human partner's Signals You're Doing It Wrong
 
 **Watch for these redirections:**
 - "Is that not happening?" - You assumed without verifying
@@ -284,8 +284,8 @@ These techniques are part of systematic debugging and available in this director
 - **`condition-based-waiting.md`** - Replace arbitrary timeouts with condition polling
 
 **Related skills:**
-- **taskplex:taskplex-tdd** - For creating failing test case (Phase 4, Step 1)
-- **taskplex:taskplex-verify** - Verify fix worked before claiming success
+- **taskplex:test-driven-development** - For creating failing test case (Phase 4, Step 1)
+- **taskplex:verification-before-completion** - Verify fix worked before claiming success
 
 ## Real-World Impact
 
