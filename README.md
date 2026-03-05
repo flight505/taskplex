@@ -18,11 +18,11 @@ Always-on development companion for Claude Code. TDD enforcement, verification g
 
 <p align="center">
   <img src="./assets/taskplex-v7-architecture.png" alt="TaskPlex v7.0.0 Architecture — Think, Then Execute" width="800" />
-  <br/>
-  <em>TaskPlex prepares the work (brainstorm, plan, TDD) — CLI executes it (<code>/batch</code>, <code>/simplify</code>)</em>
 </p>
 
-TaskPlex activates automatically via a `SessionStart` hook that injects the `using-taskplex` skill into every conversation. This skill routes to the right workflow based on what you're doing — no explicit invocation needed.
+> **Reading the diagram:** A `SessionStart` hook activates the **using-taskplex** routing gate every session. It inspects what you're doing and routes to the right **skill cluster** — five groups of related skills: *Design* (brainstorm, writing-plans), *Discipline* (TDD, verification), *Debug* (systematic-debugging), *Workflow* (worktrees, branch finishing, code review, skill authoring), and *Testing* (e2e-testing). The three orange handoff indicators show how work flows between TaskPlex and the CLI: **①** a plan document produced by the Design cluster is handed to `/batch` for parallel execution, **②** the Inline TDD cycle (red → green → refactor) loops entirely within the Discipline cluster without leaving the thinking layer, and **③** after `/batch` or `/simplify` finishes, results flow back up to verification-before-completion for evidence-based sign-off. The **Flow Paths** panel on the right shows three common end-to-end journeys through the system.
+
+TaskPlex activates automatically — no explicit invocation needed. It is the **thinking discipline layer**: it prepares the work (brainstorm, plan, TDD) so the CLI execution engines (`/batch`, `/simplify`) produce better results.
 
 **Three shortcuts for common workflows:**
 
