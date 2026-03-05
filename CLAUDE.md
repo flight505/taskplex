@@ -12,7 +12,7 @@ TaskPlex is an **always-on development companion** — TDD enforcement, verifica
 
 **Philosophy:** Discipline before code, challenge assumptions first, verify before claiming done. Lightweight enough for daily use — no orchestration overhead.
 
-**For large-scale changes:** Use `/batch` to decompose and execute in parallel worktrees. For PRD-driven autonomous development: [SDK-Bridge](https://github.com/flight505/sdk-bridge) (`/sdk-bridge:start`).
+**For complete projects and long-running builds:** Use [SDK-Bridge](https://github.com/flight505/sdk-bridge) (`/sdk-bridge:start`).
 
 ---
 
