@@ -39,8 +39,8 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 1. **Bug/failure?** → `systematic-debugging` (root cause FIRST)
 2. **Feature described?**
    - a. Novel/ambiguous? → `brainstorm` → `writing-plans`
-   - b. Large project (6+ files, multi-story)? → Suggest SDK-Bridge: "This task is larger scope. Consider using `/sdk-bridge:start` for PRD-driven autonomous development."
-3. **Plan exists?** → Execute with `/batch` (parallel worktree-isolated agents) or work through tasks inline with TDD
+   - b. Multi-step? → `writing-plans` → execute with `/batch`
+3. **Plan exists?** → Execute with `/batch` (decomposes into 5-30 parallel worktree agents) or work through tasks inline with TDD
 4. **Need plan?** → `writing-plans`
 5. **Before code?** → `test-driven-development`
 6. **Claiming done?** → `verification-before-completion`

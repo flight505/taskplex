@@ -10,7 +10,7 @@
 
 Always-on development companion for Claude Code. TDD enforcement, verification gates, systematic debugging, E2E testing, and disciplined workflows — powered by pure-markdown skills and zero runtime dependencies. Execution handled by CLI built-ins (`/batch`, `/simplify`).
 
-**For larger projects (6+ files, PRD-driven):** Use [SDK-Bridge](https://github.com/flight505/sdk-bridge).
+**For large-scale changes:** Use `/batch` to decompose and execute in parallel worktrees. For PRD-driven autonomous development: [SDK-Bridge](https://github.com/flight505/sdk-bridge).
 
 ---
 
