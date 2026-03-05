@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "6.1.0",
-  "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, code review, and disciplined workflows.",
+  "version": "7.0.0",
+  "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, and disciplined workflows.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",
@@ -22,7 +22,6 @@
   "commands": [
     "./commands/brainstorm.md",
     "./commands/write-plan.md",
-    "./commands/execute-plan.md",
     "./commands/e2e-test.md"
   ],
   "skills": [
@@ -30,19 +29,12 @@
     "./skills/test-driven-development",
     "./skills/verification-before-completion",
     "./skills/systematic-debugging",
-    "./skills/dispatching-parallel-agents",
     "./skills/using-git-worktrees",
     "./skills/finishing-a-development-branch",
-    "./skills/requesting-code-review",
     "./skills/receiving-code-review",
-    "./skills/subagent-driven-development",
-    "./skills/guided-implementation",
     "./skills/writing-plans",
     "./skills/writing-skills",
     "./skills/using-taskplex",
     "./skills/e2e-testing"
-  ],
-  "agents": [
-    "./agents/code-reviewer.md"
   ]
 }

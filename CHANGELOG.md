@@ -4,6 +4,44 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v7.0.0 (2026-03-05)
+
+**Trim Execution Skills, Amplify CLI:**
+
+Removed execution/orchestration skills that duplicate CLI built-ins (`/batch`, `/simplify`). TaskPlex is now purely a thinking discipline layer — brainstorm, plan, TDD, verify, debug. Execution handled by CLI.
+
+**Removed:**
+- `skills/guided-implementation/` — replaced by `/batch` (CLI built-in)
+- `skills/subagent-driven-development/` (+ 4 prompt templates) — replaced by `/batch`
+- `skills/dispatching-parallel-agents/` — replaced by `/batch`
+- `skills/requesting-code-review/` (+ code-reviewer.md template) — replaced by `/simplify`
+- `agents/code-reviewer.md` — no dispatcher after skill removal
+- `commands/execute-plan.md` — only wrapped `guided-implementation`
+
+**Changed:**
+- `skills/using-taskplex/SKILL.md` — Removed 4 skills from catalog, rewrote decision flow to route to `/batch` for execution, replaced "complementary" framing with "think then execute" framing
+- `skills/writing-plans/SKILL.md` — Execution handoff now offers `/batch` or inline TDD instead of removed skills
+- `skills/finishing-a-development-branch/SKILL.md` — Removed "Called by" refs to deleted skills
+- `skills/using-git-worktrees/SKILL.md` — Removed "Called by" refs to deleted skills
+- `.claude-plugin/plugin.json` — v7.0.0, 0 agents, 11 skills, 3 commands
+- `CLAUDE.md` — Updated architecture tree, component counts
+- `README.md` — Updated for v7.0.0
+
+**Net change:** 15 → 11 skills, 4 → 3 commands, 1 → 0 agents
+
+**Migration notes:**
+- `/execute-plan` command no longer exists — use `/batch` instead
+- Code review dispatch is gone — use `/simplify` for code review
+- Users must restart Claude Code after updating the plugin
+
+---
+
+### v6.1.0 (2026-03-04)
+
+Added `/e2e-test` command and `e2e-testing` skill — systematic end-to-end testing that works for web apps, APIs, CLIs, and desktop applications. Launches 3 parallel research sub-agents to map all user journeys, state flows, and risk areas.
+
+---
+
 ### v6.0.0 (2026-03-04)
 
 **Lightweight Always-On Companion:**

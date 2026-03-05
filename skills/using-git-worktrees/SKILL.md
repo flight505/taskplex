@@ -214,8 +214,6 @@ Ready to implement auth feature
 
 **Called by:**
 - **brainstorm** (Phase 4) - REQUIRED when design is approved and implementation follows
-- **subagent-driven-development** - REQUIRED before executing any tasks
-- **guided-implementation** - REQUIRED before executing any tasks
 - Any skill needing isolated workspace
 
 **Pairs with:**

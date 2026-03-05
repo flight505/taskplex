@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 6.1.0** | Last Updated: 2026-03-04
+**Version 7.0.0** | Last Updated: 2026-03-05
 
 Developer instructions for the TaskPlex plugin.
 
@@ -8,7 +8,7 @@ Developer instructions for the TaskPlex plugin.
 
 ## Overview
 
-TaskPlex is an **always-on development companion** — TDD enforcement, verification gates, systematic debugging, code review, and disciplined workflows. Pure markdown skills, zero runtime dependencies.
+TaskPlex is an **always-on development companion** — TDD enforcement, verification gates, systematic debugging, and disciplined workflows. Pure markdown skills, zero runtime dependencies. Execution handled by CLI built-ins (`/batch`, `/simplify`).
 
 **Philosophy:** Discipline before code, challenge assumptions first, verify before claiming done. Lightweight enough for daily use — no orchestration overhead.
 
@@ -21,29 +21,22 @@ TaskPlex is an **always-on development companion** — TDD enforcement, verifica
 ```
 taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
-├── commands/                          # 4 shortcut commands
+├── commands/                          # 3 shortcut commands
 │   ├── brainstorm.md                 # → taskplex:brainstorm skill
 │   ├── write-plan.md                 # → taskplex:writing-plans skill
-│   ├── execute-plan.md              # → taskplex:guided-implementation skill
 │   └── e2e-test.md                  # → taskplex:e2e-testing skill
 ├── hooks/
 │   ├── hooks.json                    # 1 hook (SessionStart)
 │   ├── run-hook.cmd                  # Cross-platform hook runner
 │   └── session-start                 # Injects using-taskplex awareness
-├── agents/
-│   └── code-reviewer.md             # Code quality review agent
-└── skills/                           # 15 skills
+└── skills/                           # 11 skills
     ├── brainstorm/                   # Design before code
     ├── test-driven-development/      # RED-GREEN-REFACTOR
     ├── verification-before-completion/ # Evidence before claims
     ├── systematic-debugging/         # 4-phase root cause
-    ├── dispatching-parallel-agents/  # Concurrent independent work
     ├── using-git-worktrees/          # Isolated workspaces
     ├── finishing-a-development-branch/ # Branch lifecycle
-    ├── requesting-code-review/       # Dispatch reviewer
     ├── receiving-code-review/        # Technical evaluation
-    ├── subagent-driven-development/  # Fresh agent per task + two-stage review
-    ├── guided-implementation/        # Human-guided batch execution
     ├── writing-plans/                # Bite-sized task plans
     ├── writing-skills/               # TDD for documentation
     ├── using-taskplex/               # Always-on routing gate
@@ -54,10 +47,10 @@ taskplex/
 
 | Type | Count | Notes |
 |------|-------|-------|
-| Skills | 15 | Discipline patterns (TDD, debugging, verification, E2E testing, etc.) |
-| Commands | 4 | brainstorm, write-plan, execute-plan, e2e-test |
+| Skills | 11 | Discipline patterns (TDD, debugging, verification, E2E testing, etc.) |
+| Commands | 3 | brainstorm, write-plan, e2e-test |
 | Hooks | 1 | SessionStart (inject skill awareness) |
-| Agents | 1 | code-reviewer (dispatched by requesting-code-review) |
+| Agents | 0 | Execution handled by CLI built-ins |
 | Config | 0 | No configuration files |
 
 ---

@@ -33,7 +33,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use taskplex:guided-implementation to implement this plan task-by-task.
+> **For Claude:** Execute this plan task-by-task using TDD. Use `/batch` for parallel execution or work through tasks inline.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -96,21 +96,12 @@ git commit -m "feat: add specific feature"
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After saving the plan, offer execution:
 
-**"Plan complete and saved to `docs/plans/<filename>.md`. Two execution options:**
+**"Plan saved to `docs/plans/<filename>.md`. Ready to execute.**
 
-**1. Subagent-Driven (this session)** - I dispatch fresh subagent per task, review between tasks, fast iteration
+**Option 1: `/batch`** — Claude Code decomposes and runs all tasks in parallel worktrees with auto-review
 
-**2. Parallel Session (separate)** - Open new session with guided-implementation, batch execution with checkpoints
+**Option 2: Inline** — Work through tasks one at a time in this session (use TDD per task)
 
 **Which approach?"**
-
-**If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use taskplex:subagent-driven-development
-- Stay in this session
-- Fresh subagent per task + code review
-
-**If Parallel Session chosen:**
-- Guide them to open new session in worktree
-- **REQUIRED SUB-SKILL:** New session uses taskplex:guided-implementation
