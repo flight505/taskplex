@@ -4,6 +4,19 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v7.0.1 (2026-03-08)
+
+**Skill description optimization and code-review integration:**
+
+- Optimized all 11 skill descriptions — triggers-only pattern with edge-case coverage
+- Added automated review handling section to `receiving-code-review`
+- Added code-review plugin cross-references to `finishing-a-development-branch`
+- Use `${CLAUDE_SKILL_DIR}` for relative path references in `systematic-debugging` and `writing-skills`
+- Added explanatory comment to SessionStart hook matcher
+- Gitignore `docs/` and `evals/` (dev-only)
+
+---
+
 ### v7.0.0 (2026-03-05)
 
 **Trim Execution Skills, Amplify CLI:**
