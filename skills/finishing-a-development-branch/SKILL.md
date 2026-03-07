@@ -1,6 +1,6 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup
+description: "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work. Also use when a worktree task is done and needs cleanup, when the user says they're finished with a branch, or when it's time to merge, create a PR, or discard experimental work."
 ---
 
 # Finishing a Development Branch
@@ -193,4 +193,6 @@ git worktree remove <worktree-path>
 ## Integration
 
 **Pairs with:**
-- **using-git-worktrees** - Cleans up worktree created by that skill
+- **using-git-worktrees** — Cleans up worktree created by that skill
+- **code-review plugin** — After creating a PR (Option 2), run `/code-review` for automated 4-agent review
+- **receiving-code-review** — Process any review feedback with technical rigor

@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+description: "Use when you have a spec, requirements, or design brief for a multi-step task, before touching code. Also use when breaking down a feature into implementation tasks, when a brainstorm session produced a design that needs an execution plan, or when the user asks to plan, outline, or decompose work into steps. If the task needs more than 2-3 files changed, this skill applies."
 ---
 
 # Writing Plans

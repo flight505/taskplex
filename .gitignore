@@ -38,3 +38,7 @@ run_dev_server.py
 
 # Reference repos (not part of taskplex)
 superpowers-main/
+
+# Dev-only (not part of plugin)
+docs/
+evals/

@@ -3,6 +3,7 @@
     "SessionStart": [
       {
         "matcher": "startup|resume|clear|compact",
+        "_comment": "Re-injects on resume/clear/compact intentionally — ensures skill awareness persists after context compression or session restore",
         "hooks": [
           {
             "type": "command",

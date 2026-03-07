@@ -1,6 +1,6 @@
 {
   "name": "taskplex",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, and disciplined workflows.",
   "author": {
     "name": "Jesper Vang",

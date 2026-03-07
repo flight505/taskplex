@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: "Use when implementing any feature, bugfix, or refactor, before writing implementation code. Also use when adding behavior changes, writing regression tests, or when tempted to skip tests because something seems too simple. If you're about to write production code without a failing test, this skill applies."
 ---
 
 # Test-Driven Development (TDD)

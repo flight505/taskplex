@@ -1,6 +1,6 @@
 ---
 name: receiving-code-review
-description: Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation
+description: "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable. Also use when processing automated review output from the code-review plugin, when a reviewer suggests changes on a PR, or when external contributors comment on your code. If you're about to say 'great point' or implement feedback without verifying it first, this skill applies."
 ---
 
 # Code Review Reception
@@ -203,6 +203,17 @@ You understand 1,2,3,6. Unclear on 4,5.
 ## GitHub Thread Replies
 
 When replying to inline review comments on GitHub, reply in the comment thread (`gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies`), not as a top-level PR comment.
+
+## Handling Automated Review Output
+
+When receiving output from Claude Code's `/code-review` plugin (which runs 4 parallel specialized agents with confidence scoring):
+
+1. **Treat as external reviewer** — apply the same verification checklist
+2. **Check confidence scores** — low-confidence suggestions (<50) deserve extra scrutiny
+3. **Cross-reference findings** — automated reviews catch patterns but may miss project context
+4. **Don't blindly implement** — even high-confidence findings can be wrong for your specific codebase
+
+The code-review plugin automates the review *process*. This skill teaches you how to *respond* to reviews — automated or human.
 
 ## The Bottom Line
 

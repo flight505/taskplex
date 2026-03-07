@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Use when creating new skills, editing existing skills, or verifying skills work before deployment
+description: "Use when creating new skills, editing existing skills, writing SKILL.md files, or verifying skills work before deployment. Also use when authoring plugin skills, improving skill descriptions, structuring skill directories, or when the user asks to make a skill or turn this into a skill. If you're about to write or modify any SKILL.md without testing it first, this skill applies."
 ---
 
 # Writing Skills
@@ -313,12 +313,12 @@ digraph when_flowchart {
 - Linear instructions → Numbered lists
 - Labels without semantic meaning (step1, helper2)
 
-See @graphviz-conventions.dot for graphviz style rules.
+See `${CLAUDE_SKILL_DIR}/graphviz-conventions.dot` for graphviz style rules.
 
-**Visualizing for your human partner:** Use `render-graphs.js` in this directory to render a skill's flowcharts to SVG:
+**Visualizing for your human partner:** Use the render script to render a skill's flowcharts to SVG:
 ```bash
-./render-graphs.js ../some-skill           # Each diagram separately
-./render-graphs.js ../some-skill --combine # All diagrams in one SVG
+${CLAUDE_SKILL_DIR}/render-graphs.js ../some-skill           # Each diagram separately
+${CLAUDE_SKILL_DIR}/render-graphs.js ../some-skill --combine # All diagrams in one SVG
 ```
 
 ## Code Examples
