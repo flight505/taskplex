@@ -1,6 +1,6 @@
 ---
 name: e2e-testing
-description: "Use when the user explicitly requests end-to-end testing via /e2e-test command. Researches all user journeys, state flows, and risk areas with parallel sub-agents, then systematically tests every path with evidence collection. Works for web apps, APIs, CLIs, and any project with user-facing interfaces."
+description: "Systematically tests every user journey with parallel research agents and evidence collection. Use when the user explicitly requests end-to-end testing via /e2e-test command. Works for web apps, APIs, CLIs, and any project with user-facing interfaces."
 ---
 
 # End-to-End Testing

@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: "Use when implementing any feature, bugfix, or refactor, before writing implementation code. Also use when adding behavior changes, writing regression tests, or when tempted to skip tests because something seems too simple. If you're about to write production code without a failing test, this skill applies."
+description: "Enforces RED-GREEN-REFACTOR discipline for all implementation work. Use when implementing any feature, bugfix, or refactor, before writing implementation code. Also use when adding behavior changes, writing regression tests, or when tempted to skip tests because something seems too simple. If you're about to write production code without a failing test, this skill applies."
 ---
 
 # Test-Driven Development (TDD)
@@ -356,7 +356,7 @@ Never fix bugs without a test.
 
 ## Testing Anti-Patterns
 
-When adding mocks or test utilities, read @testing-anti-patterns.md to avoid common pitfalls:
+When adding mocks or test utilities, read `${CLAUDE_SKILL_DIR}/testing-anti-patterns.md` to avoid common pitfalls:
 - Testing mock behavior instead of real behavior
 - Adding test-only methods to production classes
 - Mocking without understanding dependencies

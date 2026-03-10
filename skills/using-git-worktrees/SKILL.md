@@ -1,6 +1,6 @@
 ---
 name: using-git-worktrees
-description: "Use when starting feature work that needs isolation from current workspace, before executing implementation plans in parallel, or when the user asks to work on a feature without affecting current changes. Also use when brainstorm produces a design ready for implementation, when /batch needs isolated worktrees, or when switching branches would disrupt in-progress work."
+description: "Creates isolated git worktrees for parallel development without branch switching. Use when starting feature work that needs isolation, before executing implementation plans in parallel, or when the user asks to work on a feature without affecting current changes. Also use when brainstorm produces a design ready for implementation, or when switching branches would disrupt in-progress work."
 ---
 
 # Using Git Worktrees
@@ -144,6 +144,12 @@ Ready to implement <feature-name>
 ### Context Continuity
 
 Project configs and auto memory are shared across all worktrees of the same repository (Claude Code 2.1.63+). Architectural decisions, naming conventions, and workflow preferences saved to auto memory in the main session are automatically available in worktree subagents — no manual context passing needed.
+
+### Exiting a Worktree
+
+Use the `ExitWorktree` tool (Claude Code 2.1.72+) to leave an `EnterWorktree` session and return to the original directory. This is the proper way to exit — it handles cleanup and directory restoration automatically.
+
+For worktrees created manually via `git worktree add`, use `finishing-a-development-branch` for structured cleanup.
 
 ## Quick Reference
 

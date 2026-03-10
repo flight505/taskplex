@@ -1,6 +1,6 @@
 ---
 name: verification-before-completion
-description: "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs. Also use before expressing satisfaction with results, before moving to the next task, or before trusting an agent's success report. If you're about to say done, fixed, all tests pass, or any variation without having run verification in this message, this skill applies."
+description: "Gates all completion claims with fresh verification evidence from the current turn. Use when about to claim work is complete, fixed, or passing, before committing or creating PRs. Also use before trusting an agent's success report, before moving to the next task, or before expressing satisfaction. If you're about to say 'done' without running verification in this message, this skill applies."
 ---
 
 # Verification Before Completion

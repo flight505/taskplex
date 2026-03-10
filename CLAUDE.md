@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 7.0.2** | Last Updated: 2026-03-08
+**Version 7.0.2** | Last Updated: 2026-03-10
 
 Developer instructions for the TaskPlex plugin.
 
@@ -60,8 +60,8 @@ taskplex/
 ### Modifying Skills
 
 - Skills are pure markdown — no runtime code, no dependencies
-- Frontmatter: `name` + `description` only (max 1024 chars)
-- Description must start with "Use when..." (triggering conditions, NOT workflow summary)
+- Frontmatter: `name` + `description` required; optional: `disable-model-invocation`, `user-invocable`, `argument-hint`, `allowed-tools`, `model`, `context`, `agent`, `hooks`
+- Description: hybrid pattern — start with what it does (third-person), then "Use when..." triggers. Never summarize workflow.
 - See `writing-skills` skill for TDD approach to skill authoring
 
 ### Testing Changes
@@ -91,7 +91,7 @@ taskplex/
 ## Gotchas
 
 - `hooks/hooks.json` is auto-discovered — never add `"hooks"` field to plugin.json
-- Plugins update on restart only, not mid-session
+- Use `/reload-plugins` to activate plugin changes without restart (2.1.69+)
 - Skills in plugins don't hot-reload (standalone symlinked skills do)
 - Hook scripts run in non-interactive shells — no aliases, no .zshrc
 - `PermissionRequest` hooks don't fire in `-p` (headless) mode

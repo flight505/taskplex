@@ -1,6 +1,6 @@
 ---
 name: systematic-debugging
-description: "Use when encountering any bug, test failure, unexpected behavior, build failure, flaky test, or performance issue, before proposing fixes. Especially important when a quick fix seems obvious, when you've already tried a fix that didn't work, or when under time pressure. If you're about to suggest a code change to fix a problem without first investigating root cause, this skill applies."
+description: "Investigates root cause through 4-phase analysis before any fix attempt. Use when encountering any bug, test failure, unexpected behavior, build failure, flaky test, or performance issue, before proposing fixes. Especially important when a quick fix seems obvious, when a previous fix didn't work, or when under time pressure. If you're about to suggest a code change without root cause analysis, this skill applies."
 ---
 
 # Systematic Debugging

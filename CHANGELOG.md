@@ -4,6 +4,34 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v7.0.2 (2026-03-10)
+
+**Skills 2.0 compliance, CLI execution command handoff, and v2.1.72 integration:**
+
+**Fixed:**
+- Critical bug: `using-taskplex` blanket "use Skill tool" instruction caused Claude to invoke `/batch` and `/simplify` via Skill tool, failing with `disable-model-invocation` error
+- Split skill routing into two paths: TaskPlex skills (Skill tool) vs CLI bundled skills (contextual handoff to user)
+- `@testing-anti-patterns.md` → `${CLAUDE_SKILL_DIR}/testing-anti-patterns.md` in `test-driven-development`
+- `@testing-skills-with-subagents.md` → `${CLAUDE_SKILL_DIR}/testing-skills-with-subagents.md` in `writing-skills`
+
+**Added:**
+- CLI Execution Commands section in `using-taskplex` — documents `/batch`, `/simplify`, `/debug`, `/loop`, `/plan` with contextual handoff pattern
+- Contextual handoff examples (good/bad) showing task-specific CLI command guidance
+- Decision flow step 7: handoff to `/simplify` after implementation
+- `ExitWorktree` tool reference in `using-git-worktrees` and `finishing-a-development-branch` (v2.1.72)
+- `/plan [description]` command documented in CLI Execution Commands (v2.1.72)
+- `argument-hint` frontmatter on all 3 commands: brainstorm, write-plan, e2e-test
+
+**Changed:**
+- All 11 skill descriptions rewritten to hybrid pattern (third-person what + "Use when..." triggers)
+- `writing-skills/SKILL.md` reduced from 655→514 lines — CSO guide extracted to `cso-guide.md` reference file
+- `writing-skills` description guidance updated from "triggers-only" to hybrid pattern per current Anthropic best practices
+- Ultrathink tip updated for simplified effort levels (low ○, medium ◐, high ●)
+- `CLAUDE.md` frontmatter docs expanded to list all valid fields (argument-hint, allowed-tools, model, context, agent, hooks)
+- `/reload-plugins` replaces "Plugins update on restart only" in gotchas
+
+---
+
 ### v7.0.1 (2026-03-08)
 
 **Skill description optimization and code-review integration:**

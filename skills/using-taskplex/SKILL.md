@@ -1,6 +1,6 @@
 ---
 name: using-taskplex
-description: "Use when starting any conversation - establishes TaskPlex workflow awareness, requiring skill invocation before ANY response including clarifying questions"
+description: "Routes tasks to the correct discipline skill and guides CLI execution command usage. Use when starting any conversation — establishes TaskPlex workflow awareness, requiring skill invocation before ANY response including clarifying questions."
 disable-model-invocation: false
 user-invocable: false
 ---
@@ -12,12 +12,16 @@ IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
 
 This is not negotiable. This is not optional. You cannot rationalize your way out of this.
 
-**Autonomous invocation:** When the decision flow routes to a skill, use the **Skill tool** to invoke it directly — do NOT tell the user to type a slash command. You have the Skill tool available. Use it.
+**TaskPlex skills** (listed in the catalog below): Use the **Skill tool** to invoke them directly. Do NOT tell the user to type a slash command — you have the Skill tool available. Use it.
+
+**CLI execution commands** (`/batch`, `/simplify`, `/debug`, `/loop`): These are Claude Code **bundled skills** with `disable-model-invocation: true`. You CANNOT invoke them via the Skill tool. Instead, provide a **contextual handoff** — see the CLI Execution Commands section below.
 </EXTREMELY-IMPORTANT>
 
 ## How to Access Skills
 
-**In Claude Code:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to you—follow it directly. Never use the Read tool on skill files.
+**TaskPlex skills:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to you—follow it directly. Never use the Read tool on skill files.
+
+**CLI bundled skills:** You must guide the user to type these commands themselves. See "CLI Execution Commands" below.
 
 ## TaskPlex Skill Catalog
 
@@ -39,25 +43,61 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 1. **Bug/failure?** → `systematic-debugging` (root cause FIRST)
 2. **Feature described?**
    - a. Novel/ambiguous? → `brainstorm` → `writing-plans`
-   - b. Multi-step? → `writing-plans` → execute with `/batch`
-3. **Plan exists?** → Execute with `/batch` (decomposes into 5-30 parallel worktree agents) or work through tasks inline with TDD
+   - b. Multi-step? → `writing-plans` → handoff to `/batch` (CLI)
+3. **Plan exists?** → Handoff to `/batch` (CLI) or work through tasks inline with TDD
 4. **Need plan?** → `writing-plans`
 5. **Before code?** → `test-driven-development`
 6. **Claiming done?** → `verification-before-completion`
-7. **Review feedback?** → `receiving-code-review`
-8. **Work complete?** → `finishing-a-development-branch`
+7. **After implementation?** → Handoff to `/simplify` (CLI) for code review
+8. **Review feedback?** → `receiving-code-review`
+9. **Work complete?** → `finishing-a-development-branch`
 
-**Tip:** For complex brainstorm or multi-task planning on Opus 4.6, type "ultrathink" before your message to request deeper reasoning.
+**Tip:** Type "ultrathink" before your message to request high effort for the next turn. Effort levels: low (○), medium (◐), high (●). Use `/effort auto` to reset to default.
 
 ## TaskPlex + CLI: Think, Then Execute
 
 TaskPlex is the **thinking discipline layer**. The CLI provides the **execution engines**. Use them together:
 
 1. **Think first** — `brainstorm` challenges assumptions, `writing-plans` creates bite-sized TDD tasks
-2. **Execute with CLI** — `/batch` runs all tasks in parallel worktrees with auto-review, `/simplify` does 3-agent code review
+2. **Execute with CLI** — handoff to `/batch` for parallel worktree execution, `/simplify` for 3-agent code review
 3. **Verify after** — `verification-before-completion` ensures claims have evidence, `finishing-a-development-branch` handles integration
 
 TaskPlex prepares the work so `/batch` and `/simplify` produce better results. Without discipline, speed just means faster mistakes.
+
+## CLI Execution Commands
+
+These are Claude Code **bundled skills** — prompt-based playbooks that spawn agents and orchestrate work. They have `disable-model-invocation: true`, meaning you CANNOT invoke them via the Skill tool. The user must type them.
+
+**Your job:** When the workflow reaches one of these commands, provide a **contextual handoff** — explain what the command will do *for this specific task*, then give the exact command to type.
+
+### Commands
+
+**`/batch <plan-or-instruction>`** — Researches the codebase, decomposes work into 5-30 independent units, presents a plan for approval. Once approved, spawns one agent per unit in an isolated git worktree. Each agent implements, runs tests, and opens a PR. Requires a git repo.
+
+**`/simplify [focus]`** — Reviews recently changed files with 3 parallel agents (code reuse, quality, efficiency). Aggregates findings and applies fixes. Pass optional text to focus: `/simplify focus on error handling`.
+
+**`/debug [description]`** — Reads the session debug log to troubleshoot the current Claude Code session. Describe the issue to focus analysis.
+
+**`/loop [interval] <prompt>`** — Runs a prompt on a recurring interval while the session stays open. Example: `/loop 5m check if the deploy finished`.
+
+**`/plan [description]`** — Enters plan mode. With a description (e.g., `/plan fix the auth bug`), starts planning immediately. Without arguments, enters interactive plan mode. Use when the user wants to design an approach before coding.
+
+### Contextual Handoff Pattern
+
+Do NOT give generic descriptions. Generate a handoff specific to the current task:
+
+**Bad (generic):**
+> "Type `/batch` to execute the plan in parallel."
+
+**Good (contextual):**
+> "Your plan has 5 tasks — auth middleware, route handlers, database migration, tests, and API docs. `/batch` will decompose these into parallel worktrees, each getting its own agent that implements the task, runs tests, and opens a PR. Type:
+> `/batch docs/plans/2026-03-08-auth-refactor.md`"
+
+**Good (contextual, after implementation):**
+> "You've changed 4 files across the payment module. `/simplify` will review them with 3 parallel agents checking for code reuse, quality issues, and efficiency. Type:
+> `/simplify focus on the new Stripe webhook handlers`"
+
+The handoff should convey: **what it will do**, **why it's the right tool here**, and **the exact command**.
 
 ## Red Flags — STOP, You're Rationalizing
 

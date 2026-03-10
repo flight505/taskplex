@@ -1,6 +1,6 @@
 ---
 name: finishing-a-development-branch
-description: "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work. Also use when a worktree task is done and needs cleanup, when the user says they're finished with a branch, or when it's time to merge, create a PR, or discard experimental work."
+description: "Guides branch integration with structured options: merge, PR, keep, or discard. Use when implementation is complete and tests pass, when a worktree task is done and needs cleanup, when the user says they're finished with a branch, or when it's time to merge, create a PR, or discard experimental work."
 ---
 
 # Finishing a Development Branch
@@ -137,7 +137,9 @@ Then: Cleanup worktree (Step 5)
 
 **For Options 1, 2, 4:**
 
-Check if in worktree:
+If in an `EnterWorktree` session, use the `ExitWorktree` tool to return to the original directory (handles cleanup automatically).
+
+Otherwise, check and remove manually:
 ```bash
 git worktree list | grep $(git branch --show-current)
 ```

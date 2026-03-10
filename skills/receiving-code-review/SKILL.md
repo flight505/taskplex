@@ -1,6 +1,6 @@
 ---
 name: receiving-code-review
-description: "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable. Also use when processing automated review output from the code-review plugin, when a reviewer suggests changes on a PR, or when external contributors comment on your code. If you're about to say 'great point' or implement feedback without verifying it first, this skill applies."
+description: "Evaluates code review feedback technically before implementing any suggestion. Use when receiving review feedback, processing automated output from the code-review plugin, when a reviewer suggests PR changes, or when external contributors comment on code. If you're about to say 'great point' or implement suggestions without verifying them first, this skill applies."
 ---
 
 # Code Review Reception

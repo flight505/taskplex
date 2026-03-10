@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: "Use when you have a spec, requirements, or design brief for a multi-step task, before touching code. Also use when breaking down a feature into implementation tasks, when a brainstorm session produced a design that needs an execution plan, or when the user asks to plan, outline, or decompose work into steps. If the task needs more than 2-3 files changed, this skill applies."
+description: "Creates bite-sized, TDD-driven implementation plans from specs or design briefs. Use when breaking down a feature into implementation tasks, when a brainstorm produced a design needing an execution plan, or when the user asks to plan, outline, or decompose work. If the task touches more than 2-3 files, this skill applies."
 ---
 
 # Writing Plans
@@ -33,7 +33,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For Claude:** Execute this plan task-by-task using TDD. Use `/batch` for parallel execution or work through tasks inline.
+> **For Claude:** Execute this plan task-by-task using TDD. For parallel execution, the user can run `/batch` with this plan file.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -96,12 +96,17 @@ git commit -m "feat: add specific feature"
 
 ## Execution Handoff
 
-After saving the plan, offer execution:
+After saving the plan, present a **contextual handoff** — not a generic menu. Describe what each option will do *for this specific plan*.
 
-**"Plan saved to `docs/plans/<filename>.md`. Ready to execute.**
+**Template** (adapt to the actual plan content):
 
-**Option 1: `/batch`** — Claude Code decomposes and runs all tasks in parallel worktrees with auto-review
+> "Plan saved to `docs/plans/<filename>.md` with N tasks.
+>
+> **Parallel execution:** `/batch` will decompose these N tasks into isolated worktrees — each task gets its own agent that implements, runs tests, and opens a PR. [Mention which areas of the codebase the tasks cover]. Type:
+> `/batch docs/plans/<filename>.md`
+>
+> **Inline execution:** I'll work through the tasks one at a time in this session using TDD — write failing test, implement, verify, commit. Better for tasks with tight dependencies or when you want to review each step.
+>
+> Which approach?"
 
-**Option 2: Inline** — Work through tasks one at a time in this session (use TDD per task)
-
-**Which approach?"**
+**Key:** The `/batch` command is a CLI bundled skill — you cannot invoke it via the Skill tool. Give the user the exact command to type, with context about what it will do for *their* plan.
