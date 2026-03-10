@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 7.0.2** | Last Updated: 2026-03-10
+**Version 7.0.3** | Last Updated: 2026-03-10
 
 Developer instructions for the TaskPlex plugin.
 

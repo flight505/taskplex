@@ -4,6 +4,17 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v7.0.3 (2026-03-10)
+
+**Fix: CLI handoff response handling:**
+
+- Fixed: user choosing "option 1" (/batch) from plan handoff triggered TDD instead of outputting the command
+- Added "When the User Chooses" response handling to `writing-plans` — /batch → output command and stop, inline → start TDD
+- Added handoff acceptance rule to `using-taskplex` decision flow as step 1 (highest priority)
+- Added red flag: "User said option 1, let me start TDD" → they chose /batch, output command and STOP
+
+---
+
 ### v7.0.2 (2026-03-10)
 
 **Skills 2.0 compliance, CLI execution command handoff, and v2.1.72 integration:**

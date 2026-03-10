@@ -4,7 +4,7 @@
   <img src="./assets/TaskPlex_Hero@0.5x.png" alt="TaskPlex - Always-On Development Companion" width="800" />
 </p>
 
-[![Version](https://img.shields.io/badge/version-7.0.2-blue.svg)](https://github.com/flight505/taskplex)
+[![Version](https://img.shields.io/badge/version-7.0.3-blue.svg)](https://github.com/flight505/taskplex)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://github.com/anthropics/claude-code)
 
@@ -90,7 +90,7 @@ TaskPlex activates automatically — no explicit invocation needed. It is the **
 
 ```
 taskplex/
-├── .claude-plugin/plugin.json     # v7.0.2
+├── .claude-plugin/plugin.json     # v7.0.3
 ├── commands/                      # 3 shortcuts
 │   ├── brainstorm.md
 │   ├── write-plan.md
@@ -124,6 +124,10 @@ taskplex/
 ---
 
 ## What's New
+
+### v7.0.3
+
+Fixed: choosing `/batch` from the plan handoff menu triggered TDD instead of outputting the command. Added response handling so Claude outputs the exact `/batch` command and stops when you pick the parallel option.
 
 ### v7.0.2
 
