@@ -110,3 +110,13 @@ After saving the plan, present a **contextual handoff** — not a generic menu. 
 > Which approach?"
 
 **Key:** The `/batch` command is a CLI bundled skill — you cannot invoke it via the Skill tool. Give the user the exact command to type, with context about what it will do for *their* plan.
+
+### When the User Chooses
+
+**User picks /batch** (option 1, "parallel", "batch", etc.):
+1. Output the exact `/batch docs/plans/<filename>.md` command
+2. **STOP.** Do not invoke `test-driven-development`. Do not start implementing. Do not load any other skill.
+3. The user will type the command themselves — the CLI takes over from here.
+
+**User picks inline** (option 2, "inline", "one at a time", etc.):
+Invoke `taskplex:test-driven-development` and begin with Task 1 of the plan.

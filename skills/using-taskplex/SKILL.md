@@ -40,17 +40,18 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 
 ## Decision Flow
 
-1. **Bug/failure?** → `systematic-debugging` (root cause FIRST)
-2. **Feature described?**
+1. **User chose a CLI command from a handoff?** → Output the exact command and STOP (do not route to other skills)
+2. **Bug/failure?** → `systematic-debugging` (root cause FIRST)
+3. **Feature described?**
    - a. Novel/ambiguous? → `brainstorm` → `writing-plans`
    - b. Multi-step? → `writing-plans` → handoff to `/batch` (CLI)
-3. **Plan exists?** → Handoff to `/batch` (CLI) or work through tasks inline with TDD
-4. **Need plan?** → `writing-plans`
-5. **Before code?** → `test-driven-development`
-6. **Claiming done?** → `verification-before-completion`
-7. **After implementation?** → Handoff to `/simplify` (CLI) for code review
-8. **Review feedback?** → `receiving-code-review`
-9. **Work complete?** → `finishing-a-development-branch`
+4. **Plan exists?** → Handoff to `/batch` (CLI) or work through tasks inline with TDD
+5. **Need plan?** → `writing-plans`
+6. **Before code?** → `test-driven-development`
+7. **Claiming done?** → `verification-before-completion`
+8. **After implementation?** → Handoff to `/simplify` (CLI) for code review
+9. **Review feedback?** → `receiving-code-review`
+10. **Work complete?** → `finishing-a-development-branch`
 
 **Tip:** Type "ultrathink" before your message to request high effort for the next turn. Effort levels: low (○), medium (◐), high (●). Use `/effort auto` to reset to default.
 
@@ -69,6 +70,8 @@ TaskPlex prepares the work so `/batch` and `/simplify` produce better results. W
 These are Claude Code **bundled skills** — prompt-based playbooks that spawn agents and orchestrate work. They have `disable-model-invocation: true`, meaning you CANNOT invoke them via the Skill tool. The user must type them.
 
 **Your job:** When the workflow reaches one of these commands, provide a **contextual handoff** — explain what the command will do *for this specific task*, then give the exact command to type.
+
+**When the user accepts a handoff** (says "option 1", "/batch", "parallel", "yes", etc. after you presented CLI command options): Output the exact command to type and **STOP**. Do not invoke `test-driven-development` or any other skill. Do not start implementing. The CLI takes over — your job is done until the user returns.
 
 ### Commands
 
@@ -113,6 +116,7 @@ The handoff should convey: **what it will do**, **why it's the right tool here**
 | "The reviewer is wrong" | Use receiving-code-review — verify before dismissing. |
 | "The skill is overkill" | Simple things become complex. Use it. |
 | "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+| "User said option 1, let me start TDD" | They chose /batch. Output the command and STOP. |
 
 ## Skill Priority
 
