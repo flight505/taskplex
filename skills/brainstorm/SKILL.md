@@ -1,6 +1,7 @@
 ---
 name: brainstorm
 description: "Challenges assumptions and explores design alternatives through collaborative dialogue before implementation begins. You MUST use this before creating features, building components, adding functionality, or modifying behavior. Also use when the user describes a new idea, asks to build something, or wants to add capability. If you're about to jump into implementation without exploring requirements, this skill applies."
+argument-hint: "[feature-description]"
 ---
 
 # Brainstorming Ideas Into Designs

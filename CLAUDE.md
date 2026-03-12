@@ -21,8 +21,7 @@ TaskPlex is an **always-on development companion** — TDD enforcement, verifica
 ```
 taskplex/
 ├── .claude-plugin/plugin.json        # Plugin manifest
-├── commands/                          # 3 shortcut commands
-│   ├── brainstorm.md                 # → taskplex:brainstorm skill
+├── commands/                          # 2 shortcut commands
 │   ├── write-plan.md                 # → taskplex:writing-plans skill
 │   └── e2e-test.md                  # → taskplex:e2e-testing skill
 ├── hooks/
@@ -48,7 +47,7 @@ taskplex/
 | Type | Count | Notes |
 |------|-------|-------|
 | Skills | 11 | Discipline patterns (TDD, debugging, verification, E2E testing, etc.) |
-| Commands | 3 | brainstorm, write-plan, e2e-test |
+| Commands | 2 | write-plan, e2e-test (brainstorm is invoked directly as a skill) |
 | Hooks | 1 | SessionStart (inject skill awareness) |
 | Agents | 0 | Execution handled by CLI built-ins |
 | Config | 0 | No configuration files |
@@ -90,6 +89,7 @@ taskplex/
 
 ## Gotchas
 
+- Never create a command with the same name as a skill — both register as `taskplex:<name>`, causing circular invocation loops. Use commands only as shortcuts to differently-named skills (e.g. `write-plan` → `writing-plans`).
 - `hooks/hooks.json` is auto-discovered — never add `"hooks"` field to plugin.json
 - Use `/reload-plugins` to activate plugin changes without restart (2.1.69+)
 - Skills in plugins don't hot-reload (standalone symlinked skills do)

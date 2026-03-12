@@ -20,7 +20,6 @@
     "development-companion"
   ],
   "commands": [
-    "./commands/brainstorm.md",
     "./commands/write-plan.md",
     "./commands/e2e-test.md"
   ],

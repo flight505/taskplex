@@ -24,11 +24,11 @@ Always-on development companion for Claude Code. TDD enforcement, verification g
 
 TaskPlex activates automatically — no explicit invocation needed. It is the **thinking discipline layer**: it prepares the work (brainstorm, plan, TDD) so the CLI execution engines (`/batch`, `/simplify`) produce better results.
 
-**Three shortcuts for common workflows:**
+**Shortcuts for common workflows:**
 
 | Command | Skill | When |
 |---------|-------|------|
-| `/brainstorm` | brainstorm | Before creating anything new |
+| `/brainstorm` | brainstorm | Before creating anything new (invoked directly as skill) |
 | `/write-plan` | writing-plans | Need a task-by-task plan |
 | `/e2e-test` | e2e-testing | Systematic end-to-end testing of your application |
 
@@ -91,8 +91,7 @@ TaskPlex activates automatically — no explicit invocation needed. It is the **
 ```
 taskplex/
 ├── .claude-plugin/plugin.json     # v7.0.3
-├── commands/                      # 3 shortcuts
-│   ├── brainstorm.md
+├── commands/                      # 2 shortcuts
 │   ├── write-plan.md
 │   └── e2e-test.md
 ├── hooks/                         # 1 hook (SessionStart)
@@ -116,7 +115,7 @@ taskplex/
 | Component | Count | Notes |
 |-----------|-------|-------|
 | Skills | 11 | Discipline patterns (TDD, debugging, verification, E2E testing, etc.) |
-| Commands | 3 | Shortcut entry points to key skills |
+| Commands | 2 | Shortcut entry points to key skills |
 | Hooks | 1 | SessionStart injects skill awareness |
 | Agents | 0 | Execution handled by CLI built-ins |
 | Config | 0 | No configuration files needed |
