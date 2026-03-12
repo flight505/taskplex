@@ -4,7 +4,7 @@
   <img src="./assets/TaskPlex_Hero@0.5x.png" alt="TaskPlex - Always-On Development Companion" width="800" />
 </p>
 
-[![Version](https://img.shields.io/badge/version-7.0.3-blue.svg)](https://github.com/flight505/taskplex)
+[![Version](https://img.shields.io/badge/version-7.0.4-blue.svg)](https://github.com/flight505/taskplex)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://github.com/anthropics/claude-code)
 
@@ -90,7 +90,7 @@ TaskPlex activates automatically — no explicit invocation needed. It is the **
 
 ```
 taskplex/
-├── .claude-plugin/plugin.json     # v7.0.3
+├── .claude-plugin/plugin.json     # v7.0.4
 ├── commands/                      # 2 shortcuts
 │   ├── write-plan.md
 │   └── e2e-test.md

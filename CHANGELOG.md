@@ -4,6 +4,17 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v7.0.4 (2026-03-12)
+
+**Fix: brainstorm skill circular invocation:**
+
+- Removed `commands/brainstorm.md` — it shared the name `taskplex:brainstorm` with `skills/brainstorm/`, causing a circular invocation loop (4x "Successfully loaded skill" with no content execution)
+- Moved `argument-hint: "[feature-description]"` from the removed command into the brainstorm skill frontmatter
+- Added gotcha to CLAUDE.md: never create a command with the same name as a skill in a plugin
+- Commands reduced from 3 → 2 (write-plan and e2e-test remain — they have different names from their target skills)
+
+---
+
 ### v7.0.3 (2026-03-10)
 
 **Fix: CLI handoff response handling:**
