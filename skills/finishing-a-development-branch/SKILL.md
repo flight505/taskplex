@@ -149,48 +149,35 @@ If yes:
 git worktree remove <worktree-path>
 ```
 
-**For Option 3:** Keep worktree.
+**For Option 2:** The code is safely on the remote after pushing. Clean up the worktree — the user can check out the branch again from the PR if review feedback requires changes.
+
+**For Option 3:** Keep worktree. Remind user: "Worktree at `<path>` — run `git worktree remove <path>` when done."
+
+### Step 6: Orphan Worktree Check
+
+After cleanup, scan for stale worktrees:
+```bash
+git worktree list
+```
+
+Report any worktrees whose branches no longer exist or that point to merged branches. Offer to clean them up.
 
 ## Quick Reference
 
-| Option | Merge | Push | Keep Worktree | Cleanup Branch |
-|--------|-------|------|---------------|----------------|
-| 1. Merge locally | ✓ | - | - | ✓ |
-| 2. Create PR | - | ✓ | ✓ | - |
-| 3. Keep as-is | - | - | ✓ | - |
-| 4. Discard | - | - | - | ✓ (force) |
+| Option | Merge | Push | Cleanup Worktree | Cleanup Branch |
+|--------|-------|------|-----------------|----------------|
+| 1. Merge locally | yes | - | yes | yes |
+| 2. Create PR | - | yes | yes | - |
+| 3. Keep as-is | - | - | - | - |
+| 4. Discard | - | - | yes | yes (force) |
 
-## Common Mistakes
+## Guard Rails
 
-**Skipping test verification**
-- **Problem:** Merge broken code, create failing PR
-- **Fix:** Always verify tests before offering options
-
-**Open-ended questions**
-- **Problem:** "What should I do next?" → ambiguous
-- **Fix:** Present exactly 4 structured options
-
-**Automatic worktree cleanup**
-- **Problem:** Remove worktree when might need it (Option 2, 3)
-- **Fix:** Only cleanup for Options 1 and 4
-
-**No confirmation for discard**
-- **Problem:** Accidentally delete work
-- **Fix:** Require typed "discard" confirmation
-
-## Red Flags
-
-**Never:**
-- Proceed with failing tests
-- Merge without verifying tests on result
-- Delete work without confirmation
-- Force-push without explicit request
-
-**Always:**
-- Verify tests before offering options
-- Present exactly 4 options
-- Get typed confirmation for Option 4
-- Clean up worktree for Options 1 & 4 only
+- Always verify tests before offering options
+- Present exactly 4 options — no open-ended questions
+- Require typed "discard" confirmation for Option 4
+- Never force-push without explicit request
+- Clean worktrees for Options 1, 2, and 4 (code is safe on remote or merged)
 
 ## Integration
 

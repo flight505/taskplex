@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Version 7.0.4** | Last Updated: 2026-03-12
+**Version 8.0.0** | Last Updated: 2026-03-12
 
 Developer instructions for the TaskPlex plugin.
 
@@ -8,9 +8,9 @@ Developer instructions for the TaskPlex plugin.
 
 ## Overview
 
-TaskPlex is an **always-on development companion** — TDD enforcement, verification gates, systematic debugging, and disciplined workflows. Pure markdown skills, zero runtime dependencies. Execution handled by CLI built-ins (`/batch`, `/simplify`).
+TaskPlex is a **development companion** that right-sizes process to task complexity. TDD enforcement, verification gates, systematic debugging, and disciplined workflows — applied proportionally. Pure markdown skills, zero runtime dependencies. Execution handled by CLI built-ins (`/batch`, `/simplify`).
 
-**Philosophy:** Discipline before code, challenge assumptions first, verify before claiming done. Lightweight enough for daily use — no orchestration overhead.
+**Philosophy:** Right-size the process. Trivial work gets trivial process. Complex work gets full discipline. Always verify before claiming done.
 
 **For complete projects and long-running builds:** Use [SDK-Bridge](https://github.com/flight505/sdk-bridge) (`/sdk-bridge:start`).
 
@@ -29,16 +29,16 @@ taskplex/
 │   ├── run-hook.cmd                  # Cross-platform hook runner
 │   └── session-start                 # Injects using-taskplex awareness
 └── skills/                           # 11 skills
-    ├── brainstorm/                   # Design before code
+    ├── brainstorm/                   # Design exploration (Complex tier only)
     ├── test-driven-development/      # RED-GREEN-REFACTOR
-    ├── verification-before-completion/ # Evidence before claims
+    ├── verification-before-completion/ # Proportional evidence before claims
     ├── systematic-debugging/         # 4-phase root cause
     ├── using-git-worktrees/          # Isolated workspaces
-    ├── finishing-a-development-branch/ # Branch lifecycle
+    ├── finishing-a-development-branch/ # Branch lifecycle + worktree cleanup
     ├── receiving-code-review/        # Technical evaluation
     ├── writing-plans/                # Bite-sized task plans
     ├── writing-skills/               # TDD for documentation
-    ├── using-taskplex/               # Always-on routing gate
+    ├── using-taskplex/               # Tier-based routing
     └── e2e-testing/                  # Systematic journey testing (command-only)
 ```
 
@@ -52,6 +52,14 @@ taskplex/
 | Agents | 0 | Execution handled by CLI built-ins |
 | Config | 0 | No configuration files |
 
+### Task Tiers (v8.0.0)
+
+| Tier | Process | Skills Used |
+|------|---------|-------------|
+| **Trivial** | Just do it | TDD if adding behavior, verify when done |
+| **Standard** | Plan → execute | writing-plans → /batch or inline TDD |
+| **Complex** | Design → plan → execute | brainstorm → writing-plans → /batch |
+
 ---
 
 ## Development Guidelines
@@ -60,8 +68,29 @@ taskplex/
 
 - Skills are pure markdown — no runtime code, no dependencies
 - Frontmatter: `name` + `description` required; optional: `disable-model-invocation`, `user-invocable`, `argument-hint`, `allowed-tools`, `model`, `context`, `agent`, `hooks`
-- Description: hybrid pattern — start with what it does (third-person), then "Use when..." triggers. Never summarize workflow.
+- Description: hybrid pattern — start with what it does (third-person), then "Use when..." triggers
 - See `writing-skills` skill for TDD approach to skill authoring
+
+### Skills 2.0 Compliance
+
+- Hybrid descriptions: what-it-does + "Use when..." triggers (under 420 chars)
+- `argument-hint` on commands for autocomplete
+- `${CLAUDE_SKILL_DIR}` for self-references within skill content
+- `context: fork` available for heavy skills that benefit from isolated subagent execution
+- `hooks:` in frontmatter for scoped hooks (fire only while skill is active)
+- Progressive disclosure: descriptions load at startup, full content on invocation
+
+### Available Hook Events
+
+| Event | Use Case |
+|-------|----------|
+| `SessionStart` | Inject skill awareness (used by TaskPlex) |
+| `PreCompact` | Preserve context before compaction |
+| `WorktreeCreate` / `WorktreeRemove` | Worktree lifecycle management |
+| `TaskCompleted` | Enforcement gate for agent teams |
+| `TeammateIdle` | Keep teammates working |
+| `InstructionsLoaded` | React to CLAUDE.md changes |
+| `ConfigChange` | React to config changes |
 
 ### Testing Changes
 
@@ -104,6 +133,7 @@ taskplex/
 - [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md)
 - [Claude Code Skills](https://code.claude.com/docs/en/skills.md)
 - [Plugin Development](https://code.claude.com/docs/en/plugins.md)
+- [Agent Teams](https://code.claude.com/docs/en/agent-teams.md) — Experimental parallel teammates
 
 ---
 

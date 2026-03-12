@@ -22,7 +22,7 @@ escape_for_json() {
 }
 
 using_taskplex_escaped=$(escape_for_json "$using_taskplex_content")
-session_context="<EXTREMELY_IMPORTANT>\nYou have TaskPlex — an always-on development companion.\n\n**Below is the full content of your 'taskplex:using-taskplex' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_taskplex_escaped}\n</EXTREMELY_IMPORTANT>"
+session_context="You have TaskPlex — a development companion that right-sizes process to task complexity.\n\n**Below is the full content of your 'taskplex:using-taskplex' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_taskplex_escaped}"
 
 # Output context injection as JSON.
 # Keep both shapes for compatibility:
