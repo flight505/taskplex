@@ -14,20 +14,22 @@
 
 ---
 
-## The Problem
+## Why TaskPlex Exists
 
-Claude Code's context window is its most precious resource. A single debugging session — reading files, tracing errors, running tests — can consume tens of thousands of tokens. A feature implementation with TDD adds even more. Stack a few tasks in one session and the context is full, performance degrades, and earlier instructions get lost.
+Claude Code is getting better fast. Built-in features like `/plan`, `/batch`, and `/simplify` now handle planning, parallel execution, and code review natively. Eval testing confirmed that Claude scores 100% on debugging and code review without any plugin help. Many plugins — including earlier versions of TaskPlex — ended up just adding to the context window without improving outcomes.
 
-## The Solution
+But one problem remains: **context window exhaustion**. A single debugging session reads 10 files and runs 5 commands — thousands of tokens consumed. A TDD feature implementation adds thousands more. Stack a few tasks and the context is full, performance degrades, and earlier instructions get lost. No amount of native capability fixes this — it's an architectural problem.
 
-TaskPlex ensures **all work runs in subagents**. Each agent gets its own context window, does its work, and returns a concise summary (~200-500 chars). The main context only ever holds:
+## How TaskPlex Solves It
 
-- The dispatcher rules (~1.6K chars, injected at session start)
+TaskPlex routes all work to **subagents with their own context windows**. The main window never fills up with file reads, test output, or debug traces. Each agent does its work, then returns a concise summary (~200-500 chars). The main context only holds:
+
+- A thin dispatcher (~1.6K chars, injected at session start)
 - User conversation
 - Agent summaries
 - CLI command handoffs
 
-Everything else — every file read, every test run, every debug trace — lives and dies in agent context windows.
+The result: you can run multiple complex tasks in a single session without context degradation. Every file read, test run, and debug trace lives and dies in a disposable agent context.
 
 ---
 
