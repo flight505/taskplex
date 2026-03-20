@@ -4,6 +4,53 @@ All notable changes to TaskPlex are documented here.
 
 ---
 
+### v9.0.0 (2026-03-20)
+
+**Context-Preservation Architecture:**
+
+TaskPlex redesigned as a **context-preservation layer**. All work runs in subagents so the main context window stays thin for conversation and coordination.
+
+**Added:**
+- 5 specialized agents organized by work type: `taskplex-implementer` (TDD enforced), `taskplex-debugger` (root-cause-first), `taskplex-verifier` (background, read-only), `taskplex-researcher` (read-only), `taskplex-e2e`
+- Agent tuning via `effort` (high/medium/low), `background`, `memory: project`, `model` per agent
+- Eval harness (`evals/discipline-eval/`) — scenarios + judge for measuring discipline effectiveness
+- Architecture diagram (`assets/taskplex-v9-architecture.png`)
+
+**Removed:**
+- 7 skill directories → content moved to agent bodies (brainstorm, TDD, debugging, verification, planning, code-review, E2E)
+- `write-plan` command (redundant with built-in `/plan`)
+- `.cursor-plugin/`, `.codex/`, `.opencode/` (untested cross-editor support)
+- `tests/`, `tasks/`, `.github/workflows/benchmark.yml` (dead code)
+- Old trigger evals, old assets, old docs
+
+**Changed:**
+- `using-taskplex` dispatcher rewritten: "never do work in main context, always delegate"
+- Session injection reduced from 3,642 to 1,620 chars (-55%)
+- `.gitignore` cleaned of stale patterns
+
+**Design rationale (from eval):**
+- Debugging: 100% baseline — Claude does this natively, but agent keeps context out of main window
+- TDD: 0% baseline — Claude needs enforcement, agent provides it
+- Verification: 0% baseline, 25% with rules — lightweight rule in dispatcher suffices
+- Code review: 100% baseline — Claude handles natively, agent keeps context out
+
+---
+
+### v8.0.0 (2026-03-12)
+
+**Tier-Based Routing:**
+
+Replaced blanket skill enforcement with complexity tiers (trivial/standard/complex). Reduced session injection 58%. Removed guilt tables and rationalization prevention.
+
+**Changed:**
+- `using-taskplex`: 8,773 → 3,642 chars — tier routing table, non-negotiable disciplines, CLI handoff section
+- `brainstorm`: complex-tier only, no hard gates
+- `writing-plans`: single plan artifact, smart `/batch` recommendation
+- `verification-before-completion`: proportional to change size
+- `session-start` hook: de-escalated wrapper text
+
+---
+
 ### v7.0.4 (2026-03-12)
 
 **Fix: brainstorm skill circular invocation:**

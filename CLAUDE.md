@@ -1,18 +1,16 @@
 # CLAUDE.md
 
-**Version 8.0.0** | Last Updated: 2026-03-12
-
-Developer instructions for the TaskPlex plugin.
+**Version 9.0.0** | Last Updated: 2026-03-20
 
 ---
 
-## Overview
+## What TaskPlex Is
 
-TaskPlex is a **development companion** that right-sizes process to task complexity. TDD enforcement, verification gates, systematic debugging, and disciplined workflows — applied proportionally. Pure markdown skills, zero runtime dependencies. Execution handled by CLI built-ins (`/batch`, `/simplify`).
+A **context-preservation layer**. The main context window is the most precious resource in a Claude Code session. TaskPlex ensures all work — implementation, debugging, testing, exploration — runs in **subagents with their own context windows**. The main window stays thin for conversation and coordination. Agent results come back as concise summaries (~200-500 chars), not full file contents or test output.
 
-**Philosophy:** Right-size the process. Trivial work gets trivial process. Complex work gets full discipline. Always verify before claiming done.
+**Core rule: Never do work in the main context. Always delegate to an agent.**
 
-**For complete projects and long-running builds:** Use [SDK-Bridge](https://github.com/flight505/sdk-bridge) (`/sdk-bridge:start`).
+**For complete projects:** Use [SDK-Bridge](https://github.com/flight505/sdk-bridge) (`/sdk-bridge:start`).
 
 ---
 
@@ -20,120 +18,101 @@ TaskPlex is a **development companion** that right-sizes process to task complex
 
 ```
 taskplex/
-├── .claude-plugin/plugin.json        # Plugin manifest
-├── commands/                          # 2 shortcut commands
-│   ├── write-plan.md                 # → taskplex:writing-plans skill
-│   └── e2e-test.md                  # → taskplex:e2e-testing skill
+├── agents/                             # 5 work-type agents (own context)
+│   ├── taskplex-implementer.md         # Code changes, TDD enforced
+│   ├── taskplex-debugger.md            # Investigation + fix
+│   ├── taskplex-verifier.md            # Background verification
+│   ├── taskplex-researcher.md          # Design exploration
+│   └── taskplex-e2e.md                # E2E testing
+├── skills/                             # 4 skills (main context)
+│   ├── using-taskplex/                 # Dispatcher
+│   ├── using-git-worktrees/            # Interactive workflow
+│   ├── finishing-a-development-branch/ # Interactive workflow
+│   └── writing-skills/                 # Skill authoring
+├── commands/
+│   └── e2e-test.md                     # → @taskplex-e2e
 ├── hooks/
-│   ├── hooks.json                    # 1 hook (SessionStart)
-│   ├── run-hook.cmd                  # Cross-platform hook runner
-│   └── session-start                 # Injects using-taskplex awareness
-└── skills/                           # 11 skills
-    ├── brainstorm/                   # Design exploration (Complex tier only)
-    ├── test-driven-development/      # RED-GREEN-REFACTOR
-    ├── verification-before-completion/ # Proportional evidence before claims
-    ├── systematic-debugging/         # 4-phase root cause
-    ├── using-git-worktrees/          # Isolated workspaces
-    ├── finishing-a-development-branch/ # Branch lifecycle + worktree cleanup
-    ├── receiving-code-review/        # Technical evaluation
-    ├── writing-plans/                # Bite-sized task plans
-    ├── writing-skills/               # TDD for documentation
-    ├── using-taskplex/               # Tier-based routing
-    └── e2e-testing/                  # Systematic journey testing (command-only)
+│   ├── hooks.json                      # SessionStart
+│   ├── run-hook.cmd                    # Cross-platform runner
+│   └── session-start                   # Injects dispatcher (~1.6K chars)
+└── evals/
+    └── discipline-eval/                # Eval harness
 ```
 
-### Components
+### Agent Tuning
 
-| Type | Count | Notes |
-|------|-------|-------|
-| Skills | 11 | Discipline patterns (TDD, debugging, verification, E2E testing, etc.) |
-| Commands | 2 | write-plan, e2e-test (brainstorm is invoked directly as a skill) |
-| Hooks | 1 | SessionStart (inject skill awareness) |
-| Agents | 0 | Execution handled by CLI built-ins |
-| Config | 0 | No configuration files |
+| Agent | Work type | Effort | Model | Memory | Background | Tools |
+|-------|-----------|--------|-------|--------|------------|-------|
+| implementer | Code changes | high | inherit | project | no | Full |
+| debugger | Bug investigation | high | inherit | project | no | Full |
+| verifier | Test/build checks | low | sonnet | project | **yes** | Read-only |
+| researcher | Design exploration | medium | inherit | project | no | Read-only |
+| e2e | E2E testing | high | inherit | project | no | Full |
 
-### Task Tiers (v8.0.0)
+### What stays in main context
 
-| Tier | Process | Skills Used |
-|------|---------|-------------|
-| **Trivial** | Just do it | TDD if adding behavior, verify when done |
-| **Standard** | Plan → execute | writing-plans → /batch or inline TDD |
-| **Complex** | Design → plan → execute | brainstorm → writing-plans → /batch |
+- User conversation and agent routing
+- Interactive skills (git worktrees, branch lifecycle, skill authoring)
+- CLI handoffs: `/batch`, `/plan`, `/simplify`, `/debug`, `/loop`
+- Agent summaries — never raw results
 
 ---
 
 ## Development Guidelines
 
-### Modifying Skills
+### Agent Design Principles
 
-- Skills are pure markdown — no runtime code, no dependencies
-- Frontmatter: `name` + `description` required; optional: `disable-model-invocation`, `user-invocable`, `argument-hint`, `allowed-tools`, `model`, `context`, `agent`, `hooks`
-- Description: hybrid pattern — start with what it does (third-person), then "Use when..." triggers
-- See `writing-skills` skill for TDD approach to skill authoring
+1. **Context is the constraint.** Every agent exists to keep work out of the main window.
+2. **Agents return summaries, not data.** "42 tests pass, fixed null check in auth.ts:42" — not the full test output.
+3. **Tune per work type.** `effort`, `model`, `background`, `disallowedTools` all differ by agent.
+4. **Memory compounds.** `memory: project` on all agents — they learn across sessions.
+5. **Subagents can't spawn sub-subagents.** Design agent workflows accordingly.
 
-### Skills 2.0 Compliance
+### Frontmatter Reference (Claude Code 2.1.80)
 
-- Hybrid descriptions: what-it-does + "Use when..." triggers (under 420 chars)
-- `argument-hint` on commands for autocomplete
-- `${CLAUDE_SKILL_DIR}` for self-references within skill content
-- `context: fork` available for heavy skills that benefit from isolated subagent execution
-- `hooks:` in frontmatter for scoped hooks (fire only while skill is active)
-- Progressive disclosure: descriptions load at startup, full content on invocation
+| Field | Purpose |
+|-------|---------|
+| `effort` | `low`/`medium`/`high`/`max` — reasoning depth |
+| `background` | `true` — non-blocking execution |
+| `isolation` | `worktree` — isolated git copy |
+| `maxTurns` | Cap turns to prevent runaway |
+| `memory` | `user`/`project`/`local` — persistent learning |
+| `model` | `sonnet`/`haiku`/`inherit` — cost control |
+| `disallowedTools` | Enforce read-only agents |
+| `skills` | Preload skill content into agent context |
 
-### Available Hook Events
+### Plugin Security Restrictions
 
-| Event | Use Case |
-|-------|----------|
-| `SessionStart` | Inject skill awareness (used by TaskPlex) |
-| `PreCompact` | Preserve context before compaction |
-| `WorktreeCreate` / `WorktreeRemove` | Worktree lifecycle management |
-| `TaskCompleted` | Enforcement gate for agent teams |
-| `TeammateIdle` | Keep teammates working |
-| `InstructionsLoaded` | React to CLAUDE.md changes |
-| `ConfigChange` | React to config changes |
+Plugin-shipped agents do NOT support `hooks`, `mcpServers`, or `permissionMode`. These are ignored for security. If needed, copy agent to `.claude/agents/`.
 
-### Testing Changes
+### Validation
 
 ```bash
 # From marketplace root
 ./scripts/validate-plugin-manifests.sh
 ./scripts/plugin-doctor.sh
 
-# Reinstall and test
-/plugin uninstall taskplex@flight505-marketplace
-/plugin install taskplex@flight505-marketplace
-# Restart Claude Code
+# Eval
+cd evals/discipline-eval && ./run-eval.sh && ./run-eval.sh --judge
 ```
-
-### File Conventions
-
-| Context | Pattern |
-|---------|---------|
-| Hook commands | `'${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd' <script>` |
-| Skills | Relative paths within skill directory |
-| Naming | `kebab-case` everywhere |
-| Permissions | `chmod +x hooks/*` |
 
 ---
 
 ## Gotchas
 
-- Never create a command with the same name as a skill — both register as `taskplex:<name>`, causing circular invocation loops. Use commands only as shortcuts to differently-named skills (e.g. `write-plan` → `writing-plans`).
-- `hooks/hooks.json` is auto-discovered — never add `"hooks"` field to plugin.json
-- Use `/reload-plugins` to activate plugin changes without restart (2.1.69+)
-- Skills in plugins don't hot-reload (standalone symlinked skills do)
-- Hook scripts run in non-interactive shells — no aliases, no .zshrc
+- Never create a command with the same name as a skill — circular invocation
+- `hooks/hooks.json` is auto-discovered — never add `"hooks"` to plugin.json
+- Subagents cannot spawn sub-subagents
 - `PermissionRequest` hooks don't fire in `-p` (headless) mode
+- Use `/reload-plugins` to activate changes without restart (2.1.69+)
 
 ---
 
 ## References
 
 - [SDK-Bridge](https://github.com/flight505/sdk-bridge) — PRD-driven project execution
-- [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md)
-- [Claude Code Skills](https://code.claude.com/docs/en/skills.md)
-- [Plugin Development](https://code.claude.com/docs/en/plugins.md)
-- [Agent Teams](https://code.claude.com/docs/en/agent-teams.md) — Experimental parallel teammates
+- [Claude Code Subagents](https://code.claude.com/docs/en/sub-agents.md)
+- [Claude Code Plugins](https://code.claude.com/docs/en/plugins.md)
 
 ---
 

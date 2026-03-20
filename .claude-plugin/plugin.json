@@ -1,7 +1,7 @@
 {
   "name": "taskplex",
-  "version": "8.0.0",
-  "description": "Always-on development companion with TDD enforcement, systematic debugging, verification gates, and disciplined workflows.",
+  "version": "9.0.0",
+  "description": "Context-preservation layer — routes all work to subagents, keeping the main context window thin for conversation and coordination.",
   "author": {
     "name": "Jesper Vang",
     "email": "jesper_vang@me.com",
@@ -12,28 +12,19 @@
   "homepage": "https://github.com/flight505/taskplex",
   "keywords": [
     "claude-cli",
-    "skills",
+    "agents",
+    "context-management",
     "tdd",
-    "debugging",
-    "best-practices",
     "workflows",
     "development-companion"
   ],
   "commands": [
-    "./commands/write-plan.md",
     "./commands/e2e-test.md"
   ],
   "skills": [
-    "./skills/brainstorm",
-    "./skills/test-driven-development",
-    "./skills/verification-before-completion",
-    "./skills/systematic-debugging",
     "./skills/using-git-worktrees",
     "./skills/finishing-a-development-branch",
-    "./skills/receiving-code-review",
-    "./skills/writing-plans",
     "./skills/writing-skills",
-    "./skills/using-taskplex",
-    "./skills/e2e-testing"
+    "./skills/using-taskplex"
   ]
 }

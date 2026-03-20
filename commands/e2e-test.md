@@ -1,6 +1,6 @@
 ---
-description: "Systematically tests every user journey with parallel research agents and evidence collection."
+description: "Systematically tests every user journey with evidence collection."
 argument-hint: "[app-url-or-path]"
 ---
 
-Invoke the taskplex:e2e-testing skill and follow it exactly as presented to you
+Use the @taskplex-e2e agent to systematically test: $ARGUMENTS
